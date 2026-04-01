@@ -2,16 +2,24 @@
 
 ## Visão Geral da Interface
 
-O simulador possui interface física para ajuste em tempo real dos 12 parâmetros sem necessidade de computador:
+O simulador possui interface física para ajuste em tempo real dos 16 parâmetros sem necessidade de computador:
 
 ```
 ┌──────────────────────────────────────────────┐
-│          OLED 128×64 — Tela Principal        │
+│        OLED SH1107 128×128 — Tela Principal  │
 │  ┌────────────────────────────────────────┐  │
-│  │ Proto: CAN 11b 500k    [●CAN]          │  │
-│  │ ► RPM:      1500 rpm                   │  │
-│  │   Vel:        60 km/h                  │  │
-│  │   Temp.R:     90 °C                    │  │
+│  │ CAN 11b 500k                           │  │
+│  │ ────────────────────────────────────── │  │
+│  │ ► RPM           2000                   │  │
+│  │   Vel km/h        60                   │  │
+│  │   T.Motor C       92                   │  │
+│  │   T.Admis C       35                   │  │
+│  │   MAF g/s       12.0                   │  │
+│  │   MAP kPa         55                   │  │
+│  │   TPS %           35                   │  │
+│  │   Avanco gr     15.0                   │  │
+│  │ ──────────────────────────────────     │  │
+│  │ OK=edit  p.1/2                         │  │
 │  └────────────────────────────────────────┘  │
 │                                              │
 │  [◄]  [►]  [▲]  [▼]  [OK]  [PROTO]         │
@@ -21,22 +29,52 @@ O simulador possui interface física para ajuste em tempo real dos 12 parâmetro
 └──────────────────────────────────────────────┘
 ```
 
+### Foto do display em funcionamento
+
+![SH1107 128x128 funcionando](img/oled_sh1107_funcionando.jpg)
+
 ---
 
 ## Telas do Sistema
 
-### Tela 1 — Status / Monitor
+### Tela 1 — Página 1 (parâmetros 1–8)
 
-Exibe os 4 primeiros parâmetros visíveis e o protocolo ativo:
+Exibe os 8 primeiros parâmetros com protocolo ativo no header:
 
 ```
 ┌──────────────────────┐
-│Proto: ISO9141        │
-│►RPM:      800 rpm    │
-│ Vel:        0 km/h   │
-│ Temp.R:    90 °C     │
+│CAN 11b 500k          │  ← header
+│──────────────────────│  ← separador
+│► RPM          2000   │
+│  Vel km/h       60   │
+│  T.Motor C      92   │
+│  T.Admis C      35   │
+│  MAF g/s      12.0   │
+│  MAP kPa        55   │
+│  TPS %          35   │
+│  Avanco gr    15.0   │
+│──────────────────────│
+│OK=edit  p.1/2        │  ← footer
 └──────────────────────┘
-▲▼ = scroll | OK = editar
+```
+
+### Tela 2 — Página 2 (parâmetros 9–16)
+
+```
+┌──────────────────────┐
+│CAN 11b 500k          │
+│──────────────────────│
+│  Carga %        45   │
+│  Comb. %        60   │
+│  Bat. V       14.0   │
+│  Oleo C         90   │
+│  STFT %        0.0   │
+│  LTFT %        0.0   │
+│  DTC          0 DTC  │
+│  VIN    YOUSIM...001 │
+│──────────────────────│
+│OK=edit  p.2/2        │
+└──────────────────────┘
 ```
 
 ### Tela 2 — Edição de Parâmetro
@@ -134,19 +172,23 @@ Ao pressionar PROTO:
 
 ## Passos de Incremento por Parâmetro
 
-| Parâmetro | Passo Normal | Passo Rápido |
-|-----------|-------------|-------------|
-| RPM | 50 rpm | 250 rpm |
-| Velocidade | 5 km/h | 20 km/h |
-| Temp. refrigerante | 5°C | 20°C |
-| Temp. ar admissão | 1°C | 5°C |
-| MAF | 0.5 g/s | 2.0 g/s |
-| MAP | 5 kPa | 20 kPa |
-| TPS | 5% | 20% |
-| Avanço ignição | 1° | 5° |
-| Carga motor | 5% | 20% |
-| Nível combustível | 5% | 20% |
-| Encoder (giro) | 1 unidade mínima | — |
+| Parâmetro | Passo (botão/encoder) |
+|-----------|----------------------|
+| RPM | 50 rpm |
+| Velocidade | 5 km/h |
+| Temp. refrigerante | 5°C |
+| Temp. ar admissão | 1°C |
+| MAF | 0.5 g/s |
+| MAP | 5 kPa |
+| TPS | 5% |
+| Avanço ignição | 1° |
+| Carga motor | 5% |
+| Nível combustível | 5% |
+| Tensão bateria | 0.1 V |
+| Temp. óleo | 5°C |
+| STFT | 0.8% |
+| LTFT | 0.8% |
+| DTC / VIN | — (somente via Web UI) |
 
 ---
 
@@ -185,26 +227,39 @@ if (btn_held_time > BTN_LONG_PRESS_MS) {
 
 ---
 
-## Display OLED — Layout de Pixels
+## Display OLED SH1107 — Layout de Pixels
 
 ```
-Resolução: 128 × 64 pixels
+Resolução: 128 × 128 pixels  |  Driver: SH1107  |  I2C: 0x3C
 
-┌─ 0,0 ─────────────────────── 127,0 ─┐
-│ Linha header (fonte 6×8, 16 chars)   │ y: 0–8
-├──────────────────────────────────────┤
-│ Linha 1 parâmetro (fonte 6×8)        │ y: 10–18
-│ Linha 2 parâmetro                    │ y: 20–28
-│ Linha 3 parâmetro                    │ y: 30–38
-│ Linha 4 parâmetro                    │ y: 40–48
-├──────────────────────────────────────┤
-│ Footer: status / dica de tecla       │ y: 54–62
-└─ 0,63 ──────────────────────── 127,63┘
+┌─ 0,0 ──────────────────────── 127,0 ─┐
+│ Header: protocolo ativo (21 chars)    │ y: 0–8
+├───────────────────────────────────────┤ y: 9  (drawFastHLine)
+│ Param 0  "► RPM          2000"        │ y: 11
+│ Param 1  "  Vel km/h       60"        │ y: 24
+│ Param 2  "  T.Motor C      92"        │ y: 37
+│ Param 3  "  T.Admis C      35"        │ y: 50
+│ Param 4  "  MAF g/s      12.0"        │ y: 63
+│ Param 5  "  MAP kPa        55"        │ y: 76
+│ Param 6  "  TPS %          35"        │ y: 89
+│ Param 7  "  Avanco gr    15.0"        │ y: 102
+├───────────────────────────────────────┤
+│ Footer: dica contextual               │ y: 119
+└─ 0,127 ─────────────────────── 127,127┘
 
-Cursor (parâmetro selecionado): caractere ► na coluna 0
-Parâmetro em edição: invertido (fundo branco, texto preto)
-LED de atividade TX: pisca 50ms a cada frame enviado
+Cursor: "► " (2 chars) antes do nome do parâmetro
+Editando: fundo branco / texto preto (invertido)
+Scroll: 2 páginas de 8 parâmetros (total: 16)
 ```
+
+### Ligação I2C (SH1107 → ESP32)
+
+| Pino OLED | Pino ESP32 | GPIO |
+|-----------|-----------|------|
+| VCC | 3.3V | — |
+| GND | GND | — |
+| SCL | GPIO22 | SCL |
+| SDA | GPIO21 | SDA |
 
 ---
 

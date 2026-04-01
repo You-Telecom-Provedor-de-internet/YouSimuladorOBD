@@ -128,11 +128,11 @@ static void render(const SimulationState& s) {
     // ── Footer: hint contextual + indicador de página (y=119) ─
     oled.setCursor(0, 119);
     if (s_editing) {
-        oled.print("UP/DN=ajust  OK=sair");
+        oled.print("UP/DN=ajust OK=sair"); // 19c
     } else {
         uint8_t page  = s_cursor / VISIBLE_ROWS + 1;
         uint8_t pages = (PARAM_COUNT + VISIBLE_ROWS - 1) / VISIBLE_ROWS;
-        oled.printf("OK=edit P.%d/%d PROTO=troca", page, pages);
+        oled.printf("OK=edit  p.%d/%d", page, pages); // 14c — cabe folgado
     }
 
     oled.display();
