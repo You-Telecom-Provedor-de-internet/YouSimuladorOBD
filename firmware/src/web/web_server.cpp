@@ -34,6 +34,10 @@ static String stateToJson() {
     doc["ignition_advance"] = serialized(String(s_state->ignition_adv, 1));
     doc["engine_load"]      = s_state->engine_load_pct;
     doc["fuel_level"]       = s_state->fuel_level_pct;
+    doc["battery_voltage"]  = serialized(String(s_state->battery_voltage, 1));
+    doc["oil_temp"]         = s_state->oil_temp_c;
+    doc["stft"]             = serialized(String(s_state->stft_pct, 1));
+    doc["ltft"]             = serialized(String(s_state->ltft_pct, 1));
     auto dtcArr = doc.createNestedArray("dtcs");
     for (uint8_t i = 0; i < s_state->dtc_count; i++) {
         char buf[6];
@@ -68,6 +72,10 @@ static void handle_post_params(AsyncWebServerRequest* req, uint8_t* data, size_t
     if (doc.containsKey("ignition_advance")) s_state->ignition_adv     = doc["ignition_advance"];
     if (doc.containsKey("engine_load"))      s_state->engine_load_pct  = doc["engine_load"];
     if (doc.containsKey("fuel_level"))       s_state->fuel_level_pct   = doc["fuel_level"];
+    if (doc.containsKey("battery_voltage")) s_state->battery_voltage  = doc["battery_voltage"];
+    if (doc.containsKey("oil_temp"))        s_state->oil_temp_c        = doc["oil_temp"];
+    if (doc.containsKey("stft"))            s_state->stft_pct          = doc["stft"];
+    if (doc.containsKey("ltft"))            s_state->ltft_pct          = doc["ltft"];
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
 }
@@ -114,6 +122,26 @@ static void handle_clear_dtcs(AsyncWebServerRequest* req) {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     s_state->dtc_count = 0;
     memset(s_state->dtcs, 0, sizeof(s_state->dtcs));
+    xSemaphoreGive(s_mutex);
+    req->send(200, "application/json", "{\"ok\":true}");
+}
+
+static void handle_remove_dtc(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+    JsonDocument doc;
+    if (deserializeJson(doc, data, len)) { req->send(400); return; }
+    const char* code = doc["code"] | "";
+    if (strlen(code) < 5) { req->send(400); return; }
+    uint16_t val = (uint16_t)strtol(code + 1, nullptr, 16);
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    for (uint8_t i = 0; i < s_state->dtc_count; i++) {
+        if (s_state->dtcs[i] == val) {
+            // shift para preencher o buraco
+            for (uint8_t j = i; j < s_state->dtc_count - 1; j++)
+                s_state->dtcs[j] = s_state->dtcs[j + 1];
+            s_state->dtc_count--;
+            break;
+        }
+    }
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
 }
@@ -275,6 +303,10 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
             else if (!strcmp(key, "ignition_advance")) s_state->ignition_adv    = val;
             else if (!strcmp(key, "engine_load"))      s_state->engine_load_pct = (uint8_t)val;
             else if (!strcmp(key, "fuel_level"))       s_state->fuel_level_pct  = (uint8_t)val;
+            else if (!strcmp(key, "battery_voltage"))  s_state->battery_voltage = val;
+            else if (!strcmp(key, "oil_temp"))         s_state->oil_temp_c      = (int16_t)val;
+            else if (!strcmp(key, "stft"))             s_state->stft_pct        = val;
+            else if (!strcmp(key, "ltft"))             s_state->ltft_pct        = val;
         } else if (!strcmp(t, "protocol")) {
             uint8_t pid = doc["id"] | 0;
             if (pid < PROTO_COUNT) s_state->active_protocol = pid;
@@ -404,6 +436,8 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
         nullptr, handle_post_protocol);
     server.on("/api/dtcs/add", HTTP_POST, [](AsyncWebServerRequest*){},
         nullptr, handle_add_dtc);
+    server.on("/api/dtcs/remove", HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_remove_dtc);
     server.on("/api/preset",   HTTP_POST, [](AsyncWebServerRequest*){},
         nullptr, handle_post_preset);
     server.on("/api/profiles", HTTP_GET,  handle_get_profiles);

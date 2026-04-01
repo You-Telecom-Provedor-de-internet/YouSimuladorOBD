@@ -8,40 +8,35 @@ Obrigatório. O scanner sempre consulta este PID primeiro para saber quais PIDs 
 
 ```
 Resposta: 4 bytes = bitmask de PIDs 01–20
-Bit 31 (MSB) = PID 0x01, ..., Bit 0 (LSB) = PID 0x20
+Byte A: PIDs 01–08 | Byte B: PIDs 09–10 | Byte C: PIDs 11–18 | Byte D: PIDs 19–20
 
-PIDs que implementamos: 0x04, 0x05, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11
-Bitmask: PIDs 01–20:
-  PID04 = bit 28 → 0x10000000
-  PID05 = bit 27 → 0x08000000
-  PID0B = bit 21 → 0x00200000
-  PID0C = bit 20 → 0x00100000
-  PID0D = bit 19 → 0x00080000
-  PID0E = bit 18 → 0x00040000
-  PID0F = bit 17 → 0x00020000
-  PID10 = bit 16 → 0x00010000
-  PID11 = bit 15 → 0x00008000
-  PID20 = bit  0 → 0x00000001 (indica que há PIDs 21–40)
+PIDs que implementamos: 0x04, 0x05, 0x06, 0x07, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11
+  Byte A:  PID04=bit4, PID05=bit3, PID06=bit2, PID07=bit1  → 0x1E
+  Byte B:  PID0B=bit5, PID0C=bit4, PID0D=bit3, PID0E=bit2, PID0F=bit1, PID10=bit0 → 0x3F
+  Byte C:  PID11=bit7                                        → 0x80
+  Byte D:  PID20=bit0 (indica que há PIDs 21–40)             → 0x01
 
-Valor: 0x10000000 | 0x08000000 | 0x00200000 | 0x00100000 |
-       0x00080000 | 0x00040000 | 0x00020000 | 0x00010000 |
-       0x00008000 | 0x00000001
-     = 0x183F8001
-
-Resposta:  04 41 00 18 3F 80 01
+Resposta:  04 41 00 1E 3F 80 01
 ```
 
 ### PID 0x20 — PIDs Suportados [21–40]
 
 ```
 PIDs que implementamos neste range: 0x2F
-  PID2F = bit 17 (de 0x21 = bit31 até 0x40 = bit0)
-  Posição relativa: 0x2F - 0x21 = 14 → bit 31-14 = bit 17 → 0x00020000
-
-Valor: 0x00020000 | 0x00000001 (indica suporte a range 41-60, mesmo que vazio)
-     = 0x00020001
+  Byte B bit 1 = PID 0x2F → 0x02
+  Byte D bit 0 = PID 0x40 (indica suporte a range 41-60) → 0x01
 
 Resposta: 06 41 20 00 02 00 01
+```
+
+### PID 0x40 — PIDs Suportados [41–60]
+
+```
+PIDs que implementamos neste range: 0x42, 0x5C
+  Byte A bit 6 = PID 0x42 (tensão bateria)  → 0x40
+  Byte D bit 4 = PID 0x5C (temp. óleo)      → 0x10
+
+Resposta: 06 41 40 40 00 00 10
 ```
 
 ---
@@ -78,6 +73,44 @@ Resposta: 03 41 04 4C
 Exemplo: 90°C
 A = 90 + 40 = 130 = 0x82
 Resposta: 03 41 05 82
+```
+
+### PID 0x06 — Short Term Fuel Trim (STFT) — Banco 1
+
+| Campo | Valor |
+|-------|-------|
+| Bytes de resposta | 1 |
+| Fórmula | STFT(%) = (A − 128) × 100 / 128 |
+| Fórmula inversa | A = (stft_pct × 128 / 100) + 128 |
+| Range | −100 a +99.2% |
+| Default simulação | 0.0% (A = 0x80) |
+
+```
+Exemplo: +4.7%
+A = (4.7 × 128 / 100) + 128 ≈ 134 = 0x86
+Resposta: 03 41 06 86
+
+Exemplo: −3.1%
+A = (−3.1 × 128 / 100) + 128 ≈ 124 = 0x7C
+Resposta: 03 41 06 7C
+```
+
+> Valores |STFT| > 10% geralmente indicam problema de mistura (sensor O₂, injetor, escape).
+
+### PID 0x07 — Long Term Fuel Trim (LTFT) — Banco 1
+
+| Campo | Valor |
+|-------|-------|
+| Bytes de resposta | 1 |
+| Fórmula | LTFT(%) = (A − 128) × 100 / 128 |
+| Fórmula inversa | A = (ltft_pct × 128 / 100) + 128 |
+| Range | −100 a +99.2% |
+| Default simulação | 0.0% (A = 0x80) |
+
+```
+Exemplo: 0.0%
+A = 128 = 0x80
+Resposta: 03 41 07 80
 ```
 
 ### PID 0x0B — Pressão do Coletor de Admissão (MAP)
@@ -212,6 +245,52 @@ A = 75 × 255 / 100 = 191 = 0xBF
 Resposta: 03 41 2F BF
 ```
 
+### PID 0x42 — Tensão do Módulo de Controle (Bateria)
+
+| Campo | Valor |
+|-------|-------|
+| Bytes de resposta | 2 |
+| Fórmula | V = (A × 256 + B) / 1000 |
+| Fórmula inversa | raw = V × 1000; A = raw >> 8; B = raw & 0xFF |
+| Range | 0–65.535 V |
+| Default simulação | 14.2 V (motor em marcha lenta, alternador ativo) |
+
+```
+Exemplo: 14.2 V
+raw = 14200 = 0x3778
+A = 0x37, B = 0x78
+Resposta: 04 41 42 37 78
+
+Valores típicos:
+  Motor desligado : 12.5 V
+  Marcha lenta    : 14.0–14.4 V
+  Carga alta      : 13.5–14.0 V
+  Alerta baixo    : < 12.0 V
+  Alerta alto     : > 15.5 V
+```
+
+### PID 0x5C — Temperatura do Óleo do Motor
+
+| Campo | Valor |
+|-------|-------|
+| Bytes de resposta | 1 |
+| Fórmula | Temp(°C) = A − 40 |
+| Fórmula inversa | A = temp + 40 |
+| Range | −40 a +210°C |
+| Default simulação | 85°C (A = 0x7D) |
+
+```
+Exemplo: 90°C
+A = 90 + 40 = 130 = 0x82
+Resposta: 03 41 5C 82
+
+Valores típicos:
+  Motor frio   : 20–40°C
+  Aquecimento  : 40–80°C
+  Operação     : 80–110°C
+  Alerta       : > 110°C
+```
+
 ---
 
 ## Modo 03 — Códigos de Falha (DTCs)
@@ -334,19 +413,23 @@ VIN: YOUSIM00000000001
 
 ---
 
-## Resumo de Ranges e Defaults dos 12 Parâmetros
+## Resumo de Ranges e Defaults dos 16 Parâmetros
 
-| # | Parâmetro | PID | Mín | Máx | Default | Passo |
-|---|-----------|-----|-----|-----|---------|-------|
-| 1 | RPM | 0x0C | 0 | 16000 | 800 | 50 RPM |
-| 2 | Velocidade | 0x0D | 0 | 255 | 0 | 5 km/h |
-| 3 | Temp. refrigerante | 0x05 | -40 | 215 | 90 | 5°C |
-| 4 | Temp. ar admissão | 0x0F | -40 | 80 | 30 | 1°C |
-| 5 | Fluxo MAF | 0x10 | 0.0 | 655.0 | 3.0 | 0.5 g/s |
-| 6 | Pressão MAP | 0x0B | 0 | 255 | 35 | 5 kPa |
-| 7 | Pos. acelerador | 0x11 | 0 | 100 | 15 | 5% |
-| 8 | Avanço ignição | 0x0E | -64 | 63.5 | 10 | 1° |
-| 9 | Carga motor | 0x04 | 0 | 100 | 25 | 5% |
-| 10 | Nível combustível | 0x2F | 0 | 100 | 75 | 5% |
-| 11 | DTC ativo | — | 0 | 8 DTCs | nenhum | — |
-| 12 | VIN | — | — | — | YOUSIM…001 | — |
+| # | Parâmetro | PID | Mín | Máx | Default | Alerta |
+|---|-----------|-----|-----|-----|---------|--------|
+| 1 | RPM | 0x0C | 0 | 16000 | 800 | > 6000 |
+| 2 | Velocidade | 0x0D | 0 | 255 | 0 | — |
+| 3 | Temp. refrigerante | 0x05 | -40 | 215 | 90 | > 108°C |
+| 4 | Temp. ar admissão | 0x0F | -40 | 80 | 30 | — |
+| 5 | Fluxo MAF | 0x10 | 0.0 | 655.0 | 3.0 | — |
+| 6 | Pressão MAP | 0x0B | 0 | 255 | 35 | — |
+| 7 | Pos. acelerador | 0x11 | 0 | 100 | 15 | — |
+| 8 | Avanço ignição | 0x0E | -64 | 63.5 | 10 | — |
+| 9 | Carga motor | 0x04 | 0 | 100 | 25 | — |
+| 10 | Nível combustível | 0x2F | 0 | 100 | 75 | — |
+| 11 | Tensão bateria | 0x42 | 0.0 | 65.5 | 14.2 V | < 12 V ou > 15.5 V |
+| 12 | Temp. óleo | 0x5C | -40 | 210 | 85 | > 110°C |
+| 13 | STFT Banco 1 | 0x06 | -30 | +30 | 0.0% | \|val\| > 10% |
+| 14 | LTFT Banco 1 | 0x07 | -30 | +30 | 0.0% | \|val\| > 10% |
+| 15 | DTC ativo | — | 0 | 8 DTCs | nenhum | — |
+| 16 | VIN | — | — | — | YOUSIM…001 | — |

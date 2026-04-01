@@ -67,6 +67,9 @@
   .net-lock{font-size:.8rem;width:16px;text-align:center}
   .net-rssi{font-size:.72rem;color:var(--muted)}
   footer{text-align:center;padding:20px;color:var(--muted);font-size:.75rem}
+  .card .val.warn{color:var(--red)}
+  #proto-badge{font-size:.72rem;padding:4px 9px;border-radius:12px;font-weight:600;letter-spacing:.04em;background:#1a2a1a;color:var(--green);border:1px solid var(--green)}
+  #proto-badge.kline{background:#2a1a00;color:#ffaa00;border-color:#ffaa00}
 </style>
 </head>
 <body>
@@ -81,6 +84,7 @@
     <option value="5">KWP 5-baud</option>
     <option value="6">KWP Fast</option>
   </select>
+  <span id="proto-badge">CAN</span>
   <div id="status-dot" title="WebSocket"></div>
 </header>
 
@@ -164,6 +168,38 @@
     <div class="val" id="v-fuel">75 <span>%</span></div>
     <input type="range" id="r-fuel" min="0" max="100" step="5" value="75"
            oninput="send('fuel_level',+this.value)">
+  </div>
+
+  <!-- Tensão da Bateria -->
+  <div class="card">
+    <label>Tensão Bateria</label>
+    <div class="val" id="v-bat">14.2 <span>V</span></div>
+    <input type="range" id="r-bat" min="10" max="16" step="0.1" value="14.2"
+           oninput="send('battery_voltage',+this.value)">
+  </div>
+
+  <!-- Temp Óleo -->
+  <div class="card">
+    <label>Temp. Óleo</label>
+    <div class="val" id="v-oil">85 <span>°C</span></div>
+    <input type="range" id="r-oil" min="-40" max="210" step="5" value="85"
+           oninput="send('oil_temp',+this.value)">
+  </div>
+
+  <!-- STFT -->
+  <div class="card">
+    <label>Trim Comb. Curto (STFT)</label>
+    <div class="val" id="v-stft">0.0 <span>%</span></div>
+    <input type="range" id="r-stft" min="-30" max="30" step="0.8" value="0"
+           oninput="send('stft',+this.value)">
+  </div>
+
+  <!-- LTFT -->
+  <div class="card">
+    <label>Trim Comb. Longo (LTFT)</label>
+    <div class="val" id="v-ltft">0.0 <span>%</span></div>
+    <input type="range" id="r-ltft" min="-30" max="30" step="0.8" value="0"
+           oninput="send('ltft',+this.value)">
   </div>
 
   <!-- DTCs -->
@@ -276,8 +312,16 @@ function connect() {
   };
 }
 
+const PROTO_IS_KLINE = [false,false,false,false,true,true,true];
+
 function update(d) {
-  if (d.protocol_id !== undefined) document.getElementById('proto-sel').value = d.protocol_id;
+  if (d.protocol_id !== undefined) {
+    document.getElementById('proto-sel').value = d.protocol_id;
+    const badge = document.getElementById('proto-badge');
+    const kline = PROTO_IS_KLINE[d.protocol_id];
+    badge.textContent = kline ? 'K-Line' : 'CAN';
+    badge.className = kline ? 'kline' : '';
+  }
   setVal('rpm',  d.rpm,  'v-rpm',  'r-rpm');
   setVal('speed',d.speed,'v-speed','r-speed');
   setVal('cool', d.coolant_temp,'v-cool','r-cool');
@@ -288,12 +332,27 @@ function update(d) {
   setVal('adv',  d.ignition_advance,'v-adv','r-adv');
   setVal('load', d.engine_load, 'v-load','r-load');
   setVal('fuel', d.fuel_level,  'v-fuel','r-fuel');
+  setVal('bat',  d.battery_voltage,'v-bat','r-bat');
+  setVal('oil',  d.oil_temp,    'v-oil', 'r-oil');
+  setVal('stft', d.stft,        'v-stft','r-stft');
+  setVal('ltft', d.ltft,        'v-ltft','r-ltft');
   renderDtcs(d.dtcs || []);
   if (d.vin) document.getElementById('vin-tag').textContent = 'VIN: ' + d.vin;
   if (d.profile_id !== undefined) {
     const sel = document.getElementById('vehicle-sel');
     if (document.activeElement !== sel) sel.value = d.profile_id || '';
   }
+  // ── Alertas visuais ───────────────────────────────────────────
+  setWarn('v-cool', d.coolant_temp > 108 || d.coolant_temp < 0);
+  setWarn('v-oil',  d.oil_temp     > 110 || d.oil_temp     < 0);
+  setWarn('v-bat',  d.battery_voltage < 12.0 || d.battery_voltage > 15.5);
+  setWarn('v-stft', Math.abs(d.stft) > 10);
+  setWarn('v-ltft', Math.abs(d.ltft) > 10);
+  setWarn('v-rpm',  d.rpm > 6000);
+}
+
+function setWarn(id, cond) {
+  document.getElementById(id)?.classList.toggle('warn', !!cond);
 }
 
 function setVal(key, val, vid, rid) {
@@ -342,10 +401,7 @@ function addDtc() {
 }
 
 function removeDtc(code) {
-  // Remove pelo índice (API simplificada: clear all e re-add os outros)
-  // Extensão futura: endpoint /api/dtcs/remove
-  if (confirm(`Remover ${code}?`))
-    fetch('/api/dtcs/clear', {method:'POST'});
+  fetch('/api/dtcs/remove', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
 }
 
 function clearDtcs() {

@@ -127,6 +127,15 @@ Body: { "code": "P0420" }
 Response: { "ok": true }
 ```
 
+### POST /api/dtcs/remove
+
+Remove um DTC específico sem afetar os demais.
+
+```json
+Body: { "code": "P0300" }
+Response: { "ok": true }
+```
+
 ### POST /api/dtcs/clear
 
 Limpa todos os DTCs.
@@ -254,38 +263,49 @@ Endpoint: `ws://<ip>/ws`
 
 ### Mensagens Server → Client
 
-O ESP32 envia estado a cada 500ms ou imediatamente após mudança:
+O ESP32 envia estado completo a cada 500ms:
 
 ```json
 {
-  "type": "update",
+  "protocol": "CAN_11B_500K",
+  "protocol_id": 0,
   "rpm": 1500,
   "speed": 60,
   "coolant_temp": 90,
   "intake_temp": 30,
-  "maf": 3.0,
+  "maf": "3.0",
   "map": 35,
   "throttle": 15,
-  "ignition_advance": 10.0,
+  "ignition_advance": "10.0",
   "engine_load": 25,
   "fuel_level": 75,
+  "battery_voltage": "14.2",
+  "oil_temp": 85,
+  "stft": "0.0",
+  "ltft": "0.0",
   "dtcs": ["P0300"],
-  "protocol": "CAN_11B_500K",
-  "obd_activity": true
+  "vin": "YOUSIM00000000001",
+  "profile_id": ""
 }
 ```
 
 ### Mensagens Client → Server
 
 ```json
-// Atualizar parâmetro
+// Atualizar parâmetro (qualquer chave do estado)
 { "type": "set", "key": "rpm", "value": 2500 }
+{ "type": "set", "key": "battery_voltage", "value": 13.8 }
+{ "type": "set", "key": "stft", "value": -3.1 }
 
 // Trocar protocolo
 { "type": "protocol", "id": 1 }
 
 // Carregar preset
 { "type": "preset", "name": "cruise" }
+// Presets: "off", "idle", "cruise", "fullthrottle", "overheat", "catalyst_fail"
+
+// Aplicar perfil de veículo
+{ "type": "profile", "id": "fiat_palio_14" }
 ```
 
 ---
@@ -434,8 +454,9 @@ Lê NVS: wifi_mode, ssid, pass
     │               └──────┬──────┘
     │                 Não  │ Sim
     │                  ▼   ▼
-    │             Fallback  Inicia mDNS
-    │             para AP   obdsim.local
+    │         Fallback AP+STA  Inicia mDNS
+    │         (rádio STA ativo  obdsim.local
+    │          para scan Wi-Fi)
     │
     └── mode = AP+STA ──► Ambos simultaneamente
     │
