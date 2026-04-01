@@ -169,9 +169,19 @@ static volatile bool s_scan_busy   = false;
 static String        s_scan_result = "[]";
 
 static void task_wifi_scan(void*) {
-    // Rádio STA sempre ativo (modo AP+STA no fallback), scan pode rodar diretamente.
     WiFi.scanDelete();
-    int n = WiFi.scanNetworks(false, true); // síncrono, inclui redes ocultas
+    // Scan assíncrono: não bloqueia o rádio STA conectado.
+    // scanNetworks(async=true) inicia o scan em background do driver Wi-Fi;
+    // scanComplete() retorna WIFI_SCAN_RUNNING (-1) até terminar.
+    WiFi.scanNetworks(/*async=*/true, /*show_hidden=*/true);
+
+    // Poll a cada 500ms — timeout de 15s para não ficar preso para sempre
+    int16_t n = WIFI_SCAN_RUNNING;
+    uint32_t deadline = millis() + 15000;
+    while (n == WIFI_SCAN_RUNNING && millis() < deadline) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        n = WiFi.scanComplete();
+    }
 
     JsonDocument doc;
     JsonArray arr = doc.to<JsonArray>();
@@ -195,7 +205,7 @@ static void handle_post_wifi_scan(AsyncWebServerRequest* req) {
     if (!s_scan_busy) {
         s_scan_busy = true;
         s_scan_result = "[]";
-        xTaskCreate(task_wifi_scan, "wifi_scan", 4096, nullptr, 2, nullptr);
+        xTaskCreate(task_wifi_scan, "wifi_scan", 8192, nullptr, 1, nullptr);
     }
     req->send(202, "application/json", "{\"scanning\":true}");
 }
