@@ -1,0 +1,152 @@
+{
+  "version": 1,
+  "author": "YouSimuladorOBD",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 32,
+      "left": 210,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-ssd1306",
+      "id": "oled1",
+      "top": 0,
+      "left": 0,
+      "attrs": { "i2cAddress": "0x3c" }
+    },
+    {
+      "type": "wokwi-ky-040",
+      "id": "enc1",
+      "top": 0,
+      "left": 460,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_prev",
+      "top": 530,
+      "left": 0,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_next",
+      "top": 530,
+      "left": 70,
+      "attrs": { "color": "green" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_up",
+      "top": 530,
+      "left": 140,
+      "attrs": { "color": "blue" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_down",
+      "top": 530,
+      "left": 210,
+      "attrs": { "color": "blue" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_sel",
+      "top": 530,
+      "left": 280,
+      "attrs": { "color": "orange" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_proto",
+      "top": 530,
+      "left": 350,
+      "attrs": { "color": "red" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_can",
+      "top": 248,
+      "left": 460,
+      "rotate": 90,
+      "attrs": { "value": "330" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_can",
+      "top": 200,
+      "left": 500,
+      "attrs": { "color": "green", "label": "CAN" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_kline",
+      "top": 328,
+      "left": 460,
+      "rotate": 90,
+      "attrs": { "value": "330" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_kline",
+      "top": 280,
+      "left": 500,
+      "attrs": { "color": "yellow", "label": "K-Line" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_tx",
+      "top": 408,
+      "left": 460,
+      "rotate": 90,
+      "attrs": { "value": "330" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_tx",
+      "top": 360,
+      "left": 500,
+      "attrs": { "color": "red", "label": "TX" }
+    }
+  ],
+  "connections": [
+    ["oled1:SDA",      "esp:D21",    "green",  []],
+    ["oled1:SCL",      "esp:D22",    "dodgerblue", []],
+    ["oled1:VCC",      "esp:3V3",    "red",    []],
+    ["oled1:GND",      "esp:GND.2",  "black",  []],
+
+    ["enc1:CLK",       "esp:D12",    "orange", []],
+    ["enc1:DT",        "esp:D13",    "violet", []],
+    ["enc1:SW",        "esp:D15",    "gold",   []],
+    ["enc1:+",         "esp:3V3",    "red",    []],
+    ["enc1:GND",       "esp:GND.2",  "black",  []],
+
+    ["btn_prev:1.r",   "esp:D32",    "green",  []],
+    ["btn_prev:2.r",   "esp:GND.1",  "black",  []],
+    ["btn_next:1.r",   "esp:D33",    "green",  []],
+    ["btn_next:2.r",   "esp:GND.1",  "black",  []],
+    ["btn_up:1.r",     "esp:D25",    "dodgerblue", []],
+    ["btn_up:2.r",     "esp:GND.1",  "black",  []],
+    ["btn_down:1.r",   "esp:D26",    "dodgerblue", []],
+    ["btn_down:2.r",   "esp:GND.1",  "black",  []],
+    ["btn_sel:1.r",    "esp:D27",    "orange", []],
+    ["btn_sel:2.r",    "esp:GND.1",  "black",  []],
+    ["btn_proto:1.r",  "esp:D14",    "red",    []],
+    ["btn_proto:2.r",  "esp:GND.1",  "black",  []],
+
+    ["r_can:2",        "esp:D19",    "green",  []],
+    ["r_can:1",        "led_can:A",  "green",  []],
+    ["led_can:K",      "esp:GND.3",  "black",  []],
+
+    ["r_kline:2",      "esp:D18",    "gold",   []],
+    ["r_kline:1",      "led_kline:A","gold",   []],
+    ["led_kline:K",    "esp:GND.3",  "black",  []],
+
+    ["r_tx:2",         "esp:D23",    "red",    []],
+    ["r_tx:1",         "led_tx:A",   "red",    []],
+    ["led_tx:K",       "esp:GND.3",  "black",  []]
+  ]
+}

@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OBD Simulator</title>
+<style>
+  :root{--bg:#0f1117;--card:#1a1d27;--accent:#00d4ff;--green:#00ff88;--red:#ff4466;--text:#e0e6f0;--muted:#6b7280}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;min-height:100vh}
+  header{background:var(--card);border-bottom:1px solid #2a2d3a;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:1.1rem;color:var(--accent);letter-spacing:.05em}
+  #proto-sel{background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:6px;padding:6px 10px;font-size:.85rem;cursor:pointer}
+  #status-dot{width:10px;height:10px;border-radius:50%;background:var(--red);transition:background .3s;margin-left:auto}
+  #status-dot.on{background:var(--green)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding:16px}
+  .card{background:var(--card);border-radius:10px;padding:14px;border:1px solid #2a2d3a}
+  .card label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+  .card .val{font-size:1.4rem;font-weight:700;color:var(--accent);margin-bottom:10px}
+  .card .val span{font-size:.75rem;color:var(--muted);font-weight:400;margin-left:4px}
+  input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+  .dtc-card{grid-column:span 2}
+  .dtc-list{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .dtc-tag{background:#2a1a2a;color:#ff88cc;border:1px solid #ff4466;border-radius:4px;padding:4px 8px;font-size:.8rem;cursor:pointer;transition:background .2s}
+  .dtc-tag:hover{background:#3a1a2a}
+  .add-dtc{display:flex;gap:8px;margin-top:8px}
+  .add-dtc input{flex:1;background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:6px;padding:6px 10px;font-size:.85rem}
+  button{background:var(--accent);color:#0f1117;border:none;border-radius:6px;padding:6px 14px;font-size:.85rem;font-weight:600;cursor:pointer;transition:opacity .2s}
+  button:hover{opacity:.85}
+  button.danger{background:var(--red);color:#fff}
+  button.secondary{background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a}
+  .presets{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+  .presets button{flex:1;min-width:100px;padding:10px}
+  .profile-card{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .profile-card label{white-space:nowrap;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .profile-card select{flex:1;min-width:200px;background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:6px;padding:8px 10px;font-size:.85rem;cursor:pointer}
+  #vin-tag{font-size:.75rem;color:var(--muted);font-family:monospace;background:#2a2d3a;padding:5px 10px;border-radius:6px;border:1px solid #3a3d4a;white-space:nowrap}
+  .wifi-card{grid-column:1/-1}
+  .wifi-card summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;user-select:none}
+  .wifi-card summary::-webkit-details-marker{display:none}
+  .wifi-card summary::after{content:'▼';font-size:.65rem;transition:transform .2s}
+  .wifi-card[open] summary::after{transform:rotate(180deg)}
+  .wifi-form{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .wifi-form label{font-size:.75rem;color:var(--muted);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em}
+  .wifi-form input,.wifi-form select{width:100%;background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:6px;padding:7px 10px;font-size:.85rem}
+  .wifi-form input:focus,.wifi-form select:focus{outline:none;border-color:var(--accent)}
+  .wifi-full{grid-column:1/-1}
+  .wifi-status-row{grid-column:1/-1;display:flex;gap:20px;flex-wrap:wrap;background:#2a2d3a;padding:8px 12px;border-radius:6px;font-size:.82rem}
+  .wifi-status-row span{color:var(--muted)}
+  .wifi-status-row strong{color:var(--text);margin-left:4px}
+  .pass-wrap{position:relative;display:flex;gap:6px}
+  .pass-wrap input{flex:1}
+  .pass-wrap button{padding:6px 10px;background:#2a2d3a;color:var(--muted);border:1px solid #3a3d4a;border-radius:6px;cursor:pointer;font-size:.85rem}
+  #wifi-msg{grid-column:1/-1;padding:8px 12px;border-radius:6px;font-size:.82rem;display:none}
+  #wifi-msg.ok{background:#0a2a1a;color:var(--green);border:1px solid var(--green);display:block}
+  #wifi-msg.err{background:#2a0a0a;color:var(--red);border:1px solid var(--red);display:block}
+  .ssid-row{display:flex;gap:6px;align-items:center}
+  .ssid-row input{flex:1}
+  #wf-scan-btn{padding:7px 12px;white-space:nowrap;background:#2a2d3a;color:var(--accent);border:1px solid var(--accent);border-radius:6px;font-size:.82rem;font-weight:600;cursor:pointer;transition:opacity .2s}
+  #wf-scan-btn:disabled{opacity:.5;cursor:not-allowed}
+  #wf-net-list{margin-top:8px;display:flex;flex-direction:column;gap:4px;max-height:240px;overflow-y:auto}
+  .net-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:#2a2d3a;border-radius:8px;cursor:pointer;border:1px solid #3a3d4a;transition:border-color .15s}
+  .net-item:hover{border-color:var(--accent)}
+  .net-item.selected{border-color:var(--accent);background:#1a2a3a}
+  .net-ssid{flex:1;font-size:.88rem;font-weight:500}
+  .net-bars{font-size:.75rem;letter-spacing:-1px}
+  .net-lock{font-size:.8rem;width:16px;text-align:center}
+  .net-rssi{font-size:.72rem;color:var(--muted)}
+  footer{text-align:center;padding:20px;color:var(--muted);font-size:.75rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>&#9679; OBD Simulator</h1>
+  <select id="proto-sel" onchange="setProtocol(this.value)">
+    <option value="0">CAN 11b 500k</option>
+    <option value="1">CAN 11b 250k</option>
+    <option value="2">CAN 29b 500k</option>
+    <option value="3">CAN 29b 250k</option>
+    <option value="4">ISO 9141-2</option>
+    <option value="5">KWP 5-baud</option>
+    <option value="6">KWP Fast</option>
+  </select>
+  <div id="status-dot" title="WebSocket"></div>
+</header>
+
+<div class="grid">
+
+  <!-- RPM -->
+  <div class="card">
+    <label>Rotação</label>
+    <div class="val" id="v-rpm">800 <span>rpm</span></div>
+    <input type="range" id="r-rpm" min="0" max="7000" step="50" value="800"
+           oninput="send('rpm',+this.value)">
+  </div>
+
+  <!-- Velocidade -->
+  <div class="card">
+    <label>Velocidade</label>
+    <div class="val" id="v-speed">0 <span>km/h</span></div>
+    <input type="range" id="r-speed" min="0" max="255" step="5" value="0"
+           oninput="send('speed',+this.value)">
+  </div>
+
+  <!-- Temp Refrigerante -->
+  <div class="card">
+    <label>Temp. Motor</label>
+    <div class="val" id="v-cool">90 <span>°C</span></div>
+    <input type="range" id="r-cool" min="-40" max="215" step="5" value="90"
+           oninput="send('coolant_temp',+this.value)">
+  </div>
+
+  <!-- Temp Ar Admissão -->
+  <div class="card">
+    <label>Temp. Admissão</label>
+    <div class="val" id="v-iat">30 <span>°C</span></div>
+    <input type="range" id="r-iat" min="-40" max="80" step="1" value="30"
+           oninput="send('intake_temp',+this.value)">
+  </div>
+
+  <!-- MAF -->
+  <div class="card">
+    <label>Fluxo Ar (MAF)</label>
+    <div class="val" id="v-maf">3.0 <span>g/s</span></div>
+    <input type="range" id="r-maf" min="0" max="200" step="0.5" value="3"
+           oninput="send('maf',+this.value)">
+  </div>
+
+  <!-- MAP -->
+  <div class="card">
+    <label>Pressão Coletor (MAP)</label>
+    <div class="val" id="v-map">35 <span>kPa</span></div>
+    <input type="range" id="r-map" min="0" max="255" step="5" value="35"
+           oninput="send('map',+this.value)">
+  </div>
+
+  <!-- TPS -->
+  <div class="card">
+    <label>Acelerador (TPS)</label>
+    <div class="val" id="v-tps">15 <span>%</span></div>
+    <input type="range" id="r-tps" min="0" max="100" step="5" value="15"
+           oninput="send('throttle',+this.value)">
+  </div>
+
+  <!-- Avanço Ignição -->
+  <div class="card">
+    <label>Avanço Ignição</label>
+    <div class="val" id="v-adv">10.0 <span>°</span></div>
+    <input type="range" id="r-adv" min="-64" max="63.5" step="1" value="10"
+           oninput="send('ignition_advance',+this.value)">
+  </div>
+
+  <!-- Carga Motor -->
+  <div class="card">
+    <label>Carga Motor</label>
+    <div class="val" id="v-load">25 <span>%</span></div>
+    <input type="range" id="r-load" min="0" max="100" step="5" value="25"
+           oninput="send('engine_load',+this.value)">
+  </div>
+
+  <!-- Combustível -->
+  <div class="card">
+    <label>Combustível</label>
+    <div class="val" id="v-fuel">75 <span>%</span></div>
+    <input type="range" id="r-fuel" min="0" max="100" step="5" value="75"
+           oninput="send('fuel_level',+this.value)">
+  </div>
+
+  <!-- DTCs -->
+  <div class="card dtc-card">
+    <label>Códigos de Falha (DTCs)</label>
+    <div class="dtc-list" id="dtc-list"></div>
+    <div class="add-dtc">
+      <input id="dtc-input" placeholder="ex: P0300" maxlength="5">
+      <button onclick="addDtc()">Adicionar</button>
+      <button class="danger" onclick="clearDtcs()">Limpar</button>
+    </div>
+  </div>
+
+  <!-- Perfil do Veículo -->
+  <div class="card profile-card">
+    <label>Perfil do Veículo</label>
+    <select id="vehicle-sel">
+      <option value="">— Selecione um veículo —</option>
+    </select>
+    <button onclick="applyProfile()">Aplicar Perfil</button>
+    <span id="vin-tag">VIN: YOUSIM00000000001</span>
+  </div>
+
+  <!-- Presets -->
+  <div class="card presets">
+    <button class="secondary" onclick="preset('off')">Motor Deslig.</button>
+    <button class="secondary" onclick="preset('idle')">Marcha Lenta</button>
+    <button class="secondary" onclick="preset('cruise')">Cruzeiro 60</button>
+    <button class="secondary" onclick="preset('fullthrottle')">Fundo Total</button>
+    <button class="secondary" onclick="preset('overheat')">Superaquec.</button>
+    <button class="secondary" onclick="preset('catalyst_fail')">Falha Catalis.</button>
+  </div>
+
+  <!-- Wi-Fi -->
+  <details class="card wifi-card" id="wifi-panel">
+    <summary>
+      <span>&#9881; Configuração Wi-Fi</span>
+      <span id="wifi-badge" style="color:var(--muted);font-size:.8rem">carregando...</span>
+    </summary>
+    <div class="wifi-form">
+
+      <div class="wifi-status-row">
+        <div><span>Modo:</span>      <strong id="wf-cur-mode">—</strong></div>
+        <div><span>IP atual:</span>  <strong id="wf-cur-ip">—</strong></div>
+        <div><span>mDNS:</span>      <strong id="wf-cur-mdns">—</strong></div>
+        <div><span>AP SSID:</span>   <strong id="wf-cur-ap">OBD-Simulator</strong></div>
+      </div>
+
+      <div>
+        <label>Modo Wi-Fi</label>
+        <select id="wf-mode">
+          <option value="1">STA — conecta na sua rede</option>
+          <option value="0">AP — cria rede própria</option>
+          <option value="2">AP + STA — ambos simultâneos</option>
+        </select>
+      </div>
+
+      <div class="wifi-full">
+        <label>Redes Disponíveis</label>
+        <div class="ssid-row">
+          <input id="wf-ssid" placeholder="Nome da rede (SSID)" autocomplete="off">
+          <button type="button" id="wf-scan-btn" onclick="startScan()">&#128269; Buscar</button>
+        </div>
+        <div id="wf-net-list"></div>
+      </div>
+
+      <div>
+        <label>Senha</label>
+        <div class="pass-wrap">
+          <input id="wf-pass" type="password" placeholder="Deixe vazio para não alterar" autocomplete="new-password">
+          <button type="button" onclick="toggleWifiPass()" title="Mostrar/ocultar">&#128065;</button>
+        </div>
+      </div>
+
+      <div>
+        <label>IP Estático <small style="color:var(--muted)">(vazio = DHCP)</small></label>
+        <input id="wf-ip" placeholder="ex: 192.168.1.150">
+      </div>
+
+      <div>
+        <label>Gateway</label>
+        <input id="wf-gw" placeholder="ex: 192.168.1.1">
+      </div>
+
+      <div id="wifi-msg"></div>
+
+      <div class="wifi-full" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button id="wf-save-btn" onclick="saveWifi()">Salvar e Reiniciar</button>
+        <button class="secondary" onclick="fetch('/api/reboot',{method:'POST'}).then(()=>startRebootCountdown(null))">Só Reiniciar</button>
+      </div>
+
+    </div>
+  </details>
+
+</div>
+
+<footer>YouSimuladorOBD &mdash; ESP32 OBD-II Emulator</footer>
+
+<script>
+const WS_URL = `ws://${location.host}/ws`;
+let ws, reconnTimer;
+
+function connect() {
+  ws = new WebSocket(WS_URL);
+  ws.onopen  = () => { document.getElementById('status-dot').classList.add('on'); };
+  ws.onclose = () => { document.getElementById('status-dot').classList.remove('on'); reconnTimer = setTimeout(connect, 2000); };
+  ws.onmessage = e => {
+    const d = JSON.parse(e.data);
+    update(d);
+  };
+}
+
+function update(d) {
+  if (d.protocol_id !== undefined) document.getElementById('proto-sel').value = d.protocol_id;
+  setVal('rpm',  d.rpm,  'v-rpm',  'r-rpm');
+  setVal('speed',d.speed,'v-speed','r-speed');
+  setVal('cool', d.coolant_temp,'v-cool','r-cool');
+  setVal('iat',  d.intake_temp, 'v-iat', 'r-iat');
+  setVal('maf',  d.maf,         'v-maf', 'r-maf');
+  setVal('map',  d.map,         'v-map', 'r-map');
+  setVal('tps',  d.throttle,    'v-tps', 'r-tps');
+  setVal('adv',  d.ignition_advance,'v-adv','r-adv');
+  setVal('load', d.engine_load, 'v-load','r-load');
+  setVal('fuel', d.fuel_level,  'v-fuel','r-fuel');
+  renderDtcs(d.dtcs || []);
+  if (d.vin) document.getElementById('vin-tag').textContent = 'VIN: ' + d.vin;
+  if (d.profile_id !== undefined) {
+    const sel = document.getElementById('vehicle-sel');
+    if (document.activeElement !== sel) sel.value = d.profile_id || '';
+  }
+}
+
+function setVal(key, val, vid, rid) {
+  if (val === undefined) return;
+  const el = document.getElementById(vid);
+  const rng = document.getElementById(rid);
+  const unit = el.querySelector('span');
+  el.childNodes[0].textContent = typeof val === 'number' && !Number.isInteger(val)
+    ? val.toFixed(1) : val;
+  if (rng && document.activeElement !== rng) rng.value = val;
+}
+
+function renderDtcs(dtcs) {
+  const el = document.getElementById('dtc-list');
+  el.innerHTML = '';
+  dtcs.forEach(c => {
+    const tag = document.createElement('span');
+    tag.className = 'dtc-tag';
+    tag.textContent = c + ' ×';
+    tag.onclick = () => removeDtc(c);
+    el.appendChild(tag);
+  });
+  if (!dtcs.length) el.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Sem DTCs ativos</span>';
+}
+
+function send(key, val) {
+  if (ws && ws.readyState === 1)
+    ws.send(JSON.stringify({type:'set', key, value: val}));
+}
+
+function setProtocol(id) {
+  if (ws && ws.readyState === 1)
+    ws.send(JSON.stringify({type:'protocol', id: +id}));
+}
+
+function preset(name) {
+  if (ws && ws.readyState === 1)
+    ws.send(JSON.stringify({type:'preset', name}));
+}
+
+function addDtc() {
+  const code = document.getElementById('dtc-input').value.toUpperCase().trim();
+  if (!code.match(/^P[0-9A-F]{4}$/i)) { alert('Formato inválido. Use ex: P0300'); return; }
+  fetch('/api/dtcs/add', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
+  document.getElementById('dtc-input').value = '';
+}
+
+function removeDtc(code) {
+  // Remove pelo índice (API simplificada: clear all e re-add os outros)
+  // Extensão futura: endpoint /api/dtcs/remove
+  if (confirm(`Remover ${code}?`))
+    fetch('/api/dtcs/clear', {method:'POST'});
+}
+
+function clearDtcs() {
+  fetch('/api/dtcs/clear', {method:'POST'});
+}
+
+function applyProfile() {
+  const id = document.getElementById('vehicle-sel').value;
+  if (!id) return;
+  if (ws && ws.readyState === 1)
+    ws.send(JSON.stringify({type:'profile', id}));
+}
+
+// ── Wi-Fi config ─────────────────────────────────────────────
+const MODE_NAMES = ['AP','STA','AP+STA'];
+
+// ── Wi-Fi Scan ────────────────────────────────────────────────
+
+let scanTimer = null;
+
+function startScan() {
+  const btn  = document.getElementById('wf-scan-btn');
+  const list = document.getElementById('wf-net-list');
+  btn.disabled = true;
+  btn.textContent = '⏳ Buscando...';
+  list.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:.82rem">Procurando redes Wi-Fi...</div>';
+  fetch('/api/wifi/scan', {method:'POST'})
+    .then(() => {
+      if (scanTimer) clearInterval(scanTimer);
+      scanTimer = setInterval(pollScan, 1200);
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = '🔍 Buscar'; list.innerHTML = ''; });
+}
+
+function pollScan() {
+  fetch('/api/wifi/scan')
+    .then(r => { if (r.status === 200) return r.json(); return null; })
+    .then(data => {
+      if (!data) return; // ainda scanning (202)
+      clearInterval(scanTimer); scanTimer = null;
+      const btn = document.getElementById('wf-scan-btn');
+      btn.disabled = false; btn.textContent = '🔍 Buscar';
+      renderNetworks(data);
+    })
+    .catch(() => { clearInterval(scanTimer); scanTimer = null; });
+}
+
+function rssiInfo(rssi) {
+  if (rssi >= -50) return { bars:'▂▄▆█', color:'var(--green)',   label:'Excelente' };
+  if (rssi >= -60) return { bars:'▂▄▆░', color:'var(--green)',   label:'Bom'       };
+  if (rssi >= -70) return { bars:'▂▄░░', color:'var(--accent)',  label:'Regular'   };
+  return               { bars:'▂░░░', color:'var(--muted)',   label:'Fraco'     };
+}
+
+function renderNetworks(nets) {
+  const list = document.getElementById('wf-net-list');
+  if (!nets.length) {
+    list.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:.82rem">Nenhuma rede encontrada.</div>';
+    return;
+  }
+  nets.sort((a,b) => b.rssi - a.rssi);
+  const cur = document.getElementById('wf-ssid').value;
+  list.innerHTML = '';
+  nets.forEach(net => {
+    const sig  = rssiInfo(net.rssi);
+    const item = document.createElement('div');
+    item.className = 'net-item' + (net.ssid === cur ? ' selected' : '');
+    item.innerHTML =
+      `<span class="net-ssid">${net.ssid}</span>` +
+      `<span class="net-rssi">${net.rssi}&nbsp;dBm</span>` +
+      `<span class="net-bars" style="color:${sig.color}" title="${sig.label}">${sig.bars}</span>` +
+      `<span class="net-lock">${net.secure ? '🔒' : ''}</span>`;
+    item.onclick = () => {
+      document.getElementById('wf-ssid').value = net.ssid;
+      document.querySelectorAll('.net-item').forEach(i => i.classList.remove('selected'));
+      item.classList.add('selected');
+      document.getElementById('wf-pass').focus();
+    };
+    list.appendChild(item);
+  });
+}
+
+function loadWifi() {
+  fetch('/api/wifi')
+    .then(r => r.json())
+    .then(w => {
+      const connected = w.connected;
+      const ip = connected ? w.current_ip : (w.ap_ip || '192.168.4.1');
+      document.getElementById('wf-cur-mode').textContent  = MODE_NAMES[w.mode] || '?';
+      document.getElementById('wf-cur-ip').textContent    = ip;
+      document.getElementById('wf-cur-mdns').textContent  = w.hostname || 'obdsim.local';
+      document.getElementById('wf-cur-ap').textContent    = w.ap_ssid  || 'OBD-Simulator';
+      document.getElementById('wf-mode').value            = w.mode ?? 1;
+      document.getElementById('wf-ssid').value            = w.ssid    || '';
+      document.getElementById('wf-ip').value              = w.sta_ip  || '';
+      document.getElementById('wf-gw').value              = w.gateway || '';
+      const badge = document.getElementById('wifi-badge');
+      if (connected) {
+        badge.textContent = '✓ ' + ip;
+        badge.style.color = 'var(--green)';
+      } else {
+        badge.textContent = '⚡ AP ' + ip;
+        badge.style.color = 'var(--accent)';
+      }
+    })
+    .catch(() => {
+      document.getElementById('wifi-badge').textContent = '(sem conexão)';
+    });
+}
+
+function toggleWifiPass() {
+  const inp = document.getElementById('wf-pass');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function saveWifi() {
+  const mode = +document.getElementById('wf-mode').value;
+  const ssid = document.getElementById('wf-ssid').value.trim();
+  if (mode !== 0 && !ssid) { showWifiMsg('Informe o nome da rede (SSID).', 'err'); return; }
+  const body = {
+    mode,
+    ssid,
+    password: document.getElementById('wf-pass').value,
+    sta_ip:   document.getElementById('wf-ip').value.trim(),
+    gateway:  document.getElementById('wf-gw').value.trim(),
+  };
+  const btn = document.getElementById('wf-save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Salvando...';
+  fetch('/api/wifi', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok) startRebootCountdown(mode === 1 ? body.sta_ip : null);
+    else showWifiMsg('Erro ao salvar.', 'err');
+  })
+  .catch(() => showWifiMsg('Sem resposta — ESP32 provavelmente reiniciando.', 'ok'));
+}
+
+function startRebootCountdown(newIp) {
+  const btn = document.getElementById('wf-save-btn');
+  let secs = 8;
+  const suffix = newIp ? ` Novo IP: ${newIp}` : '';
+  showWifiMsg('ESP32 reiniciando...' + suffix, 'ok');
+  const iv = setInterval(() => {
+    btn.textContent = `Aguarde ${secs--}s...`;
+    if (secs < 0) {
+      clearInterval(iv);
+      btn.disabled = false;
+      btn.textContent = 'Salvar e Reiniciar';
+      if (newIp) window.location.href = 'http://' + newIp;
+      else loadWifi();
+    }
+  }, 1000);
+}
+
+function showWifiMsg(msg, type) {
+  const el = document.getElementById('wifi-msg');
+  el.textContent = msg;
+  el.className = type;
+}
+
+// Carrega ao abrir o painel pela primeira vez
+document.getElementById('wifi-panel').addEventListener('toggle', function() {
+  if (this.open) loadWifi();
+});
+
+// ── Carrega lista de perfis do servidor e popula o <select> com optgroups por marca
+fetch('/api/profiles')
+  .then(r => r.json())
+  .then(profiles => {
+    const sel = document.getElementById('vehicle-sel');
+    const brands = {};
+    profiles.forEach(p => { if (!brands[p.brand]) brands[p.brand] = []; brands[p.brand].push(p); });
+    Object.keys(brands).sort().forEach(brand => {
+      const grp = document.createElement('optgroup');
+      grp.label = brand;
+      brands[brand].forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.model + ' (' + p.year + ')';
+        grp.appendChild(opt);
+      });
+      sel.appendChild(grp);
+    });
+  })
+  .catch(() => {}); // ESP32 não disponível no preview local
+
+connect();
+</script>
+</body>
+</html>

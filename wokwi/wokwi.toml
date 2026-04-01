@@ -1,0 +1,26 @@
+[wokwi]
+version = 1
+firmware = '../firmware/.pio/build/esp32dev/firmware.bin'
+elf     = '../firmware/.pio/build/esp32dev/firmware.elf'
+
+# ────────────────────────────────────────────────────────────
+#  YouSimuladorOBD — Wokwi Simulation
+#  Componentes simulados:
+#    ✅ ESP32 DevKit V1 (38 pinos)
+#    ✅ OLED SSD1306 0.96" I2C (addr 0x3C)
+#    ✅ Encoder Rotativo KY-040
+#    ✅ 6x Botões tácteis (PREV/NEXT/UP/DOWN/SELECT/PROTOCOL)
+#    ✅ 3x LEDs de status (CAN verde, K-Line amarelo, TX vermelho)
+#    ⚠️  SN65HVD230 (CAN) — não simulado, sem barramento CAN físico
+#    ⚠️  L9637D (K-Line) — não simulado
+#    ⚠️  LM2596 (alimentação 12V→5V) — não simulado
+#
+#  Como usar (VS Code):
+#    1. Instalar extensão "Wokwi for VS Code" (wokwi.wokwi-vscode)
+#    2. Compilar firmware: pio run
+#    3. Abrir este arquivo e pressionar F1 → "Wokwi: Start Simulator"
+#
+#  Como usar (browser):
+#    1. Acessar https://wokwi.com/projects/new/esp32
+#    2. Menu → Import → colar o conteúdo de diagram.json
+# ────────────────────────────────────────────────────────────

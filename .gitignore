@@ -1,0 +1,34 @@
+# PlatformIO
+firmware/.pio/
+firmware/.pioenvs/
+firmware/.piolibdeps/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Credentials / secrets
+*.env
+secrets.h
+
+# Build artifacts
+*.o
+*.bin
+*.elf
+*.hex
+*.map
+
+# Logs
+*.log
