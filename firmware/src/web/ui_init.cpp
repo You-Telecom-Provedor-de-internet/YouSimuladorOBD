@@ -97,9 +97,13 @@ static void render(const SimulationState& s) {
     oled.setTextSize(1);
     oled.setTextColor(SH110X_WHITE);
 
-    // ── Header: protocolo ativo (y=0) ─────────────────────────
+    // ── Header: protocolo + modo dinâmico (y=0) ──────────────
+    static const char* MODE_SHORT[SIM_MODE_COUNT] = {
+        "STAT", "IDLE", "URB", "HWY", "WARM", "FAIL"
+    };
     oled.setCursor(0, 0);
-    oled.printf("%-20s", protoName(s.active_protocol));
+    oled.printf("%-12s %s", protoName(s.active_protocol),
+                             MODE_SHORT[s.sim_mode < SIM_MODE_COUNT ? s.sim_mode : 0]);
 
     // ── Linha separadora (y=9) ────────────────────────────────
     oled.drawFastHLine(0, 9, OLED_W, SH110X_WHITE);

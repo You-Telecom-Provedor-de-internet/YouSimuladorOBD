@@ -46,6 +46,7 @@ static String stateToJson() {
     }
     doc["vin"]        = s_state->vin;
     doc["profile_id"] = s_state->profile_id;
+    doc["sim_mode"]   = (uint8_t)s_state->sim_mode;
     xSemaphoreGive(s_mutex);
     String out;
     serializeJson(doc, out);
@@ -142,6 +143,17 @@ static void handle_remove_dtc(AsyncWebServerRequest* req, uint8_t* data, size_t 
             break;
         }
     }
+    xSemaphoreGive(s_mutex);
+    req->send(200, "application/json", "{\"ok\":true}");
+}
+
+static void handle_post_mode(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+    JsonDocument doc;
+    if (deserializeJson(doc, data, len)) { req->send(400); return; }
+    uint8_t m = doc["mode"] | 0;
+    if (m >= SIM_MODE_COUNT) { req->send(400, "application/json", "{\"error\":\"invalid mode\"}"); return; }
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    s_state->sim_mode = (SimMode)m;
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
 }
@@ -325,6 +337,9 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
             const char* pid = doc["id"] | "";
             const VehicleProfile* p = findProfile(pid);
             if (p) applyVehicleProfile(*s_state, *p);
+        } else if (!strcmp(t, "mode")) {
+            uint8_t m = doc["id"] | 0;
+            if (m < SIM_MODE_COUNT) s_state->sim_mode = (SimMode)m;
         }
         xSemaphoreGive(s_mutex);
     }
@@ -442,6 +457,8 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
         nullptr, handle_remove_dtc);
     server.on("/api/preset",   HTTP_POST, [](AsyncWebServerRequest*){},
         nullptr, handle_post_preset);
+    server.on("/api/mode",     HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_mode);
     server.on("/api/profiles", HTTP_GET,  handle_get_profiles);
     server.on("/api/profile",  HTTP_POST, [](AsyncWebServerRequest*){},
         nullptr, handle_post_profile);

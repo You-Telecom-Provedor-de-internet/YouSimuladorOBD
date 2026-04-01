@@ -35,6 +35,12 @@
   .profile-card label{white-space:nowrap;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
   .profile-card select{flex:1;min-width:200px;background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:6px;padding:8px 10px;font-size:.85rem;cursor:pointer}
   #vin-tag{font-size:.75rem;color:var(--muted);font-family:monospace;background:#2a2d3a;padding:5px 10px;border-radius:6px;border:1px solid #3a3d4a;white-space:nowrap}
+  .mode-card{grid-column:1/-1}
+  .modes{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .modes button{flex:1;min-width:90px;padding:9px 6px;background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:8px;font-size:.82rem;font-weight:500;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+  .modes button:hover{border-color:var(--accent);color:var(--accent)}
+  .modes button.mode-active{background:#0a2040;color:var(--accent);border-color:var(--accent);font-weight:700}
+  .modes button.mode-active.mode-fault{background:#2a0a0a;color:var(--red);border-color:var(--red)}
   .wifi-card{grid-column:1/-1}
   .wifi-card summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;user-select:none}
   .wifi-card summary::-webkit-details-marker{display:none}
@@ -233,6 +239,19 @@
     <button class="secondary" onclick="preset('catalyst_fail')">Falha Catalis.</button>
   </div>
 
+  <!-- Modo Dinâmico -->
+  <div class="card mode-card">
+    <label>Modo de Simulação</label>
+    <div class="modes">
+      <button id="mode-btn-0" onclick="setMode(0)">&#9632; Manual</button>
+      <button id="mode-btn-1" onclick="setMode(1)">&#9675; Marcha Lenta</button>
+      <button id="mode-btn-2" onclick="setMode(2)">&#128663; Urbano</button>
+      <button id="mode-btn-3" onclick="setMode(3)">&#128739; Rodovia</button>
+      <button id="mode-btn-4" onclick="setMode(4)">&#9651; Aquecimento</button>
+      <button id="mode-btn-5" class="mode-fault" onclick="setMode(5)">&#9888; Falha DTC</button>
+    </div>
+  </div>
+
   <!-- Wi-Fi -->
   <details class="card wifi-card" id="wifi-panel">
     <summary>
@@ -342,6 +361,12 @@ function update(d) {
     const sel = document.getElementById('vehicle-sel');
     if (document.activeElement !== sel) sel.value = d.profile_id || '';
   }
+  if (d.sim_mode !== undefined) {
+    for (let i = 0; i < 6; i++) {
+      const btn = document.getElementById('mode-btn-' + i);
+      if (btn) btn.classList.toggle('mode-active', i === d.sim_mode);
+    }
+  }
   // ── Alertas visuais ───────────────────────────────────────────
   setWarn('v-cool', d.coolant_temp > 108 || d.coolant_temp < 0);
   setWarn('v-oil',  d.oil_temp     > 110 || d.oil_temp     < 0);
@@ -391,6 +416,11 @@ function setProtocol(id) {
 function preset(name) {
   if (ws && ws.readyState === 1)
     ws.send(JSON.stringify({type:'preset', name}));
+}
+
+function setMode(id) {
+  if (ws && ws.readyState === 1)
+    ws.send(JSON.stringify({type:'mode', id}));
 }
 
 function addDtc() {
