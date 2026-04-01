@@ -71,3 +71,7 @@ YouSimuladorOBD/
     ├── schematics/
     └── bom/               # Bill of Materials
 ```
+
+---
+
+Feito com ❤️ + ☕ pelo time You Telecom
