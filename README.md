@@ -74,4 +74,4 @@ YouSimuladorOBD/
 
 ---
 
-Feito com ❤️ + ☕ pelo time You Telecom
+<p align="center">Feito com ❤️ + ☕ pelo time You Telecom</p>
