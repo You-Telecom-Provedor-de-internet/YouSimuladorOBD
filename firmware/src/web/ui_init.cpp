@@ -2,6 +2,7 @@
 #include "simulation_state.h"
 #include <Arduino.h>
 #include <Wire.h>
+#include <cstring> // memcmp para dirty-check
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
 #include <Bounce2.h>
@@ -142,6 +143,8 @@ static void render(const SimulationState& s) {
 
 static void task_ui(void*) {
     Wire.begin(PIN_OLED_SDA, PIN_OLED_SCL);
+    Wire.setClock(400000UL); // I2C Fast Mode 400kHz — reduz tempo de frame:
+                             // 128×128 = 2048 bytes → ~41ms (vs ~164ms a 100kHz)
 
     if (!oled.begin(OLED_I2C_ADDR, false)) {
         // false = sem pino de reset (módulo 4-fios: VCC GND SCL SDA)
@@ -195,11 +198,28 @@ static void task_ui(void*) {
             s_enc_last = enc_now;
         }
 
-        SimulationState snap = *s_state;
+        SimulationState snap        = *s_state;
+        uint8_t         snap_cursor = s_cursor;
+        bool            snap_edit   = s_editing;
         xSemaphoreGive(s_mutex);
 
-        render(snap);
-        vTaskDelay(pdMS_TO_TICKS(50));
+        // ── Só redesenha se algo mudou (evita flickering) ─────
+        static SimulationState prev_snap   = {};
+        static uint8_t         prev_cursor = 0xFF; // inválido → força 1º render
+        static bool            prev_edit   = false;
+
+        bool changed = (memcmp(&snap, &prev_snap, sizeof(SimulationState)) != 0)
+                    || (snap_cursor != prev_cursor)
+                    || (snap_edit   != prev_edit);
+
+        if (changed) {
+            render(snap);
+            prev_snap   = snap;
+            prev_cursor = snap_cursor;
+            prev_edit   = snap_edit;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(50)); // poll botões a 20Hz; render só se mudou
     }
 }
 
