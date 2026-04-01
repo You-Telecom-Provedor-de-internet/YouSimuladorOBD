@@ -17,7 +17,7 @@ constexpr int PIN_KLINE_RX        = 16;
 constexpr int KLINE_UART_NUM      = 1;   // UART_NUM_1
 constexpr uint32_t KLINE_BAUD     = 10400;
 
-// ── Display OLED SSD1306 128x64 (I2C) ───────────────────────
+// ── Display OLED SH1107 128x128 (I2C) ───────────────────────
 constexpr int PIN_OLED_SDA        = 21;
 constexpr int PIN_OLED_SCL        = 22;
 constexpr uint8_t OLED_I2C_ADDR   = 0x3C;

@@ -3,36 +3,47 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <Adafruit_SH110X.h>
 #include <Bounce2.h>
 #include <ESP32Encoder.h>
 #include <freertos/semphr.h>
 
 // ════════════════════════════════════════════════════════════
-//  UI — Display OLED + Botões + Encoder Rotativo
+//  UI — Display OLED SH1107 128x128 + Botões + Encoder Rotativo
 // ════════════════════════════════════════════════════════════
 
-#define OLED_W 128
-#define OLED_H 64
+#define OLED_W        128
+#define OLED_H        128
+#define PARAM_COUNT    16   // total de parâmetros navegáveis
+#define VISIBLE_ROWS    8   // linhas visíveis por página
+#define ROW_SPACING    13   // px entre linhas de parâmetro
+// Layout vertical:
+//   y=0   → Header  (protocolo ativo)
+//   y=9   → Linha separadora
+//   y=11  → Param 0 da página  (+ i * ROW_SPACING)
+//   y=119 → Footer  (hint contextual)
 
-static Adafruit_SSD1306 oled(OLED_W, OLED_H, &Wire, -1);
+static Adafruit_SH1107  oled(OLED_W, OLED_H, &Wire);
 static ESP32Encoder      encoder;
 static Bounce            btn_prev, btn_next, btn_up, btn_down, btn_sel, btn_proto, btn_enc;
 
-static SimulationState*  s_state = nullptr;
-static SemaphoreHandle_t s_mutex = nullptr;
+static SimulationState*  s_state  = nullptr;
+static SemaphoreHandle_t s_mutex  = nullptr;
 
-static uint8_t  s_cursor   = 0;  // parâmetro selecionado (0–11)
+static uint8_t  s_cursor   = 0;      // parâmetro selecionado (0–15)
 static bool     s_editing  = false;
 static int32_t  s_enc_last = 0;
 
-// ── Nomes dos parâmetros para o OLED ─────────────────────────
+// ── Nomes curtos (máx. 9 chars) para caber no display ────────
 
-static const char* PARAM_NAMES[] = {
-    "RPM", "Vel km/h", "Temp.Ref C", "Temp.Ar C",
-    "MAF g/s", "MAP kPa", "TPS %", "Avanco grau",
-    "Carga %", "Comb. %", "DTC", "VIN"
+static const char* PARAM_NAMES[PARAM_COUNT] = {
+    "RPM",      "Vel km/h", "T.Motor C", "T.Admis C",
+    "MAF g/s",  "MAP kPa",  "TPS %",    "Avanco gr",
+    "Carga %",  "Comb. %",  "Bat. V",   "Oleo C",
+    "STFT %",   "LTFT %",   "DTC",      "VIN"
 };
+
+// ── Leitura do valor atual de cada parâmetro ─────────────────
 
 static String getParamValue(const SimulationState& s, uint8_t idx) {
     switch (idx) {
@@ -46,62 +57,83 @@ static String getParamValue(const SimulationState& s, uint8_t idx) {
         case 7:  return String(s.ignition_adv, 1);
         case 8:  return String(s.engine_load_pct);
         case 9:  return String(s.fuel_level_pct);
-        case 10: return String(s.dtc_count) + " DTC(s)";
-        case 11: return String(s.vin);
+        case 10: return String(s.battery_voltage, 1);
+        case 11: return String(s.oil_temp_c);
+        case 12: return String(s.stft_pct, 1);
+        case 13: return String(s.ltft_pct, 1);
+        case 14: return String(s.dtc_count) + " DTC";
+        case 15: return String(s.vin);
         default: return "";
     }
 }
 
-// ── Incrementa/decrementa parâmetro ──────────────────────────
+// ── Incrementa/decrementa parâmetro via botão ou encoder ─────
 
 static void adjustParam(SimulationState& s, uint8_t idx, int delta) {
     switch (idx) {
-        case 0: s.rpm = constrain((int)s.rpm + delta * 50, 0, 16000); break;
-        case 1: s.speed_kmh = constrain((int)s.speed_kmh + delta * 5, 0, 255); break;
-        case 2: s.coolant_temp_c = constrain((int)s.coolant_temp_c + delta * 5, -40, 215); break;
-        case 3: s.intake_temp_c = constrain((int)s.intake_temp_c + delta, -40, 80); break;
-        case 4: s.maf_gs = constrain(s.maf_gs + delta * 0.5f, 0.0f, 655.0f); break;
-        case 5: s.map_kpa = constrain((int)s.map_kpa + delta * 5, 0, 255); break;
-        case 6: s.throttle_pct = constrain((int)s.throttle_pct + delta * 5, 0, 100); break;
-        case 7: s.ignition_adv = constrain(s.ignition_adv + delta * 1.0f, -64.0f, 63.5f); break;
-        case 8: s.engine_load_pct = constrain((int)s.engine_load_pct + delta * 5, 0, 100); break;
-        case 9: s.fuel_level_pct = constrain((int)s.fuel_level_pct + delta * 5, 0, 100); break;
-        default: break;
+        case 0:  s.rpm             = constrain((int)s.rpm + delta * 50, 0, 16000);       break;
+        case 1:  s.speed_kmh       = constrain((int)s.speed_kmh + delta * 5, 0, 255);   break;
+        case 2:  s.coolant_temp_c  = constrain((int)s.coolant_temp_c + delta * 5, -40, 215); break;
+        case 3:  s.intake_temp_c   = constrain((int)s.intake_temp_c + delta, -40, 80);  break;
+        case 4:  s.maf_gs          = constrain(s.maf_gs + delta * 0.5f, 0.0f, 655.0f); break;
+        case 5:  s.map_kpa         = constrain((int)s.map_kpa + delta * 5, 0, 255);     break;
+        case 6:  s.throttle_pct    = constrain((int)s.throttle_pct + delta * 5, 0, 100); break;
+        case 7:  s.ignition_adv    = constrain(s.ignition_adv + delta * 1.0f, -64.0f, 63.5f); break;
+        case 8:  s.engine_load_pct = constrain((int)s.engine_load_pct + delta * 5, 0, 100); break;
+        case 9:  s.fuel_level_pct  = constrain((int)s.fuel_level_pct + delta * 5, 0, 100); break;
+        case 10: s.battery_voltage = constrain(s.battery_voltage + delta * 0.1f, 10.0f, 16.0f); break;
+        case 11: s.oil_temp_c      = constrain((int)s.oil_temp_c + delta * 5, -40, 210); break;
+        case 12: s.stft_pct        = constrain(s.stft_pct + delta * 0.8f, -30.0f, 30.0f); break;
+        case 13: s.ltft_pct        = constrain(s.ltft_pct + delta * 0.8f, -30.0f, 30.0f); break;
+        default: break; // DTC (14) e VIN (15) não são editáveis aqui
     }
 }
 
-// ── Render OLED ───────────────────────────────────────────────
+// ── Render OLED 128x128 ───────────────────────────────────────
 
 static void render(const SimulationState& s) {
     oled.clearDisplay();
     oled.setTextSize(1);
-    oled.setTextColor(SSD1306_WHITE);
+    oled.setTextColor(SH110X_WHITE);
 
-    // Header: protocolo ativo
+    // ── Header: protocolo ativo (y=0) ─────────────────────────
     oled.setCursor(0, 0);
-    oled.printf("Proto: %s", protoName(s.active_protocol));
+    oled.printf("%-20s", protoName(s.active_protocol));
 
-    // Mostra 4 parâmetros (scroll de 3 em 3)
-    uint8_t start = (s_cursor / 4) * 4;
-    for (uint8_t i = 0; i < 4 && (start + i) < 12; i++) {
-        uint8_t idx = start + i;
-        oled.setCursor(0, 10 + i * 13);
+    // ── Linha separadora (y=9) ────────────────────────────────
+    oled.drawFastHLine(0, 9, OLED_W, SH110X_WHITE);
+
+    // ── Parâmetros visíveis — página de VISIBLE_ROWS itens ────
+    // Scroll por blocos: cursor 0-7 → página 0, 8-15 → página 1
+    uint8_t page_start = (s_cursor / VISIBLE_ROWS) * VISIBLE_ROWS;
+    for (uint8_t i = 0; i < VISIBLE_ROWS && (page_start + i) < PARAM_COUNT; i++) {
+        uint8_t idx = page_start + i;
+        int16_t y   = 11 + i * ROW_SPACING;
+        oled.setCursor(0, y);
+
         if (idx == s_cursor) {
             if (s_editing) {
-                oled.setTextColor(SSD1306_BLACK, SSD1306_WHITE); // invertido
+                oled.setTextColor(SH110X_BLACK, SH110X_WHITE); // destaque invertido
             } else {
                 oled.print("> ");
             }
         } else {
             oled.print("  ");
         }
-        oled.printf("%-9s %s", PARAM_NAMES[idx], getParamValue(s, idx).c_str());
-        oled.setTextColor(SSD1306_WHITE);
+
+        oled.printf("%-9.9s %s", PARAM_NAMES[idx], getParamValue(s, idx).c_str());
+        oled.setTextColor(SH110X_WHITE);
     }
 
-    // Footer
-    oled.setCursor(0, 56);
-    oled.print(s_editing ? "UP/DN=ajust OK=sair" : "OK=edit PROTO=troca");
+    // ── Footer: hint contextual + indicador de página (y=119) ─
+    oled.setCursor(0, 119);
+    if (s_editing) {
+        oled.print("UP/DN=ajust  OK=sair");
+    } else {
+        uint8_t page  = s_cursor / VISIBLE_ROWS + 1;
+        uint8_t pages = (PARAM_COUNT + VISIBLE_ROWS - 1) / VISIBLE_ROWS;
+        oled.printf("OK=edit P.%d/%d PROTO=troca", page, pages);
+    }
 
     oled.display();
 }
@@ -110,18 +142,25 @@ static void render(const SimulationState& s) {
 
 static void task_ui(void*) {
     Wire.begin(PIN_OLED_SDA, PIN_OLED_SCL);
-    if (!oled.begin(SSD1306_SWITCHCAPVCC, OLED_I2C_ADDR)) {
-        Serial.println("[OLED] Não encontrado!");
-    }
-    oled.clearDisplay();
 
-    btn_prev.attach(PIN_BTN_PREV, INPUT_PULLUP);   btn_prev.interval(BTN_DEBOUNCE_MS);
-    btn_next.attach(PIN_BTN_NEXT, INPUT_PULLUP);   btn_next.interval(BTN_DEBOUNCE_MS);
-    btn_up.attach(PIN_BTN_UP, INPUT_PULLUP);       btn_up.interval(BTN_DEBOUNCE_MS);
-    btn_down.attach(PIN_BTN_DOWN, INPUT_PULLUP);   btn_down.interval(BTN_DEBOUNCE_MS);
-    btn_sel.attach(PIN_BTN_SELECT, INPUT_PULLUP);  btn_sel.interval(BTN_DEBOUNCE_MS);
-    btn_proto.attach(PIN_BTN_PROTOCOL, INPUT_PULLUP); btn_proto.interval(BTN_DEBOUNCE_MS);
-    btn_enc.attach(PIN_ENC_SW, INPUT_PULLUP);      btn_enc.interval(BTN_DEBOUNCE_MS);
+    if (!oled.begin(OLED_I2C_ADDR, false)) {
+        // false = sem pino de reset (módulo 4-fios: VCC GND SCL SDA)
+        Serial.println("[OLED] SH1107 não encontrado em 0x3C!");
+    }
+    // Ajuste de rotação: 0=normal, 1=90°, 2=180°, 3=270°
+    // Mude para setRotation(1) se a imagem aparecer rotacionada
+    oled.setRotation(0);
+    oled.setContrast(0xFF);
+    oled.clearDisplay();
+    oled.display();
+
+    btn_prev.attach(PIN_BTN_PREV,     INPUT_PULLUP); btn_prev.interval(BTN_DEBOUNCE_MS);
+    btn_next.attach(PIN_BTN_NEXT,     INPUT_PULLUP); btn_next.interval(BTN_DEBOUNCE_MS);
+    btn_up.attach  (PIN_BTN_UP,       INPUT_PULLUP); btn_up.interval(BTN_DEBOUNCE_MS);
+    btn_down.attach(PIN_BTN_DOWN,     INPUT_PULLUP); btn_down.interval(BTN_DEBOUNCE_MS);
+    btn_sel.attach (PIN_BTN_SELECT,   INPUT_PULLUP); btn_sel.interval(BTN_DEBOUNCE_MS);
+    btn_proto.attach(PIN_BTN_PROTOCOL,INPUT_PULLUP); btn_proto.interval(BTN_DEBOUNCE_MS);
+    btn_enc.attach (PIN_ENC_SW,       INPUT_PULLUP); btn_enc.interval(BTN_DEBOUNCE_MS);
 
     encoder.attachHalfQuad(PIN_ENC_A, PIN_ENC_B);
     encoder.setCount(0);
@@ -135,24 +174,24 @@ static void task_ui(void*) {
         xSemaphoreTake(s_mutex, portMAX_DELAY);
 
         if (!s_editing) {
-            if (btn_prev.fell()) s_cursor = (s_cursor + 11) % 12;
-            if (btn_next.fell()) s_cursor = (s_cursor + 1)  % 12;
+            if (btn_prev.fell()) s_cursor = (s_cursor + PARAM_COUNT - 1) % PARAM_COUNT;
+            if (btn_next.fell()) s_cursor = (s_cursor + 1)                % PARAM_COUNT;
             if (btn_sel.fell() || btn_enc.fell()) s_editing = true;
             if (btn_proto.fell()) {
                 s_state->active_protocol = (s_state->active_protocol + 1) % PROTO_COUNT;
             }
         } else {
             if (btn_up.fell()   || btn_up.read()   == LOW) adjustParam(*s_state, s_cursor, +1);
-            if (btn_down.fell() || btn_down.read()  == LOW) adjustParam(*s_state, s_cursor, -1);
+            if (btn_down.fell() || btn_down.read() == LOW) adjustParam(*s_state, s_cursor, -1);
             if (btn_sel.fell() || btn_enc.fell()) s_editing = false;
         }
 
-        // Encoder
-        int32_t enc_now = encoder.getCount();
+        // Encoder rotativo
+        int32_t enc_now   = encoder.getCount();
         int32_t enc_delta = enc_now - s_enc_last;
         if (enc_delta != 0) {
             if (s_editing) adjustParam(*s_state, s_cursor, enc_delta > 0 ? 1 : -1);
-            else s_cursor = (s_cursor + (enc_delta > 0 ? 1 : 11)) % 12;
+            else           s_cursor = (s_cursor + (enc_delta > 0 ? 1 : PARAM_COUNT - 1)) % PARAM_COUNT;
             s_enc_last = enc_now;
         }
 
