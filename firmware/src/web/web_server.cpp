@@ -169,19 +169,11 @@ static volatile bool s_scan_busy   = false;
 static String        s_scan_result = "[]";
 
 static void task_wifi_scan(void*) {
+    // Scan síncrono numa task dedicada de baixa prioridade (1).
+    // Bloqueia apenas esta task (~3-6s); o web server roda em outra task
+    // e permanece responsivo durante o scan.
     WiFi.scanDelete();
-    // Scan assíncrono: não bloqueia o rádio STA conectado.
-    // scanNetworks(async=true) inicia o scan em background do driver Wi-Fi;
-    // scanComplete() retorna WIFI_SCAN_RUNNING (-1) até terminar.
-    WiFi.scanNetworks(/*async=*/true, /*show_hidden=*/true);
-
-    // Poll a cada 500ms — timeout de 15s para não ficar preso para sempre
-    int16_t n = WIFI_SCAN_RUNNING;
-    uint32_t deadline = millis() + 15000;
-    while (n == WIFI_SCAN_RUNNING && millis() < deadline) {
-        vTaskDelay(pdMS_TO_TICKS(500));
-        n = WiFi.scanComplete();
-    }
+    int16_t n = WiFi.scanNetworks(/*async=*/false, /*show_hidden=*/true);
 
     JsonDocument doc;
     JsonArray arr = doc.to<JsonArray>();
@@ -453,12 +445,13 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     server.on("/api/profiles", HTTP_GET,  handle_get_profiles);
     server.on("/api/profile",  HTTP_POST, [](AsyncWebServerRequest*){},
         nullptr, handle_post_profile);
-    server.on("/api/wifi",      HTTP_GET,  handle_get_wifi);
-    server.on("/api/wifi",      HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_wifi);
+    // ⚠️ Registrar /api/wifi/scan ANTES de /api/wifi para evitar prefix-match
     server.on("/api/wifi/scan", HTTP_POST,
         [](AsyncWebServerRequest* r){ handle_post_wifi_scan(r); });
     server.on("/api/wifi/scan", HTTP_GET,  handle_get_wifi_scan);
+    server.on("/api/wifi",      HTTP_GET,  handle_get_wifi);
+    server.on("/api/wifi",      HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_wifi);
     server.on("/api/reboot",   HTTP_POST,
         [](AsyncWebServerRequest* r){ handle_post_reboot(r); });
 
