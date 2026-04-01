@@ -76,6 +76,25 @@
   .card .val.warn{color:var(--red)}
   #proto-badge{font-size:.72rem;padding:4px 9px;border-radius:12px;font-weight:600;letter-spacing:.04em;background:#1a2a1a;color:var(--green);border:1px solid var(--green)}
   #proto-badge.kline{background:#2a1a00;color:#ffaa00;border-color:#ffaa00}
+  .dtc-bank-card{grid-column:1/-1}
+  .dtc-bank-card summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;user-select:none}
+  .dtc-bank-card summary::-webkit-details-marker{display:none}
+  .dtc-bank-card summary::after{content:'▼';font-size:.65rem;transition:transform .2s}
+  .dtc-bank-card[open] summary::after{transform:rotate(180deg)}
+  #dtc-bank-search{width:100%;background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:6px;padding:8px 12px;font-size:.85rem;margin:10px 0 4px}
+  #dtc-bank-search:focus{outline:none;border-color:var(--accent)}
+  #dtc-bank-stats{font-size:.72rem;color:var(--muted);margin-bottom:6px}
+  #dtc-bank-body{max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:2px}
+  .dtc-grp-hdr{font-size:.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;padding:2px 4px;border-left:3px solid var(--accent)}
+  .dtc-grp-rows{display:flex;flex-direction:column;gap:3px;margin-top:4px}
+  .dtc-bank-row{display:flex;align-items:center;gap:10px;padding:6px 10px;background:#1e2130;border-radius:6px;border:1px solid #2a2d3a;transition:border-color .1s}
+  .dtc-bank-row:hover{border-color:var(--accent)}
+  .bcode{font-family:monospace;font-size:.82rem;font-weight:700;color:#ff88cc;min-width:56px}
+  .bdesc{flex:1;font-size:.82rem;color:var(--text)}
+  .badd{background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:3px 10px;font-size:.8rem;font-weight:700;transition:all .15s}
+  .badd:hover{background:var(--accent);color:#0f1117}
+  .badd.ok{background:var(--green) !important;border-color:var(--green) !important;color:#0f1117 !important}
+  .dtc-bank-card[data-full] .badd{opacity:.3;pointer-events:none}
 </style>
 </head>
 <body>
@@ -218,6 +237,17 @@
       <button class="danger" onclick="clearDtcs()">Limpar</button>
     </div>
   </div>
+
+  <!-- Banco de DTCs OBD-II -->
+  <details class="card dtc-bank-card" id="dtc-bank-panel">
+    <summary>
+      <span>&#128218; Banco de DTCs OBD-II</span>
+      <span id="dtc-bank-badge" style="font-size:.8rem">140 códigos</span>
+    </summary>
+    <input id="dtc-bank-search" placeholder="&#128269; Buscar por código ou descrição..." oninput="filterDtcBank(this.value)" autocomplete="off">
+    <div id="dtc-bank-stats"></div>
+    <div id="dtc-bank-body"></div>
+  </details>
 
   <!-- Perfil do Veículo -->
   <div class="card profile-card">
@@ -401,6 +431,8 @@ function renderDtcs(dtcs) {
     el.appendChild(tag);
   });
   if (!dtcs.length) el.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Sem DTCs ativos</span>';
+  const bank = document.getElementById('dtc-bank-panel');
+  if (bank) bank.toggleAttribute('data-full', dtcs.length >= 8);
 }
 
 function send(key, val) {
@@ -425,7 +457,7 @@ function setMode(id) {
 
 function addDtc() {
   const code = document.getElementById('dtc-input').value.toUpperCase().trim();
-  if (!code.match(/^P[0-9A-F]{4}$/i)) { alert('Formato inválido. Use ex: P0300'); return; }
+  if (!code.match(/^[PCBU][0-9A-F]{4}$/i)) { alert('Formato inválido. Use ex: P0300 ou B0001'); return; }
   fetch('/api/dtcs/add', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
   document.getElementById('dtc-input').value = '';
 }
@@ -630,6 +662,219 @@ fetch('/api/profiles')
     });
   })
   .catch(() => {}); // ESP32 não disponível no preview local
+
+// ── Banco de DTCs OBD-II ─────────────────────────────────────
+const DTC_BANK = [
+  // P01xx — Sensores de combustível e ar
+  {code:'P0100',grp:'P01xx — Sensores de combustível e ar',desc:'MAF — Falha no circuito'},
+  {code:'P0101',grp:'P01xx — Sensores de combustível e ar',desc:'MAF — Faixa ou desempenho anormal'},
+  {code:'P0102',grp:'P01xx — Sensores de combustível e ar',desc:'MAF — Tensão baixa'},
+  {code:'P0103',grp:'P01xx — Sensores de combustível e ar',desc:'MAF — Tensão alta'},
+  {code:'P0105',grp:'P01xx — Sensores de combustível e ar',desc:'MAP — Falha no circuito'},
+  {code:'P0106',grp:'P01xx — Sensores de combustível e ar',desc:'MAP — Faixa ou desempenho anormal'},
+  {code:'P0107',grp:'P01xx — Sensores de combustível e ar',desc:'MAP — Tensão baixa'},
+  {code:'P0108',grp:'P01xx — Sensores de combustível e ar',desc:'MAP — Tensão alta'},
+  {code:'P0110',grp:'P01xx — Sensores de combustível e ar',desc:'Temperatura do ar de admissão — Falha no circuito'},
+  {code:'P0112',grp:'P01xx — Sensores de combustível e ar',desc:'Temperatura do ar de admissão — Tensão baixa'},
+  {code:'P0113',grp:'P01xx — Sensores de combustível e ar',desc:'Temperatura do ar de admissão — Tensão alta'},
+  {code:'P0115',grp:'P01xx — Sensores de combustível e ar',desc:'Temperatura do líquido de arrefecimento — Falha'},
+  {code:'P0117',grp:'P01xx — Sensores de combustível e ar',desc:'Temperatura do líquido de arrefecimento — Tensão baixa'},
+  {code:'P0118',grp:'P01xx — Sensores de combustível e ar',desc:'Temperatura do líquido de arrefecimento — Tensão alta'},
+  {code:'P0120',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor do acelerador (TPS) A — Falha no circuito'},
+  {code:'P0121',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor do acelerador (TPS) A — Faixa anormal'},
+  {code:'P0122',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor do acelerador (TPS) A — Tensão baixa'},
+  {code:'P0123',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor do acelerador (TPS) A — Tensão alta'},
+  {code:'P0125',grp:'P01xx — Sensores de combustível e ar',desc:'Temperatura insuficiente para malha fechada de combustível'},
+  {code:'P0128',grp:'P01xx — Sensores de combustível e ar',desc:'Temperatura do motor abaixo do limite do termostato'},
+  {code:'P0130',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor O2 Banco 1 Sensor 1 — Falha no circuito'},
+  {code:'P0131',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor O2 B1S1 — Tensão baixa (mistura pobre)'},
+  {code:'P0132',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor O2 B1S1 — Tensão alta (mistura rica)'},
+  {code:'P0133',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor O2 B1S1 — Tempo de resposta lento'},
+  {code:'P0134',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor O2 B1S1 — Sem atividade detectada'},
+  {code:'P0135',grp:'P01xx — Sensores de combustível e ar',desc:'Aquecedor do sensor O2 B1S1 — Falha'},
+  {code:'P0136',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor O2 Banco 1 Sensor 2 — Falha no circuito'},
+  {code:'P0137',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor O2 B1S2 — Tensão baixa'},
+  {code:'P0138',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor O2 B1S2 — Tensão alta'},
+  {code:'P0141',grp:'P01xx — Sensores de combustível e ar',desc:'Aquecedor do sensor O2 B1S2 — Falha'},
+  {code:'P0150',grp:'P01xx — Sensores de combustível e ar',desc:'Sensor O2 Banco 2 Sensor 1 — Falha no circuito'},
+  {code:'P0155',grp:'P01xx — Sensores de combustível e ar',desc:'Aquecedor do sensor O2 B2S1 — Falha'},
+  {code:'P0171',grp:'P01xx — Sensores de combustível e ar',desc:'Trim de combustível — Mistura pobre (Banco 1)'},
+  {code:'P0172',grp:'P01xx — Sensores de combustível e ar',desc:'Trim de combustível — Mistura rica (Banco 1)'},
+  {code:'P0174',grp:'P01xx — Sensores de combustível e ar',desc:'Trim de combustível — Mistura pobre (Banco 2)'},
+  {code:'P0175',grp:'P01xx — Sensores de combustível e ar',desc:'Trim de combustível — Mistura rica (Banco 2)'},
+  {code:'P0180',grp:'P01xx — Sensores de combustível e ar',desc:'Temperatura do combustível — Falha no sensor'},
+  {code:'P0190',grp:'P01xx — Sensores de combustível e ar',desc:'Pressão do rail de combustível — Falha no sensor'},
+  {code:'P0191',grp:'P01xx — Sensores de combustível e ar',desc:'Pressão do rail de combustível — Faixa ou desempenho anormal'},
+  // P02xx — Injeção de combustível
+  {code:'P0200',grp:'P02xx — Injeção de combustível',desc:'Circuito do injetor de combustível — Falha geral'},
+  {code:'P0201',grp:'P02xx — Injeção de combustível',desc:'Injetor do cilindro 1 — Falha no circuito'},
+  {code:'P0202',grp:'P02xx — Injeção de combustível',desc:'Injetor do cilindro 2 — Falha no circuito'},
+  {code:'P0203',grp:'P02xx — Injeção de combustível',desc:'Injetor do cilindro 3 — Falha no circuito'},
+  {code:'P0204',grp:'P02xx — Injeção de combustível',desc:'Injetor do cilindro 4 — Falha no circuito'},
+  {code:'P0230',grp:'P02xx — Injeção de combustível',desc:'Bomba de combustível primária — Falha no circuito'},
+  {code:'P0261',grp:'P02xx — Injeção de combustível',desc:'Injetor cilindro 1 — Circuito de controle baixo'},
+  {code:'P0262',grp:'P02xx — Injeção de combustível',desc:'Injetor cilindro 1 — Circuito de controle alto'},
+  // P03xx — Ignição e falhas de ignição
+  {code:'P0300',grp:'P03xx — Ignição e falhas de ignição',desc:'Falha de ignição detectada — Múltiplos cilindros'},
+  {code:'P0301',grp:'P03xx — Ignição e falhas de ignição',desc:'Falha de ignição — Cilindro 1'},
+  {code:'P0302',grp:'P03xx — Ignição e falhas de ignição',desc:'Falha de ignição — Cilindro 2'},
+  {code:'P0303',grp:'P03xx — Ignição e falhas de ignição',desc:'Falha de ignição — Cilindro 3'},
+  {code:'P0304',grp:'P03xx — Ignição e falhas de ignição',desc:'Falha de ignição — Cilindro 4'},
+  {code:'P0305',grp:'P03xx — Ignição e falhas de ignição',desc:'Falha de ignição — Cilindro 5'},
+  {code:'P0306',grp:'P03xx — Ignição e falhas de ignição',desc:'Falha de ignição — Cilindro 6'},
+  {code:'P0307',grp:'P03xx — Ignição e falhas de ignição',desc:'Falha de ignição — Cilindro 7'},
+  {code:'P0308',grp:'P03xx — Ignição e falhas de ignição',desc:'Falha de ignição — Cilindro 8'},
+  {code:'P0320',grp:'P03xx — Ignição e falhas de ignição',desc:'Sensor de posição do virabrequim/distribuidor — Falha'},
+  {code:'P0325',grp:'P03xx — Ignição e falhas de ignição',desc:'Sensor de detonação — Banco 1 — Falha no circuito'},
+  {code:'P0327',grp:'P03xx — Ignição e falhas de ignição',desc:'Sensor de detonação — Banco 1 — Tensão baixa'},
+  {code:'P0328',grp:'P03xx — Ignição e falhas de ignição',desc:'Sensor de detonação — Banco 1 — Tensão alta'},
+  {code:'P0335',grp:'P03xx — Ignição e falhas de ignição',desc:'Sensor de posição do virabrequim (CKP) — Falha'},
+  {code:'P0336',grp:'P03xx — Ignição e falhas de ignição',desc:'Sensor de posição do virabrequim (CKP) — Faixa anormal'},
+  {code:'P0340',grp:'P03xx — Ignição e falhas de ignição',desc:'Sensor de posição do comando de válvulas (CMP) — Falha'},
+  {code:'P0341',grp:'P03xx — Ignição e falhas de ignição',desc:'Sensor de posição do comando de válvulas (CMP) — Faixa anormal'},
+  {code:'P0351',grp:'P03xx — Ignição e falhas de ignição',desc:'Bobina de ignição A — Falha no circuito primário'},
+  {code:'P0352',grp:'P03xx — Ignição e falhas de ignição',desc:'Bobina de ignição B — Falha no circuito primário'},
+  {code:'P0353',grp:'P03xx — Ignição e falhas de ignição',desc:'Bobina de ignição C — Falha no circuito primário'},
+  {code:'P0354',grp:'P03xx — Ignição e falhas de ignição',desc:'Bobina de ignição D — Falha no circuito primário'},
+  // P04xx — Emissões (EGR / EVAP / Catalisador)
+  {code:'P0400',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'Sistema EGR — Falha de fluxo'},
+  {code:'P0401',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'EGR — Fluxo insuficiente detectado'},
+  {code:'P0402',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'EGR — Fluxo excessivo detectado'},
+  {code:'P0403',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'Válvula EGR — Falha no circuito'},
+  {code:'P0404',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'Válvula EGR — Faixa ou desempenho anormal'},
+  {code:'P0410',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'Sistema de ar secundário — Falha'},
+  {code:'P0420',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'Eficiência do catalisador abaixo do limite — Banco 1'},
+  {code:'P0421',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'Catalisador aquecido abaixo do limite — Banco 1'},
+  {code:'P0430',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'Eficiência do catalisador abaixo do limite — Banco 2'},
+  {code:'P0431',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'Catalisador aquecido abaixo do limite — Banco 2'},
+  {code:'P0440',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'Sistema de controle de evaporação (EVAP) — Falha geral'},
+  {code:'P0441',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'EVAP — Fluxo de purga incorreto'},
+  {code:'P0442',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'EVAP — Vazamento pequeno detectado'},
+  {code:'P0443',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'EVAP — Válvula de purga — Falha no circuito'},
+  {code:'P0446',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'EVAP — Sistema de ventilação com falha'},
+  {code:'P0455',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'EVAP — Vazamento grande detectado (sem vedação)'},
+  {code:'P0456',grp:'P04xx — Emissões (EGR / EVAP / Catalisador)',desc:'EVAP — Vazamento muito pequeno detectado'},
+  // P05xx — Velocidade, marcha lenta e elétrico
+  {code:'P0461',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Sensor de nível de combustível — Faixa anormal'},
+  {code:'P0462',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Sensor de nível de combustível — Tensão baixa'},
+  {code:'P0463',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Sensor de nível de combustível — Tensão alta'},
+  {code:'P0500',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Sensor de velocidade do veículo (VSS) — Falha'},
+  {code:'P0501',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Sensor de velocidade do veículo — Faixa anormal'},
+  {code:'P0505',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Sistema de controle de marcha lenta — Falha'},
+  {code:'P0506',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'RPM de marcha lenta abaixo do esperado'},
+  {code:'P0507',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'RPM de marcha lenta acima do esperado'},
+  {code:'P0520',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Sensor de pressão do óleo — Falha no circuito'},
+  {code:'P0521',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Sensor de pressão do óleo — Faixa anormal'},
+  {code:'P0522',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Sensor de pressão do óleo — Tensão baixa'},
+  {code:'P0523',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Sensor de pressão do óleo — Tensão alta'},
+  {code:'P0560',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Tensão do sistema elétrico — Falha'},
+  {code:'P0562',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Tensão do sistema elétrico — Baixa'},
+  {code:'P0563',grp:'P05xx — Velocidade, marcha lenta e elétrico',desc:'Tensão do sistema elétrico — Alta'},
+  // P06xx — Computador e ECU
+  {code:'P0600',grp:'P06xx — Computador e ECU',desc:'Link de comunicação serial — Falha'},
+  {code:'P0601',grp:'P06xx — Computador e ECU',desc:'Memória interna da ECU — Falha de checksum'},
+  {code:'P0603',grp:'P06xx — Computador e ECU',desc:'Memória de manutenção da ECU (KAM) — Falha'},
+  {code:'P0604',grp:'P06xx — Computador e ECU',desc:'Memória RAM interna da ECU — Falha'},
+  {code:'P0605',grp:'P06xx — Computador e ECU',desc:'Memória ROM interna da ECU — Falha'},
+  {code:'P0606',grp:'P06xx — Computador e ECU',desc:'Processador da ECU/PCM — Falha'},
+  {code:'P0620',grp:'P06xx — Computador e ECU',desc:'Circuito de controle do alternador — Falha'},
+  {code:'P0630',grp:'P06xx — Computador e ECU',desc:'VIN não programado ou incompatível na ECM/PCM'},
+  // P07xx — Transmissão automática
+  {code:'P0700',grp:'P07xx — Transmissão automática',desc:'Sistema de controle da transmissão — Falha'},
+  {code:'P0705',grp:'P07xx — Transmissão automática',desc:'Sensor de posição do câmbio (Neutro/Park) — Falha'},
+  {code:'P0715',grp:'P07xx — Transmissão automática',desc:'Sensor de velocidade da turbina — Falha'},
+  {code:'P0720',grp:'P07xx — Transmissão automática',desc:'Sensor de velocidade do eixo de saída — Falha'},
+  {code:'P0730',grp:'P07xx — Transmissão automática',desc:'Relação de transmissão incorreta'},
+  {code:'P0731',grp:'P07xx — Transmissão automática',desc:'Relação da 1ª marcha incorreta'},
+  {code:'P0732',grp:'P07xx — Transmissão automática',desc:'Relação da 2ª marcha incorreta'},
+  {code:'P0733',grp:'P07xx — Transmissão automática',desc:'Relação da 3ª marcha incorreta'},
+  {code:'P0740',grp:'P07xx — Transmissão automática',desc:'Embreagem do conversor de torque — Falha no circuito'},
+  {code:'P0741',grp:'P07xx — Transmissão automática',desc:'Embreagem do conversor de torque — Desempenho anormal'},
+  {code:'P0750',grp:'P07xx — Transmissão automática',desc:'Solenóide de mudança A — Falha no circuito'},
+  {code:'P0755',grp:'P07xx — Transmissão automática',desc:'Solenóide de mudança B — Falha no circuito'},
+  {code:'P0780',grp:'P07xx — Transmissão automática',desc:'Falha na troca de marcha da transmissão'},
+  // Bxxxx — Carroceria (Body)
+  {code:'B0001',grp:'Bxxxx — Carroceria (Body)',desc:'Módulo airbag — Falha no circuito de disparo'},
+  {code:'B0020',grp:'Bxxxx — Carroceria (Body)',desc:'Circuito do airbag do motorista — Falha'},
+  {code:'B1000',grp:'Bxxxx — Carroceria (Body)',desc:'Módulo de controle do corpo (BCM) — Falha interna'},
+  {code:'B1317',grp:'Bxxxx — Carroceria (Body)',desc:'Tensão da bateria alta — Módulo BCM'},
+  {code:'B1318',grp:'Bxxxx — Carroceria (Body)',desc:'Tensão da bateria baixa — Módulo BCM'},
+  {code:'B1600',grp:'Bxxxx — Carroceria (Body)',desc:'Transponder da chave — Código inválido ou não programado'},
+  // Cxxxx — Chassi e ABS
+  {code:'C0031',grp:'Cxxxx — Chassi e ABS',desc:'Sensor de velocidade da roda — Dianteira direita'},
+  {code:'C0034',grp:'Cxxxx — Chassi e ABS',desc:'Sensor de velocidade da roda — Dianteira esquerda'},
+  {code:'C0037',grp:'Cxxxx — Chassi e ABS',desc:'Sensor de velocidade da roda — Traseira direita'},
+  {code:'C0040',grp:'Cxxxx — Chassi e ABS',desc:'Sensor de velocidade da roda — Traseira esquerda'},
+  {code:'C0044',grp:'Cxxxx — Chassi e ABS',desc:'Módulo ABS — Tensão de alimentação baixa'},
+  {code:'C0110',grp:'Cxxxx — Chassi e ABS',desc:'Motor do módulo ABS — Falha no circuito'},
+  {code:'C0265',grp:'Cxxxx — Chassi e ABS',desc:'Relé do módulo ABS — Circuito aberto'},
+  // Uxxxx — Rede de comunicação
+  {code:'U0001',grp:'Uxxxx — Rede de comunicação',desc:'Barramento CAN de alta velocidade — Falha de comunicação'},
+  {code:'U0100',grp:'Uxxxx — Rede de comunicação',desc:'Comunicação perdida com ECM/PCM'},
+  {code:'U0101',grp:'Uxxxx — Rede de comunicação',desc:'Comunicação perdida com módulo de controle da transmissão'},
+  {code:'U0121',grp:'Uxxxx — Rede de comunicação',desc:'Comunicação perdida com módulo de controle ABS'},
+  {code:'U0140',grp:'Uxxxx — Rede de comunicação',desc:'Comunicação perdida com módulo de controle do corpo (BCM)'},
+  {code:'U0155',grp:'Uxxxx — Rede de comunicação',desc:'Comunicação perdida com painel de instrumentos'},
+];
+
+let _dtcTimer = null;
+function filterDtcBank(val) {
+  clearTimeout(_dtcTimer);
+  _dtcTimer = setTimeout(() => renderDtcBank(val.trim().toLowerCase()), 150);
+}
+
+function renderDtcBank(q) {
+  const body  = document.getElementById('dtc-bank-body');
+  const stats = document.getElementById('dtc-bank-stats');
+  if (!body) return;
+  const list = q ? DTC_BANK.filter(d => d.code.toLowerCase().includes(q) || d.desc.toLowerCase().includes(q)) : DTC_BANK;
+  stats.textContent = list.length + ' código' + (list.length !== 1 ? 's' : '') + (q && list.length < DTC_BANK.length ? ' encontrado' + (list.length !== 1 ? 's' : '') : '');
+  body.innerHTML = '';
+  if (q) {
+    // Busca ativa: lista plana
+    const frag = document.createDocumentFragment();
+    list.forEach(d => frag.appendChild(makeDtcBankRow(d)));
+    body.appendChild(frag);
+  } else {
+    // Sem busca: agrupado por categoria
+    const groups = {};
+    list.forEach(d => { if (!groups[d.grp]) groups[d.grp] = []; groups[d.grp].push(d); });
+    Object.keys(groups).forEach(grp => {
+      const sec  = document.createElement('div');
+      const hdr  = document.createElement('div');
+      hdr.className = 'dtc-grp-hdr';
+      hdr.textContent = grp;
+      const rows = document.createElement('div');
+      rows.className = 'dtc-grp-rows';
+      groups[grp].forEach(d => rows.appendChild(makeDtcBankRow(d)));
+      sec.appendChild(hdr);
+      sec.appendChild(rows);
+      body.appendChild(sec);
+    });
+  }
+}
+
+function makeDtcBankRow(d) {
+  const row = document.createElement('div');
+  row.className = 'dtc-bank-row';
+  row.innerHTML = '<span class="bcode">' + d.code + '</span><span class="bdesc">' + d.desc + '</span><button class="badd">+</button>';
+  row.querySelector('.badd').onclick = function() { bankAdd(d.code, this); };
+  return row;
+}
+
+function bankAdd(code, btn) {
+  fetch('/api/dtcs/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})})
+    .then(r => {
+      if (!r.ok) return;
+      btn.textContent = '✓';
+      btn.classList.add('ok');
+      setTimeout(() => { btn.textContent = '+'; btn.classList.remove('ok'); }, 1200);
+    });
+}
+
+document.getElementById('dtc-bank-panel').addEventListener('toggle', function() {
+  if (this.open && !this._loaded) { renderDtcBank(''); this._loaded = true; }
+});
 
 connect();
 </script>

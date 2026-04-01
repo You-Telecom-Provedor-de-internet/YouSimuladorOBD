@@ -19,6 +19,24 @@ static SemaphoreHandle_t s_mutex = nullptr;
 
 // ── Helpers ───────────────────────────────────────────────────
 
+// OBD-II DTC encoding: bits 15-14 = system (00=P 01=C 10=B 11=U)
+// P0300 → 0x0300, B0001 → 0x8001, C0035 → 0x4035, U0100 → 0xC100
+static uint16_t dtcStrToVal(const char* code) {
+    uint16_t val = (uint16_t)strtol(code + 1, nullptr, 16);
+    switch (code[0]) {
+        case 'C': case 'c': val |= 0x4000; break;
+        case 'B': case 'b': val |= 0x8000; break;
+        case 'U': case 'u': val |= 0xC000; break;
+        default: break; // P = 0x0000
+    }
+    return val;
+}
+
+static void dtcValToStr(uint16_t val, char* buf, size_t buflen) {
+    static const char PFX[] = "PCBU";
+    snprintf(buf, buflen, "%c%04X", PFX[(val >> 14) & 0x03], val & 0x3FFF);
+}
+
 static String stateToJson() {
     JsonDocument doc;
     xSemaphoreTake(s_mutex, portMAX_DELAY);
@@ -41,7 +59,7 @@ static String stateToJson() {
     auto dtcArr = doc.createNestedArray("dtcs");
     for (uint8_t i = 0; i < s_state->dtc_count; i++) {
         char buf[6];
-        snprintf(buf, sizeof(buf), "P%04X", s_state->dtcs[i]);
+        dtcValToStr(s_state->dtcs[i], buf, sizeof(buf));
         dtcArr.add(buf);
     }
     doc["vin"]        = s_state->vin;
@@ -99,7 +117,7 @@ static void handle_get_dtcs(AsyncWebServerRequest* req) {
     doc["count"] = s_state->dtc_count;
     auto arr = doc.createNestedArray("dtcs");
     for (uint8_t i = 0; i < s_state->dtc_count; i++) {
-        char buf[6]; snprintf(buf, sizeof(buf), "P%04X", s_state->dtcs[i]);
+        char buf[6]; dtcValToStr(s_state->dtcs[i], buf, sizeof(buf));
         arr.add(buf);
     }
     xSemaphoreGive(s_mutex);
@@ -112,7 +130,7 @@ static void handle_add_dtc(AsyncWebServerRequest* req, uint8_t* data, size_t len
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
     const char* code = doc["code"] | "";
     if (strlen(code) < 5) { req->send(400); return; }
-    uint16_t val = (uint16_t)strtol(code + 1, nullptr, 16); // Pxxx → uint16
+    uint16_t val = dtcStrToVal(code);
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (s_state->dtc_count < 8) s_state->dtcs[s_state->dtc_count++] = val;
     xSemaphoreGive(s_mutex);
@@ -132,7 +150,7 @@ static void handle_remove_dtc(AsyncWebServerRequest* req, uint8_t* data, size_t 
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
     const char* code = doc["code"] | "";
     if (strlen(code) < 5) { req->send(400); return; }
-    uint16_t val = (uint16_t)strtol(code + 1, nullptr, 16);
+    uint16_t val = dtcStrToVal(code);
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     for (uint8_t i = 0; i < s_state->dtc_count; i++) {
         if (s_state->dtcs[i] == val) {
