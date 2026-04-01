@@ -13,7 +13,7 @@
 | 1 | OBD-II Conector | Fêmea 16 pinos + chicote | Ponto de conexão com scanner |
 | 1 | Display OLED | SH1107 128×128 I2C | Exibição de 16 parâmetros (2 páginas de 8) |
 | 1 | Encoder Rotativo | KY-040 | Ajuste de valores + botão (SW) |
-| 6 | Botões tácteis | 6×6mm | PREV / NEXT / UP / DOWN / SELECT / PROTOCOL |
+| 1 | Módulo 8 Push Buttons | V1.1 — 2×4, com jumpers | PREV / NEXT / UP / DOWN / SELECT / PROTOCOL + 2 reserva |
 | 3 | LED 3mm | Verde, Amarelo, Vermelho | Status CAN / K-Line / TX |
 | 1 | LED interno | GPIO2 (azul, já no ESP32) | Heartbeat do sistema |
 | 3 | DIP Switch | 3 posições | Seleção rápida de protocolo |
