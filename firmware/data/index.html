@@ -380,17 +380,25 @@ function startScan() {
     .catch(() => { btn.disabled = false; btn.textContent = '🔍 Buscar'; list.innerHTML = ''; });
 }
 
+let _scanRetries = 0;
 function pollScan() {
   fetch('/api/wifi/scan')
     .then(r => { if (r.status === 200) return r.json(); return null; })
     .then(data => {
       if (!data) return; // ainda scanning (202)
-      clearInterval(scanTimer); scanTimer = null;
+      clearInterval(scanTimer); scanTimer = null; _scanRetries = 0;
       const btn = document.getElementById('wf-scan-btn');
       btn.disabled = false; btn.textContent = '🔍 Buscar';
       renderNetworks(data);
     })
-    .catch(() => { clearInterval(scanTimer); scanTimer = null; });
+    .catch(() => {
+      // Erro de rede transitório — tenta mais algumas vezes antes de desistir
+      if (++_scanRetries >= 8) {
+        clearInterval(scanTimer); scanTimer = null; _scanRetries = 0;
+        const btn = document.getElementById('wf-scan-btn');
+        btn.disabled = false; btn.textContent = '🔍 Buscar';
+      }
+    });
 }
 
 function rssiInfo(rssi) {

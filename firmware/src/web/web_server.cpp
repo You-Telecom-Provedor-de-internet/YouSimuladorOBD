@@ -141,14 +141,7 @@ static volatile bool s_scan_busy   = false;
 static String        s_scan_result = "[]";
 
 static void task_wifi_scan(void*) {
-    // Em modo AP puro o rádio STA está desligado — scan não funciona.
-    // Habilita AP+STA temporariamente, faz o scan e restaura se necessário.
-    bool was_ap_only = (WiFi.getMode() == WIFI_AP);
-    if (was_ap_only) {
-        WiFi.mode(WIFI_AP_STA);
-        vTaskDelay(pdMS_TO_TICKS(300)); // aguarda modo inicializar
-    }
-
+    // Rádio STA sempre ativo (modo AP+STA no fallback), scan pode rodar diretamente.
     WiFi.scanDelete();
     int n = WiFi.scanNetworks(false, true); // síncrono, inclui redes ocultas
 
@@ -156,7 +149,7 @@ static void task_wifi_scan(void*) {
     JsonArray arr = doc.to<JsonArray>();
     if (n > 0) {
         for (int i = 0; i < n; i++) {
-            if (WiFi.SSID(i).isEmpty()) continue; // pula redes sem nome
+            if (WiFi.SSID(i).isEmpty()) continue;
             JsonObject obj = arr.add<JsonObject>();
             obj["ssid"]    = WiFi.SSID(i);
             obj["rssi"]    = WiFi.RSSI(i);
@@ -165,12 +158,6 @@ static void task_wifi_scan(void*) {
         }
     }
     WiFi.scanDelete();
-
-    // Restaura AP puro se não conectou via STA
-    if (was_ap_only && WiFi.status() != WL_CONNECTED) {
-        WiFi.mode(WIFI_AP);
-    }
-
     serializeJson(doc, s_scan_result);
     s_scan_busy = false;
     vTaskDelete(nullptr);
@@ -374,7 +361,9 @@ static void wifi_start() {
 
     // AP: sempre sobe se modo AP, AP+STA, ou se STA falhou
     if (mode == CFG_WIFI_AP || mode == CFG_WIFI_AP_STA || !sta_ok) {
-        if (mode == CFG_WIFI_STA && !sta_ok) WiFi.mode(WIFI_AP);
+        // Mantém AP+STA (não AP puro) para que o rádio STA fique ativo e o
+        // scan de redes funcione mesmo sem conexão STA estabelecida.
+        if (mode == CFG_WIFI_STA && !sta_ok) WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(AP_SSID, AP_PASSWORD);
         Serial.printf("[WiFi] AP: '%s'  senha: '%s'  IP: http://%s\n",
                       AP_SSID, AP_PASSWORD, WiFi.softAPIP().toString().c_str());
