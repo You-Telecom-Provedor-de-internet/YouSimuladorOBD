@@ -35,8 +35,8 @@
 |------|------------|--------|---------|
 | GPIO4 | D4 | TWAI TX (CAN TX) | SN65HVD230 pino TXD |
 | GPIO5 | D5 | TWAI RX (CAN RX) | SN65HVD230 pino RXD |
-| GPIO17 | TX2 | K-Line TX | L9637D pino TXD |
-| GPIO16 | RX2 | K-Line RX | L9637D pino RXD |
+| GPIO17 | TX2 | K-Line TX | Transistor NPN (coletor) |
+| GPIO16 | RX2 | K-Line RX | K-Line via pull-up 510Ω → 12V |
 
 > **TWAI = Two-Wire Automotive Interface** — módulo CAN nativo do ESP32.
 > Qualquer par de GPIOs pode ser usado para TWAI, pois o driver permite remapeamento.
@@ -115,14 +115,14 @@ ESP32 DevKit 38-pin
 │                              [CANH] ──┼── OBD Pino 6        │
 │                              [CANL] ──┼── OBD Pino 14       │
 │                                       │                      │
-│  GPIO17 ──────────────────────► L9637D [TXD]               │
-│  GPIO16 ◄────────────────────── L9637D [RXD]               │
+│  GPIO17 ──[1kΩ]────────────────► NPN Base (K-Line TX)       │
+│  GPIO16 ◄────────────────────── K-Line via 510Ω pull-up     │
 │                                       │                      │
-│                              [K-Line] ── OBD Pino 7         │
-│                              [12V]    ── OBD Pino 16        │
+│                         NPN Coletor ──┼── OBD Pino 7 (K)    │
+│                         510Ω pull-up ─┼── OBD Pino 16 (12V) │
 │                                                              │
-│  GPIO21 ──────── SDA ──► OLED SSD1306                       │
-│  GPIO22 ──────── SCL ──► OLED SSD1306                       │
+│  GPIO21 ──────── SDA ──► OLED SH1107 128×128                 │
+│  GPIO22 ──────── SCL ──► OLED SH1107 128×128                 │
 │                                                              │
 │  GPIO32 ──[10kΩ pull-up]──► BTN_PREV                       │
 │  GPIO33 ──[10kΩ pull-up]──► BTN_NEXT                       │
