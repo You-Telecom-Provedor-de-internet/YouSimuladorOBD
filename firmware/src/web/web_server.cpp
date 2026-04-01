@@ -141,19 +141,36 @@ static volatile bool s_scan_busy   = false;
 static String        s_scan_result = "[]";
 
 static void task_wifi_scan(void*) {
+    // Em modo AP puro o rádio STA está desligado — scan não funciona.
+    // Habilita AP+STA temporariamente, faz o scan e restaura se necessário.
+    bool was_ap_only = (WiFi.getMode() == WIFI_AP);
+    if (was_ap_only) {
+        WiFi.mode(WIFI_AP_STA);
+        vTaskDelay(pdMS_TO_TICKS(300)); // aguarda modo inicializar
+    }
+
     WiFi.scanDelete();
     int n = WiFi.scanNetworks(false, true); // síncrono, inclui redes ocultas
+
     JsonDocument doc;
     JsonArray arr = doc.to<JsonArray>();
-    for (int i = 0; i < n; i++) {
-        if (WiFi.SSID(i).isEmpty()) continue; // pula redes sem nome
-        JsonObject obj = arr.add<JsonObject>();
-        obj["ssid"]    = WiFi.SSID(i);
-        obj["rssi"]    = WiFi.RSSI(i);
-        obj["secure"]  = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
-        obj["channel"] = WiFi.channel(i);
+    if (n > 0) {
+        for (int i = 0; i < n; i++) {
+            if (WiFi.SSID(i).isEmpty()) continue; // pula redes sem nome
+            JsonObject obj = arr.add<JsonObject>();
+            obj["ssid"]    = WiFi.SSID(i);
+            obj["rssi"]    = WiFi.RSSI(i);
+            obj["secure"]  = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+            obj["channel"] = WiFi.channel(i);
+        }
     }
     WiFi.scanDelete();
+
+    // Restaura AP puro se não conectou via STA
+    if (was_ap_only && WiFi.status() != WL_CONNECTED) {
+        WiFi.mode(WIFI_AP);
+    }
+
     serializeJson(doc, s_scan_result);
     s_scan_busy = false;
     vTaskDelete(nullptr);
