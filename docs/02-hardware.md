@@ -19,6 +19,7 @@
 | 3 | DIP Switch | 3 posições | Seleção rápida de protocolo |
 | 1 | Regulador Step-Down | LM2596 3A (módulo buck) | 12V OBD → 5V ESP32 |
 | 5 | Placa fenolite | Dupla face ilhada 6×8cm | Montagem dos circuitos auxiliares |
+| 1 | Fonte de bancada | 12V 2,5A (DC) | Alimentação em desenvolvimento (substitui OBD pino 16) |
 
 ### Componentes Passivos
 
@@ -154,7 +155,21 @@ Distribuição de tensão:
  12.0V → K-Line pull-up (direto do OBD pino 16)
 ```
 
-> **Durante desenvolvimento:** alimentar o ESP32 pelo USB (5V). Em operação com veículo, usar o LM2596. Não há conflito — o USB e o VIN do ESP32 têm diodo de proteção interno.
+> **Durante desenvolvimento:** usar a **fonte 12V 2,5A** no lugar do conector OBD. Ligar o +12V da fonte na entrada do LM2596 e o GND em comum. A fonte substitui perfeitamente o pino 16 do OBD-II para testes em bancada — sem precisar do carro.
+>
+> **Em operação com veículo:** o pino 16 do conector OBD-II fornece os 12V diretamente ao LM2596.
+>
+> **Consumo estimado do sistema:**
+> | Componente | Corrente |
+> |-----------|----------|
+> | ESP32 (Wi-Fi ativo) | ~240 mA |
+> | OLED SH1107 | ~15 mA |
+> | LEDs (3×) | ~30 mA |
+> | SN65HVD230 | ~10 mA |
+> | K-Line pull-up 510Ω | ~24 mA (12V/510Ω) |
+> | **Total** | **~320 mA @ 5V** → ~160 mA @ 12V |
+>
+> A fonte 2,5A oferece margem de 15× — mais que suficiente.
 
 ---
 
