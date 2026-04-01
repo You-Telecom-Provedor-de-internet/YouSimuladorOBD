@@ -72,20 +72,20 @@ static String getParamValue(const SimulationState& s, uint8_t idx) {
 
 static void adjustParam(SimulationState& s, uint8_t idx, int delta) {
     switch (idx) {
-        case 0:  s.rpm             = constrain((int)s.rpm + delta * 50, 0, 16000);       break;
-        case 1:  s.speed_kmh       = constrain((int)s.speed_kmh + delta * 5, 0, 255);   break;
-        case 2:  s.coolant_temp_c  = constrain((int)s.coolant_temp_c + delta * 5, -40, 215); break;
-        case 3:  s.intake_temp_c   = constrain((int)s.intake_temp_c + delta, -40, 80);  break;
-        case 4:  s.maf_gs          = constrain(s.maf_gs + delta * 0.5f, 0.0f, 655.0f); break;
-        case 5:  s.map_kpa         = constrain((int)s.map_kpa + delta * 5, 0, 255);     break;
-        case 6:  s.throttle_pct    = constrain((int)s.throttle_pct + delta * 5, 0, 100); break;
-        case 7:  s.ignition_adv    = constrain(s.ignition_adv + delta * 1.0f, -64.0f, 63.5f); break;
-        case 8:  s.engine_load_pct = constrain((int)s.engine_load_pct + delta * 5, 0, 100); break;
-        case 9:  s.fuel_level_pct  = constrain((int)s.fuel_level_pct + delta * 5, 0, 100); break;
-        case 10: s.battery_voltage = constrain(s.battery_voltage + delta * 0.1f, 10.0f, 16.0f); break;
-        case 11: s.oil_temp_c      = constrain((int)s.oil_temp_c + delta * 5, -40, 210); break;
-        case 12: s.stft_pct        = constrain(s.stft_pct + delta * 0.8f, -30.0f, 30.0f); break;
-        case 13: s.ltft_pct        = constrain(s.ltft_pct + delta * 0.8f, -30.0f, 30.0f); break;
+        case 0:  s.rpm             = constrain((int)s.rpm + delta * 10, 0, 16000);        break; // 10 RPM/passo
+        case 1:  s.speed_kmh       = constrain((int)s.speed_kmh + delta, 0, 255);         break; // 1 km/h
+        case 2:  s.coolant_temp_c  = constrain((int)s.coolant_temp_c + delta, -40, 215);  break; // 1 °C
+        case 3:  s.intake_temp_c   = constrain((int)s.intake_temp_c + delta, -40, 80);    break; // 1 °C
+        case 4:  s.maf_gs          = constrain(s.maf_gs + delta * 0.5f, 0.0f, 655.0f);   break; // 0.5 g/s
+        case 5:  s.map_kpa         = constrain((int)s.map_kpa + delta, 0, 255);           break; // 1 kPa
+        case 6:  s.throttle_pct    = constrain((int)s.throttle_pct + delta, 0, 100);      break; // 1 %
+        case 7:  s.ignition_adv    = constrain(s.ignition_adv + delta * 0.5f, -64.0f, 63.5f); break; // 0.5°
+        case 8:  s.engine_load_pct = constrain((int)s.engine_load_pct + delta, 0, 100);   break; // 1 %
+        case 9:  s.fuel_level_pct  = constrain((int)s.fuel_level_pct + delta, 0, 100);    break; // 1 %
+        case 10: s.battery_voltage = constrain(s.battery_voltage + delta * 0.1f, 10.0f, 16.0f); break; // 0.1 V
+        case 11: s.oil_temp_c      = constrain((int)s.oil_temp_c + delta, -40, 210);      break; // 1 °C
+        case 12: s.stft_pct        = constrain(s.stft_pct + delta * 0.5f, -30.0f, 30.0f); break; // 0.5 %
+        case 13: s.ltft_pct        = constrain(s.ltft_pct + delta * 0.5f, -30.0f, 30.0f); break; // 0.5 %
         default: break; // DTC (14) e VIN (15) não são editáveis aqui
     }
 }
@@ -184,9 +184,32 @@ static void task_ui(void*) {
                 s_state->active_protocol = (s_state->active_protocol + 1) % PROTO_COUNT;
             }
         } else {
-            if (btn_up.fell()   || btn_up.read()   == LOW) adjustParam(*s_state, s_cursor, +1);
-            if (btn_down.fell() || btn_down.read() == LOW) adjustParam(*s_state, s_cursor, -1);
-            if (btn_sel.fell() || btn_enc.fell()) s_editing = false;
+            // Hold-repeat: dispara no fell() e depois repete a cada HOLD_REPEAT_MS
+            // após segurar HOLD_DELAY_MS — evita duplo disparo por clique simples.
+            static uint32_t s_hold_start  = 0;
+            static uint32_t s_last_repeat = 0;
+            static int8_t   s_hold_dir    = 0; // +1 up, -1 down, 0 inativo
+
+            uint32_t now = millis();
+
+            if (btn_up.fell()) {
+                adjustParam(*s_state, s_cursor, +1);
+                s_hold_dir = +1; s_hold_start = now; s_last_repeat = now;
+            } else if (btn_down.fell()) {
+                adjustParam(*s_state, s_cursor, -1);
+                s_hold_dir = -1; s_hold_start = now; s_last_repeat = now;
+            } else if (s_hold_dir != 0 &&
+                       ((s_hold_dir == +1 && btn_up.read()   == LOW) ||
+                        (s_hold_dir == -1 && btn_down.read() == LOW)) &&
+                       now - s_hold_start > 500 &&
+                       now - s_last_repeat > 150) {
+                adjustParam(*s_state, s_cursor, s_hold_dir);
+                s_last_repeat = now;
+            } else if (btn_up.rose() || btn_down.rose()) {
+                s_hold_dir = 0;
+            }
+
+            if (btn_sel.fell() || btn_enc.fell()) { s_editing = false; s_hold_dir = 0; }
         }
 
         // Encoder rotativo

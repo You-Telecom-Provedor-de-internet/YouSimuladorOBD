@@ -120,5 +120,5 @@ constexpr char DEFAULT_VIN[] = "YOUSIM00000000001";
 // ════════════════════════════════════════════════════════════
 //  UI / Botões
 // ════════════════════════════════════════════════════════════
-constexpr uint32_t BTN_DEBOUNCE_MS   = 50;
+constexpr uint32_t BTN_DEBOUNCE_MS   = 80;
 constexpr uint32_t BTN_LONG_PRESS_MS = 800;
