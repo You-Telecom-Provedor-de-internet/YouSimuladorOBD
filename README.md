@@ -1,77 +1,115 @@
-# YouSimuladorOBD — Emulador OBD-II com ESP32
+# YouSimuladorOBD - Emulador OBD-II com ESP32
 
-Emulador/simulador OBD-II baseado em ESP32 (38 pinos) capaz de responder a scanners OBD-II reais simulando parâmetros de veículo em tempo real através dos 7 protocolos do padrão OBD-II.
+Emulador/simulador OBD-II baseado em ESP32 (38 pinos), capaz de responder a scanners OBD-II reais simulando parametros de veiculo em tempo real nos 7 protocolos do padrao OBD-II.
 
 ## Protocolos Suportados
 
-| # | Protocolo | Velocidade | Interface Física |
-|---|-----------|-----------|-----------------|
+| # | Protocolo | Velocidade | Interface Fisica |
+|---|-----------|------------|------------------|
 | 1 | ISO 15765-4 CAN 11-bit | 500 kbps | CAN Bus |
 | 2 | ISO 15765-4 CAN 11-bit | 250 kbps | CAN Bus |
 | 3 | ISO 15765-4 CAN 29-bit | 500 kbps | CAN Bus |
 | 4 | ISO 15765-4 CAN 29-bit | 250 kbps | CAN Bus |
 | 5 | ISO 9141-2 | 10400 baud | K-Line |
-| 6 | ISO 14230-4 KWP2000 | 5 baud (init lento) | K-Line |
-| 7 | ISO 14230-4 KWP2000 | Init rápido | K-Line |
+| 6 | ISO 14230-4 KWP2000 | 5 baud | K-Line |
+| 7 | ISO 14230-4 KWP2000 | Init rapido | K-Line |
 
-## Parâmetros Simulados (12 PIDs)
+## Parametros Simulados
 
-| PID | Parâmetro | Modo OBD |
+| PID | Parametro | Modo OBD |
 |-----|-----------|----------|
-| 0x0C | Rotação do motor (RPM) | Mode 01 |
-| 0x0D | Velocidade do veículo (km/h) | Mode 01 |
-| 0x05 | Temperatura do líquido refrigerante (°C) | Mode 01 |
-| 0x0F | Temperatura do ar de admissão (°C) | Mode 01 |
-| 0x10 | Fluxo de ar de admissão — MAF (g/s) | Mode 01 |
-| 0x0B | Pressão do coletor de admissão — MAP (kPa) | Mode 01 |
-| 0x11 | Posição absoluta do acelerador (%) | Mode 01 |
-| 0x0E | Ângulo de avanço de ignição (°) | Mode 01 |
-| 0x04 | Carga do motor (%) | Mode 01 |
-| 0x2F | Nível de combustível restante (%) | Mode 01 |
-| —   | Código de falha (DTC) | Mode 03 |
-| —   | Número de quadro (VIN) | Mode 09 |
+| 0x0C | Rotacao do motor (RPM) | Mode 01 |
+| 0x0D | Velocidade do veiculo (km/h) | Mode 01 |
+| 0x05 | Temperatura do liquido refrigerante | Mode 01 |
+| 0x0F | Temperatura do ar de admissao | Mode 01 |
+| 0x10 | MAF | Mode 01 |
+| 0x0B | MAP | Mode 01 |
+| 0x11 | Posicao do acelerador | Mode 01 |
+| 0x0E | Avanco de ignicao | Mode 01 |
+| 0x04 | Carga do motor | Mode 01 |
+| 0x2F | Nivel de combustivel | Mode 01 |
+| - | DTCs | Mode 03 |
+| - | VIN | Mode 09 |
 
-## Conectividade Wi-Fi e Web
+## Conectividade Web Atual
 
-- **Modo AP:** ESP32 cria rede `OBD-Simulator` → acessa `http://192.168.4.1`
-- **Modo STA:** conecta ao roteador → acessa `http://youobd.local`
-- **Interface web:** sliders em tempo real para todos os 12 parâmetros
-- **WebSocket:** atualização bidirecional a cada 500ms
-- **API REST:** controle completo via JSON (`/api/params`, `/api/protocol`, `/api/dtcs`)
+- STA com DHCP e mDNS em `http://youobd.local`
+- AP fallback `OBD-Simulator` em `http://192.168.4.1`
+- interface web protegida por autenticacao
+- WebSocket para atualizacao em tempo real
+- API REST para controle e configuracao
+- OTA web para firmware e filesystem em `/ota.html`
 
-## Documentação
+Credenciais web/OTA atuais:
 
-- [01 - Visão Geral e Arquitetura](docs/01-overview.md)
+```text
+Usuario: admin
+Senha: obd12345
+```
+
+## OTA
+
+O projeto suporta OTA web no proprio ESP32.
+
+Pagina de update:
+
+```text
+http://youobd.local/ota.html
+http://<ip-do-esp>/ota.html
+```
+
+Arquivos usados:
+
+- firmware: `.pio/build/esp32dev/firmware.bin`
+- filesystem: `.pio/build/esp32dev/littlefs.bin`
+
+## Bluetooth
+
+O emulador ELM327 via Bluetooth SPP existe no codigo, mas esta desabilitado por padrao no firmware atual para priorizar estabilidade do Wi-Fi/Web.
+
+## Documentacao
+
+- [01 - Visao Geral e Arquitetura](docs/01-overview.md)
 - [02 - Hardware e Componentes](docs/02-hardware.md)
-- [03 - Pinout ESP32 e Ligações](docs/03-pinout.md)
+- [03 - Pinout ESP32 e Ligacoes](docs/03-pinout.md)
 - [04 - Protocolos OBD-II](docs/04-protocols.md)
 - [05 - PIDs OBD-II e Formato de Dados](docs/05-obd-pids.md)
 - [06 - Arquitetura de Software / Firmware](docs/06-architecture.md)
-- [07 - Interface de Controle (Botões/UI)](docs/07-ui-controls.md)
-- [08 - Wi-Fi e Interface Web](docs/08-wifi-webui.md)
+- [07 - Interface de Controle](docs/07-ui-controls.md)
+- [08 - Wi-Fi, Interface Web e OTA](docs/08-wifi-webui.md)
+- [09 - Perfis de Veiculo](docs/09-vehicle-profiles.md)
+- [10 - Simulacao Dinamica](docs/10-dynamic-simulation.md)
+- [11 - Bluetooth SPP / ELM327](docs/11-bluetooth-elm327.md)
 
 ## Estrutura do Projeto
 
-```
+```text
 YouSimuladorOBD/
-├── README.md
-├── docs/                  # Documentação técnica
-├── firmware/              # Código ESP32 (Arduino/ESP-IDF)
-│   ├── src/
-│   │   ├── main.cpp
-│   │   ├── protocols/     # Implementação dos protocolos
-│   │   ├── obd/           # Handlers de PIDs/Modos
-│   │   ├── simulation/    # Estado dos parâmetros
-│   │   ├── ui/            # Botões, encoder, OLED
-│   │   └── web/           # Wi-Fi, AsyncWebServer, WebSocket
-│   ├── data/              # LittleFS: index.html, config.json
-│   ├── include/
-│   └── platformio.ini
-└── hardware/              # Esquemáticos e PCB
-    ├── schematics/
-    └── bom/               # Bill of Materials
+|- README.md
+|- docs/
+|- firmware/
+|  |- src/
+|  |- data/
+|  |- include/
+|  `- platformio.ini
+`- hardware/
 ```
 
----
+## Build e Gravacao por Cabo
 
-<p align="center">Feito com ❤️ + ☕ pelo time You Telecom</p>
+```bash
+cd firmware
+pio run
+pio run --target upload
+pio run --target uploadfs
+```
+
+## Estado Atual Validado
+
+Validado em hardware:
+
+- acesso web por IP e por `youobd.local`
+- autenticacao funcionando
+- OTA de firmware funcionando
+- OTA de filesystem funcionando
+- Bluetooth desativado por padrao para manter estabilidade da rede

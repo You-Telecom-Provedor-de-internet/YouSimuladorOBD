@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YouOBD OTA</title>
+<style>
+  :root{--bg:#0f1117;--card:#1a1d27;--line:#2a2d3a;--accent:#00d4ff;--green:#00ff88;--red:#ff4466;--text:#e0e6f0;--muted:#8b93a7}
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(circle at top,#17304d 0%,#0f1117 40%,#090b10 100%);color:var(--text);font-family:'Segoe UI',sans-serif}
+  main{max-width:920px;margin:0 auto;padding:28px 18px 40px}
+  .hero{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  h1{margin:0;font-size:1.6rem;letter-spacing:.04em}
+  .sub{color:var(--muted);font-size:.95rem;margin-top:6px}
+  .home-link{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border:1px solid var(--accent);border-radius:999px;color:var(--accent);text-decoration:none;font-weight:700}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+  .card{background:rgba(26,29,39,.92);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.28)}
+  .card h2{margin:0 0 8px;font-size:1rem}
+  .hint{margin:0 0 12px;color:var(--muted);font-size:.85rem;line-height:1.45}
+  .info-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .info-item{background:#13161f;border:1px solid var(--line);border-radius:10px;padding:10px}
+  .info-item span{display:block;color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+  .info-item strong{display:block;font-size:.95rem;word-break:break-word}
+  label{display:block;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px}
+  input[type=file]{width:100%;padding:10px;border:1px dashed #406480;border-radius:10px;background:#121722;color:var(--text)}
+  button{margin-top:12px;width:100%;padding:12px 14px;border:0;border-radius:10px;background:var(--accent);color:#08121a;font-size:.92rem;font-weight:700;cursor:pointer}
+  button.secondary{background:#2a2d3a;color:var(--text);border:1px solid #3f4658}
+  button:disabled{opacity:.55;cursor:not-allowed}
+  .progress{margin-top:12px;height:12px;background:#11151d;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+  .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--green));transition:width .15s}
+  .status{margin-top:12px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#121722;font-size:.86rem;line-height:1.45;white-space:pre-wrap}
+  .status.ok{border-color:var(--green);color:var(--green);background:#0b1c15}
+  .status.err{border-color:var(--red);color:var(--red);background:#240d14}
+  .foot{margin-top:18px;color:var(--muted);font-size:.82rem;line-height:1.5}
+  code{font-family:Consolas,monospace}
+  @media (max-width:640px){.info-list{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <div class="hero">
+    <div>
+      <h1>OTA Update</h1>
+      <div class="sub">Atualize firmware e filesystem pelo navegador.</div>
+    </div>
+    <a class="home-link" href="/">Voltar ao painel</a>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <h2>Informacoes do Dispositivo</h2>
+    <p class="hint">Use esta tela para confirmar particao ativa, tamanho atual do firmware e espaco livre para OTA.</p>
+    <div class="info-list" id="info-list">
+      <div class="info-item"><span>Status</span><strong>Carregando...</strong></div>
+    </div>
+    <button class="secondary" type="button" onclick="loadInfo()">Atualizar informacoes</button>
+  </div>
+
+  <div class="grid">
+    <section class="card">
+      <h2>Firmware OTA</h2>
+      <p class="hint">Selecione o <code>firmware.bin</code> gerado pelo PlatformIO para atualizar a aplicacao principal.</p>
+      <label for="fw-file">Arquivo .bin</label>
+      <input id="fw-file" type="file" accept=".bin,application/octet-stream">
+      <button id="fw-btn" type="button" onclick="uploadFile('firmware')">Enviar firmware</button>
+      <div class="progress"><div class="bar" id="fw-bar"></div></div>
+      <div class="status" id="fw-status">Aguardando arquivo.</div>
+    </section>
+
+    <section class="card">
+      <h2>Filesystem OTA</h2>
+      <p class="hint">Selecione a imagem do filesystem, normalmente <code>littlefs.bin</code>, para atualizar a UI web.</p>
+      <label for="fs-file">Arquivo .bin</label>
+      <input id="fs-file" type="file" accept=".bin,application/octet-stream">
+      <button id="fs-btn" type="button" onclick="uploadFile('filesystem')">Enviar filesystem</button>
+      <div class="progress"><div class="bar" id="fs-bar"></div></div>
+      <div class="status" id="fs-status">Aguardando arquivo.</div>
+    </section>
+  </div>
+
+  <p class="foot">Apos um upload bem-sucedido, o ESP32 reinicia automaticamente. Se voce alterar apenas a interface web, atualize o filesystem. Se alterar codigo C++, atualize o firmware.</p>
+</main>
+
+<script>
+const infoList = document.getElementById('info-list');
+
+function setStatus(kind, message, cls = '') {
+  const el = document.getElementById(`${kind}-status`);
+  el.className = `status${cls ? ' ' + cls : ''}`;
+  el.textContent = message;
+}
+
+function setProgress(kind, value) {
+  document.getElementById(`${kind}-bar`).style.width = `${Math.max(0, Math.min(100, value))}%`;
+}
+
+function setBusy(kind, busy) {
+  document.getElementById(`${kind}-btn`).disabled = busy;
+  document.getElementById(`${kind === 'fw' ? 'fs' : 'fw'}-btn`).disabled = busy;
+}
+
+function renderInfo(data) {
+  const items = [
+    ['Hostname', data.hostname || '-'],
+    ['Particao', data.running_partition || '-'],
+    ['Chip', data.chip_model || '-'],
+    ['Sketch atual', `${data.sketch_size || 0} bytes`],
+    ['Livre para OTA', `${data.free_sketch_space || 0} bytes`],
+    ['LittleFS usado', `${data.fs_used || 0} / ${data.fs_total || 0}`],
+    ['Build', `${data.build_date || '-'} ${data.build_time || ''}`.trim()],
+    ['Ultimo OTA', `${data.last_target || '-'} | ${data.last_ok ? 'OK' : 'sem sucesso'}`]
+  ];
+  if (data.last_error) {
+    items.push(['Ultimo erro', data.last_error]);
+  }
+  infoList.innerHTML = items.map(([label, value]) =>
+    `<div class="info-item"><span>${label}</span><strong>${value}</strong></div>`
+  ).join('');
+}
+
+async function loadInfo() {
+  try {
+    const res = await fetch('/api/ota/info');
+    const data = await res.json();
+    renderInfo(data);
+  } catch (err) {
+    infoList.innerHTML = '<div class="info-item"><span>Erro</span><strong>Falha ao carregar informacoes de OTA.</strong></div>';
+  }
+}
+
+function uploadFile(target) {
+  const kind = target === 'firmware' ? 'fw' : 'fs';
+  const input = document.getElementById(`${kind}-file`);
+  const file = input.files[0];
+  if (!file) {
+    setStatus(kind, 'Selecione um arquivo .bin antes de enviar.', 'err');
+    return;
+  }
+
+  const url = target === 'firmware' ? '/api/ota/firmware' : '/api/ota/filesystem';
+  const form = new FormData();
+  form.append('update', file, file.name);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', url, true);
+
+  xhr.upload.onprogress = (evt) => {
+    if (!evt.lengthComputable) return;
+    const pct = (evt.loaded / evt.total) * 100;
+    setProgress(kind, pct);
+    setStatus(kind, `Enviando ${file.name}\n${pct.toFixed(1)}%`, '');
+  };
+
+  xhr.onload = () => {
+    setBusy(kind, false);
+    let payload = null;
+    try { payload = JSON.parse(xhr.responseText || '{}'); } catch (_) {}
+    if (xhr.status >= 200 && xhr.status < 300) {
+      setProgress(kind, 100);
+      setStatus(kind, `Upload concluido com sucesso.\nO ESP32 vai reiniciar automaticamente.`, 'ok');
+      loadInfo();
+      return;
+    }
+    const errMsg = payload && payload.error ? payload.error : `Falha HTTP ${xhr.status}`;
+    setStatus(kind, `OTA falhou.\n${errMsg}`, 'err');
+    loadInfo();
+  };
+
+  xhr.onerror = () => {
+    setBusy(kind, false);
+    setStatus(kind, 'Erro de rede durante o upload OTA.', 'err');
+  };
+
+  setBusy(kind, true);
+  setProgress(kind, 0);
+  setStatus(kind, `Preparando upload de ${file.name}...`);
+  xhr.send(form);
+}
+
+loadInfo();
+</script>
+</body>
+</html>

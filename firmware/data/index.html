@@ -11,6 +11,8 @@
   header{background:var(--card);border-bottom:1px solid #2a2d3a;padding:12px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
   header h1{font-size:1.1rem;color:var(--accent);letter-spacing:.05em}
   #proto-sel{background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:6px;padding:6px 10px;font-size:.85rem;cursor:pointer}
+  #ota-link{display:inline-flex;align-items:center;justify-content:center;padding:5px 11px;border-radius:999px;border:1px solid var(--accent);color:var(--accent);text-decoration:none;font-size:.72rem;font-weight:700;letter-spacing:.05em}
+  #ota-link:hover{opacity:.85}
   #status-dot{width:10px;height:10px;border-radius:50%;background:var(--red);transition:background .3s;margin-left:auto}
   #status-dot.on{background:var(--green)}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;padding:16px}
@@ -122,6 +124,7 @@
   </select>
   <span id="proto-badge">CAN</span>
   <span id="bt-badge" title="Bluetooth ELM327">BT</span>
+  <a id="ota-link" href="/ota.html">OTA</a>
   <div id="status-dot" title="WebSocket"></div>
 </header>
 
@@ -574,7 +577,7 @@ function loadWifi() {
       const ip = connected ? w.current_ip : (w.ap_ip || '192.168.4.1');
       document.getElementById('wf-cur-ssid').textContent  = connected ? w.current_ssid : '(nenhuma)';
       document.getElementById('wf-cur-ip').textContent    = ip;
-      document.getElementById('wf-cur-mdns').textContent  = w.hostname || 'obdsim.local';
+      document.getElementById('wf-cur-mdns').textContent  = w.hostname || 'youobd.local';
       document.getElementById('wf-cur-ap').textContent    = w.ap_ssid  || 'OBD-Simulator';
       document.getElementById('wf-ssid').value            = '';
       document.getElementById('wf-ip').value              = '';

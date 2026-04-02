@@ -1,5 +1,18 @@
 # 11 — Bluetooth SPP (Emulador ELM327)
 
+## Status Atual
+
+No firmware atual, o Bluetooth SPP esta desabilitado por padrao em `ENABLE_BT_SPP = false`.
+
+Motivo:
+
+- priorizar estabilidade do Wi-Fi e da interface web
+- evitar degradacao do HTTP durante uso simultaneo de Wi-Fi + Bluetooth Classic
+
+Este documento continua valido como referencia da implementacao Bluetooth existente, mas o fluxo padrao do projeto hoje esta focado em Web UI e OTA via Wi-Fi.
+
+---
+
 ## Visao Geral
 
 O ESP32 expoe um servico Bluetooth Classic SPP (Serial Port Profile) que emula um adaptador ELM327 v1.5. Apps como Torque Pro, OBD Auto Doctor e Car Scanner podem conectar via Bluetooth e ler dados do simulador como se fosse um carro real.

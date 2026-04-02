@@ -113,6 +113,8 @@ constexpr char ELM_DEVICE_DESC[]= "YouSimuladorOBD";  // AT @1
 
 // ── Geral ─────────────────────────────────────────────────────
 constexpr char MDNS_NAME[]   = "youobd";     // → http://youobd.local
+constexpr char WEB_AUTH_USER[] = "admin";
+constexpr char WEB_AUTH_PASSWORD[] = "obd12345";  // troque em produção
 constexpr uint16_t WEB_PORT  = 80;
 constexpr uint32_t WS_BROADCAST_MS = 500;    // intervalo broadcast WebSocket
 

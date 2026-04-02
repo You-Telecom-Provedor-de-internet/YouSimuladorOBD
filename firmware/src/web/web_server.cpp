@@ -8,6 +8,8 @@
 #include <LittleFS.h>
 #include <ESPmDNS.h>
 #include <Preferences.h>
+#include <Update.h>
+#include <esp_ota_ops.h>
 #include "esp_wifi.h"
 
 // ════════════════════════════════════════════════════════════
@@ -18,8 +20,125 @@ static AsyncWebServer server(WEB_PORT);
 static AsyncWebSocket ws("/ws");
 static SimulationState* s_state  = nullptr;
 static SemaphoreHandle_t s_mutex = nullptr;
+static char s_ota_last_target[16] = "idle";
+static char s_ota_last_error[128] = "";
+static size_t s_ota_total = 0;
+static size_t s_ota_written = 0;
+static bool s_ota_last_ok = true;
 
 // ── Helpers ───────────────────────────────────────────────────
+
+template <typename T>
+static T& protect(T& handler) {
+    handler.setAuthentication(WEB_AUTH_USER, WEB_AUTH_PASSWORD);
+    return handler;
+}
+
+static void ota_reset_state(const char* target) {
+    s_ota_written = 0;
+    s_ota_total = 0;
+    s_ota_last_ok = false;
+    snprintf(s_ota_last_target, sizeof(s_ota_last_target), "%s", target);
+    s_ota_last_error[0] = '\0';
+}
+
+static void ota_set_error(const char* stage) {
+    const char* err = Update.errorString();
+    snprintf(s_ota_last_error, sizeof(s_ota_last_error), "%s: %s",
+             stage, err ? err : "erro desconhecido");
+    s_ota_last_ok = false;
+    Serial.printf("[OTA] %s\n", s_ota_last_error);
+}
+
+static void ota_finish_ok(size_t total) {
+    s_ota_total = total;
+    s_ota_last_ok = true;
+    s_ota_last_error[0] = '\0';
+    Serial.printf("[OTA] %s concluido (%u bytes)\n", s_ota_last_target, (unsigned)s_ota_total);
+}
+
+static void schedule_restart(uint32_t delay_ms = 1200) {
+    xTaskCreate([](void* param) {
+        uint32_t delay = (uint32_t)(uintptr_t)param;
+        vTaskDelay(pdMS_TO_TICKS(delay));
+        ESP.restart();
+        vTaskDelete(nullptr);
+    }, "t_restart", 3072, (void*)(uintptr_t)delay_ms, 1, nullptr);
+}
+
+static void ota_upload_chunk(const String& filename, size_t index, uint8_t* data, size_t len,
+                             bool final, int command, const char* target) {
+    if (index == 0) {
+        ota_reset_state(target);
+        Serial.printf("[OTA] Iniciando %s: %s\n", target, filename.c_str());
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, command)) {
+            ota_set_error("begin");
+            return;
+        }
+    }
+
+    if (Update.hasError()) {
+        return;
+    }
+
+    if (Update.write(data, len) != len) {
+        ota_set_error("write");
+        return;
+    }
+
+    s_ota_written = index + len;
+
+    if (final) {
+        if (!Update.end(true)) {
+            ota_set_error("end");
+            return;
+        }
+        ota_finish_ok(index + len);
+    }
+}
+
+static void handle_get_ota_info(AsyncWebServerRequest* req) {
+    JsonDocument doc;
+    const esp_partition_t* running = esp_ota_get_running_partition();
+    doc["enabled"] = true;
+    doc["auth_user"] = WEB_AUTH_USER;
+    doc["build_date"] = __DATE__;
+    doc["build_time"] = __TIME__;
+    doc["hostname"] = String(MDNS_NAME) + ".local";
+    doc["chip_model"] = ESP.getChipModel();
+    doc["sketch_size"] = ESP.getSketchSize();
+    doc["free_sketch_space"] = ESP.getFreeSketchSpace();
+    doc["fs_total"] = LittleFS.totalBytes();
+    doc["fs_used"] = LittleFS.usedBytes();
+    if (running) {
+        doc["running_partition"] = running->label;
+    }
+    doc["last_target"] = s_ota_last_target;
+    doc["last_ok"] = s_ota_last_ok;
+    doc["last_error"] = s_ota_last_error;
+    doc["last_written"] = s_ota_written;
+    doc["last_total"] = s_ota_total;
+    String out;
+    serializeJson(doc, out);
+    req->send(200, "application/json", out);
+}
+
+static void handle_post_ota_result(AsyncWebServerRequest* req) {
+    JsonDocument doc;
+    doc["ok"] = s_ota_last_ok;
+    doc["target"] = s_ota_last_target;
+    doc["written"] = s_ota_written;
+    doc["total"] = s_ota_total;
+    if (s_ota_last_error[0] != '\0') {
+        doc["error"] = s_ota_last_error;
+    }
+    String out;
+    serializeJson(doc, out);
+    req->send(s_ota_last_ok ? 200 : 500, "application/json", out);
+    if (s_ota_last_ok) {
+        schedule_restart();
+    }
+}
 
 // OBD-II DTC encoding: bits 15-14 = system (00=P 01=C 10=B 11=U)
 // P0300 → 0x0300, B0001 → 0x8001, C0035 → 0x4035, U0100 → 0xC100
@@ -670,7 +789,7 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     wifi_start();
 
     // LittleFS — serve index.html da flash
-    if (!LittleFS.begin(true)) {
+    if (!LittleFS.begin()) {
         Serial.println("[LittleFS] Mount falhou!");
     } else if (!LittleFS.exists("/index.html")) {
         Serial.println("[LittleFS] /index.html nao encontrado");
@@ -679,41 +798,53 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     }
 
     // WebSocket
+    protect(ws);
     ws.onEvent(on_ws_event);
     server.addHandler(&ws);
 
     // REST API
-    server.on("/api/status",   HTTP_GET,  handle_get_status);
-    server.on("/api/dtcs",     HTTP_GET,  handle_get_dtcs);
-    server.on("/api/dtcs/clear", HTTP_POST,
-        [](AsyncWebServerRequest* r){ handle_clear_dtcs(r); });
+    protect(server.on("/api/status",   HTTP_GET,  handle_get_status));
+    protect(server.on("/api/dtcs",     HTTP_GET,  handle_get_dtcs));
+    protect(server.on("/api/dtcs/clear", HTTP_POST,
+        [](AsyncWebServerRequest* r){ handle_clear_dtcs(r); }));
 
-    server.on("/api/params",   HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_params);
-    server.on("/api/protocol", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_protocol);
-    server.on("/api/dtcs/add", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_add_dtc);
-    server.on("/api/dtcs/remove", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_remove_dtc);
-    server.on("/api/preset",   HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_preset);
-    server.on("/api/mode",     HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_mode);
-    server.on("/api/profiles", HTTP_GET,  handle_get_profiles);
-    server.on("/api/profile",  HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_profile);
+    protect(server.on("/api/params",   HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_params));
+    protect(server.on("/api/protocol", HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_protocol));
+    protect(server.on("/api/dtcs/add", HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_add_dtc));
+    protect(server.on("/api/dtcs/remove", HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_remove_dtc));
+    protect(server.on("/api/preset",   HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_preset));
+    protect(server.on("/api/mode",     HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_mode));
+    protect(server.on("/api/profiles", HTTP_GET,  handle_get_profiles));
+    protect(server.on("/api/profile",  HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_profile));
     // ⚠️ Registrar /api/wifi/scan ANTES de /api/wifi para evitar prefix-match
-    server.on("/api/wifi/scan", HTTP_POST,
-        [](AsyncWebServerRequest* r){ handle_post_wifi_scan(r); });
-    server.on("/api/wifi/scan", HTTP_GET,  handle_get_wifi_scan);
-    server.on("/api/wifi",      HTTP_GET,  handle_get_wifi);
-    server.on("/api/wifi/remove", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_wifi_remove);
-    server.on("/api/wifi",      HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_wifi);
-    server.on("/api/reboot",   HTTP_POST,
-        [](AsyncWebServerRequest* r){ handle_post_reboot(r); });
+    protect(server.on("/api/wifi/scan", HTTP_POST,
+        [](AsyncWebServerRequest* r){ handle_post_wifi_scan(r); }));
+    protect(server.on("/api/wifi/scan", HTTP_GET,  handle_get_wifi_scan));
+    protect(server.on("/api/wifi",      HTTP_GET,  handle_get_wifi));
+    protect(server.on("/api/wifi/remove", HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_wifi_remove));
+    protect(server.on("/api/wifi",      HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_wifi));
+    protect(server.on("/api/reboot",   HTTP_POST,
+        [](AsyncWebServerRequest* r){ handle_post_reboot(r); }));
+    protect(server.on("/api/ota/info", HTTP_GET, handle_get_ota_info));
+    protect(server.on("/api/ota/firmware", HTTP_POST,
+        [](AsyncWebServerRequest* req) { handle_post_ota_result(req); },
+        [](AsyncWebServerRequest*, const String& filename, size_t index, uint8_t* data, size_t len, bool final) {
+            ota_upload_chunk(filename, index, data, len, final, U_FLASH, "firmware");
+        }));
+    protect(server.on("/api/ota/filesystem", HTTP_POST,
+        [](AsyncWebServerRequest* req) { handle_post_ota_result(req); },
+        [](AsyncWebServerRequest*, const String& filename, size_t index, uint8_t* data, size_t len, bool final) {
+            ota_upload_chunk(filename, index, data, len, final, U_SPIFFS, "filesystem");
+        }));
     server.on("/ping", HTTP_GET, [](AsyncWebServerRequest* req) {
         req->send(200, "text/plain", "pong");
     });
@@ -721,7 +852,7 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
         req->send(200, "application/json", "{\"ok\":true}");
     });
     // Serve arquivos do LittleFS (UI web)
-    server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
+    protect(server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html"));
 
     // CORS para desenvolvimento local
     DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
