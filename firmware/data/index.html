@@ -76,6 +76,15 @@
   .card .val.warn{color:var(--red)}
   #proto-badge{font-size:.72rem;padding:4px 9px;border-radius:12px;font-weight:600;letter-spacing:.04em;background:#1a2a1a;color:var(--green);border:1px solid var(--green)}
   #proto-badge.kline{background:#2a1a00;color:#ffaa00;border-color:#ffaa00}
+  .saved-nets{display:flex;flex-direction:column;gap:4px;grid-column:1/-1;margin:4px 0 8px}
+  .saved-net{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#2a2d3a;border-radius:6px;border:1px solid #3a3d4a;font-size:.82rem}
+  .saved-net.active{border-color:var(--green)}
+  .saved-net .sn-ssid{flex:1;font-weight:600}
+  .saved-net .sn-ip{color:var(--muted);font-size:.78rem}
+  .saved-net .sn-status{font-size:.72rem;padding:2px 7px;border-radius:8px}
+  .saved-net .sn-status.on{background:#0a2a1a;color:var(--green)}
+  .saved-net .sn-del{background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:2px 8px;font-size:.72rem;cursor:pointer}
+  .saved-net .sn-del:hover{background:var(--red);color:#fff}
   #bt-badge{font-size:.72rem;padding:4px 9px;border-radius:12px;font-weight:600;letter-spacing:.04em;background:#1a1a2a;color:var(--muted);border:1px solid var(--muted);transition:all .3s}
   #bt-badge.on{background:#1a1a3a;color:#5588ff;border-color:#5588ff}
   .dtc-bank-card{grid-column:1/-1}
@@ -294,19 +303,15 @@
     <div class="wifi-form">
 
       <div class="wifi-status-row">
-        <div><span>Modo:</span>      <strong id="wf-cur-mode">—</strong></div>
+        <div><span>Conectado:</span> <strong id="wf-cur-ssid">—</strong></div>
         <div><span>IP atual:</span>  <strong id="wf-cur-ip">—</strong></div>
         <div><span>mDNS:</span>      <strong id="wf-cur-mdns">—</strong></div>
-        <div><span>AP SSID:</span>   <strong id="wf-cur-ap">OBD-Simulator</strong></div>
+        <div><span>AP fallback:</span> <strong id="wf-cur-ap">OBD-Simulator</strong></div>
       </div>
 
-      <div>
-        <label>Modo Wi-Fi</label>
-        <select id="wf-mode">
-          <option value="1">STA — conecta na sua rede</option>
-          <option value="0">AP — cria rede própria</option>
-          <option value="2">AP + STA — ambos simultâneos</option>
-        </select>
+      <div class="wifi-full">
+        <label>Redes Salvas (max 4)</label>
+        <div class="saved-nets" id="wf-saved-nets"></div>
       </div>
 
       <div class="wifi-full">
@@ -486,7 +491,6 @@ function applyProfile() {
 }
 
 // ── Wi-Fi config ─────────────────────────────────────────────
-const MODE_NAMES = ['AP','STA','AP+STA'];
 
 // ── Wi-Fi Scan ────────────────────────────────────────────────
 
@@ -568,26 +572,49 @@ function loadWifi() {
     .then(w => {
       const connected = w.connected;
       const ip = connected ? w.current_ip : (w.ap_ip || '192.168.4.1');
-      document.getElementById('wf-cur-mode').textContent  = MODE_NAMES[w.mode] || '?';
+      document.getElementById('wf-cur-ssid').textContent  = connected ? w.current_ssid : '(nenhuma)';
       document.getElementById('wf-cur-ip').textContent    = ip;
       document.getElementById('wf-cur-mdns').textContent  = w.hostname || 'obdsim.local';
       document.getElementById('wf-cur-ap').textContent    = w.ap_ssid  || 'OBD-Simulator';
-      document.getElementById('wf-mode').value            = w.mode ?? 1;
-      document.getElementById('wf-ssid').value            = w.ssid    || '';
-      document.getElementById('wf-ip').value              = w.sta_ip  || '';
-      document.getElementById('wf-gw').value              = w.gateway || '';
+      document.getElementById('wf-ssid').value            = '';
+      document.getElementById('wf-ip').value              = '';
+      document.getElementById('wf-gw').value              = '';
       const badge = document.getElementById('wifi-badge');
       if (connected) {
-        badge.textContent = '✓ ' + ip;
+        badge.textContent = '✓ ' + w.current_ssid;
         badge.style.color = 'var(--green)';
       } else {
-        badge.textContent = '⚡ AP ' + ip;
+        badge.textContent = '⚡ AP ' + (w.ap_ip || '192.168.4.1');
         badge.style.color = 'var(--accent)';
+      }
+      // Renderiza redes salvas
+      const el = document.getElementById('wf-saved-nets');
+      el.innerHTML = '';
+      (w.networks || []).forEach((net, i) => {
+        const div = document.createElement('div');
+        div.className = 'saved-net' + (connected && net.ssid === w.current_ssid ? ' active' : '');
+        div.innerHTML =
+          '<span class="sn-ssid">' + net.ssid + '</span>' +
+          '<span class="sn-ip">' + (net.ip || 'DHCP') + '</span>' +
+          (connected && net.ssid === w.current_ssid
+            ? '<span class="sn-status on">conectado</span>'
+            : '') +
+          '<button class="sn-del" onclick="removeNet(' + i + ')">remover</button>';
+        el.appendChild(div);
+      });
+      if (!(w.networks || []).length) {
+        el.innerHTML = '<div style="color:var(--muted);font-size:.8rem;padding:6px">Nenhuma rede salva</div>';
       }
     })
     .catch(() => {
       document.getElementById('wifi-badge').textContent = '(sem conexão)';
     });
+}
+
+function removeNet(idx) {
+  if (!confirm('Remover esta rede?')) return;
+  fetch('/api/wifi/remove', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({index:idx})})
+    .then(() => loadWifi());
 }
 
 function toggleWifiPass() {
@@ -596,11 +623,9 @@ function toggleWifiPass() {
 }
 
 function saveWifi() {
-  const mode = +document.getElementById('wf-mode').value;
   const ssid = document.getElementById('wf-ssid').value.trim();
-  if (mode !== 0 && !ssid) { showWifiMsg('Informe o nome da rede (SSID).', 'err'); return; }
+  if (!ssid) { showWifiMsg('Informe o nome da rede (SSID).', 'err'); return; }
   const body = {
-    mode,
     ssid,
     password: document.getElementById('wf-pass').value,
     sta_ip:   document.getElementById('wf-ip').value.trim(),
@@ -616,7 +641,7 @@ function saveWifi() {
   })
   .then(r => r.json())
   .then(d => {
-    if (d.ok) startRebootCountdown(mode === 1 ? body.sta_ip : null);
+    if (d.ok) startRebootCountdown(body.sta_ip || null);
     else showWifiMsg('Erro ao salvar.', 'err');
   })
   .catch(() => showWifiMsg('Sem resposta — ESP32 provavelmente reiniciando.', 'ok'));

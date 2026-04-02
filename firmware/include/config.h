@@ -84,6 +84,8 @@ constexpr uint32_t OBD_CAN_RESP_29B   = 0x18DAF110;  // resposta ECU1 29-bit
 //  Wi-Fi / Web
 // ════════════════════════════════════════════════════════════
 
+constexpr uint8_t MAX_WIFI_NETS = 4;  // redes salvas (como celular)
+
 // ── Modo AP (fallback / standalone) ──────────────────────────
 constexpr char AP_SSID[]     = "OBD-Simulator";
 constexpr char AP_PASSWORD[] = "obd12345";

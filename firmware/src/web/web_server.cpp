@@ -193,7 +193,102 @@ static void handle_post_preset(AsyncWebServerRequest* req, uint8_t* data, size_t
     req->send(200, "application/json", "{\"ok\":true}");
 }
 
-// ── Wi-Fi config ──────────────────────────────────────────────
+// ── Wi-Fi Multi-Network ──────────────────────────────────────
+// Armazena até MAX_WIFI_NETS redes na NVS.
+// No boot, faz scan e conecta na primeira rede conhecida com
+// melhor sinal. Se nenhuma encontrada, sobe AP como fallback.
+
+struct NetConfig {
+    String ssid, pass, ip, gw;
+};
+static NetConfig  s_nets[MAX_WIFI_NETS];
+static uint8_t    s_net_count = 0;
+static String     s_connected_ssid;
+
+static void load_wifi_nets() {
+    Preferences prefs;
+    prefs.begin("wifi", true);
+    s_net_count = prefs.getUChar("n", 0);
+    if (s_net_count > MAX_WIFI_NETS) s_net_count = MAX_WIFI_NETS;
+
+    // Migração: formato antigo (chave "ssid") → novo multi-rede
+    if (s_net_count == 0 && prefs.isKey("ssid")) {
+        String old_ssid = prefs.getString("ssid", "");
+        if (old_ssid.length() > 0) {
+            s_nets[0].ssid = old_ssid;
+            s_nets[0].pass = prefs.getString("pass", "");
+            s_nets[0].ip   = prefs.getString("sta_ip", "");
+            s_nets[0].gw   = prefs.getString("gw", "");
+            s_net_count = 1;
+        }
+    } else {
+        for (uint8_t i = 0; i < s_net_count; i++) {
+            char k[4];
+            snprintf(k, 4, "s%d", i); s_nets[i].ssid = prefs.getString(k, "");
+            snprintf(k, 4, "p%d", i); s_nets[i].pass = prefs.getString(k, "");
+            snprintf(k, 4, "i%d", i); s_nets[i].ip   = prefs.getString(k, "");
+            snprintf(k, 4, "g%d", i); s_nets[i].gw   = prefs.getString(k, "");
+        }
+    }
+    prefs.end();
+
+    // Seed com config.h se vazio
+    if (s_net_count == 0 && strlen(STA_SSID) > 0) {
+        s_nets[0] = { STA_SSID, STA_PASSWORD, STA_STATIC_IP, STA_GATEWAY };
+        s_net_count = 1;
+    }
+}
+
+static void save_wifi_nets() {
+    Preferences prefs;
+    prefs.begin("wifi", false);
+    prefs.clear();  // limpa formato antigo e atual
+    prefs.putUChar("n", s_net_count);
+    for (uint8_t i = 0; i < s_net_count; i++) {
+        char k[4];
+        snprintf(k, 4, "s%d", i); prefs.putString(k, s_nets[i].ssid);
+        snprintf(k, 4, "p%d", i); prefs.putString(k, s_nets[i].pass);
+        snprintf(k, 4, "i%d", i); prefs.putString(k, s_nets[i].ip);
+        snprintf(k, 4, "g%d", i); prefs.putString(k, s_nets[i].gw);
+    }
+    prefs.end();
+}
+
+// Tenta conectar a uma rede específica. Retorna true se sucesso.
+static bool try_connect(const NetConfig& net) {
+    Serial.printf("[WiFi] Tentando '%s'", net.ssid.c_str());
+
+    IPAddress ip, gateway, subnet, dns1, dns2;
+    if (net.ip.length() > 0 && ip.fromString(net.ip) && gateway.fromString(net.gw)) {
+        subnet.fromString(STA_SUBNET);
+        dns1.fromString(STA_DNS1);
+        dns2.fromString(STA_DNS2);
+        WiFi.config(ip, gateway, subnet, dns1, dns2);
+        Serial.printf(" (IP fixo: %s)", net.ip.c_str());
+    } else {
+        // DHCP — limpa config estática anterior
+        WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
+    }
+
+    WiFi.begin(net.ssid.c_str(), net.pass.c_str());
+
+    uint8_t tries = 0;
+    while (WiFi.status() != WL_CONNECTED && tries++ < 20) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        Serial.print(".");
+    }
+    Serial.println();
+
+    if (WiFi.status() == WL_CONNECTED) {
+        s_connected_ssid = net.ssid;
+        Serial.printf("[WiFi] Conectado! SSID: '%s'  IP: http://%s\n",
+                      net.ssid.c_str(), WiFi.localIP().toString().c_str());
+        return true;
+    }
+    WiFi.disconnect(true);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    return false;
+}
 
 // ── Wi-Fi Scan ────────────────────────────────────────────────
 
@@ -201,12 +296,8 @@ static volatile bool s_scan_busy   = false;
 static String        s_scan_result = "[]";
 
 static void task_wifi_scan(void*) {
-    // Scan síncrono numa task dedicada de baixa prioridade (1).
-    // Bloqueia apenas esta task (~3-6s); o web server roda em outra task
-    // e permanece responsivo durante o scan.
     WiFi.scanDelete();
-    int16_t n = WiFi.scanNetworks(/*async=*/false, /*show_hidden=*/true);
-
+    int16_t n = WiFi.scanNetworks(false, true);
     JsonDocument doc;
     JsonArray arr = doc.to<JsonArray>();
     if (n > 0) {
@@ -242,41 +333,74 @@ static void handle_get_wifi_scan(AsyncWebServerRequest* req) {
     }
 }
 
+// ── Wi-Fi REST handlers ──────────────────────────────────────
+
 static void handle_get_wifi(AsyncWebServerRequest* req) {
     JsonDocument doc;
-    Preferences prefs;
-    prefs.begin("wifi", true);
-    doc["mode"]    = prefs.getUChar ("mode",   (strlen(STA_SSID) > 0) ? CFG_WIFI_STA : CFG_WIFI_AP);
-    doc["ssid"]    = prefs.getString("ssid",   STA_SSID);
-    doc["sta_ip"]  = prefs.getString("sta_ip", STA_STATIC_IP);
-    doc["gateway"] = prefs.getString("gw",     STA_GATEWAY);
-    prefs.end();
     doc["connected"]  = (WiFi.status() == WL_CONNECTED);
+    doc["current_ssid"] = s_connected_ssid;
     doc["current_ip"] = WiFi.localIP().toString();
     doc["ap_ip"]      = WiFi.softAPIP().toString();
     doc["ap_ssid"]    = AP_SSID;
     doc["hostname"]   = String(MDNS_NAME) + ".local";
+    auto arr = doc["networks"].to<JsonArray>();
+    for (uint8_t i = 0; i < s_net_count; i++) {
+        JsonObject obj = arr.add<JsonObject>();
+        obj["ssid"] = s_nets[i].ssid;
+        obj["ip"]   = s_nets[i].ip;
+        obj["gw"]   = s_nets[i].gw;
+    }
     String out; serializeJson(doc, out);
     req->send(200, "application/json", out);
 }
 
+// POST /api/wifi — adiciona ou atualiza rede
 static void handle_post_wifi(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
     JsonDocument doc;
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
-    Preferences prefs;
-    prefs.begin("wifi", false);
-    if (!doc["ssid"].isNull())    prefs.putString("ssid",   doc["ssid"].as<const char*>());
-    if (!doc["sta_ip"].isNull())  prefs.putString("sta_ip", doc["sta_ip"].as<const char*>());
-    if (!doc["gateway"].isNull()) prefs.putString("gw",     doc["gateway"].as<const char*>());
-    if (!doc["mode"].isNull())    prefs.putUChar ("mode",   doc["mode"].as<uint8_t>());
-    // Só salva senha se enviada e não vazia
+    const char* ssid = doc["ssid"] | "";
+    if (strlen(ssid) == 0) { req->send(400, "application/json", "{\"error\":\"ssid required\"}"); return; }
+
+    // Procura rede existente com mesmo SSID
+    int idx = -1;
+    for (uint8_t i = 0; i < s_net_count; i++) {
+        if (s_nets[i].ssid == ssid) { idx = i; break; }
+    }
+
+    // Adiciona nova ou atualiza existente
+    if (idx < 0) {
+        if (s_net_count >= MAX_WIFI_NETS) {
+            req->send(400, "application/json", "{\"error\":\"max networks reached\"}");
+            return;
+        }
+        idx = s_net_count++;
+    }
+    s_nets[idx].ssid = ssid;
     const char* pass = doc["password"] | "";
-    if (strlen(pass) > 0)         prefs.putString("pass",   pass);
-    prefs.end();
+    if (strlen(pass) > 0) s_nets[idx].pass = pass;
+    if (!doc["sta_ip"].isNull())  s_nets[idx].ip = doc["sta_ip"].as<String>();
+    if (!doc["gateway"].isNull()) s_nets[idx].gw = doc["gateway"].as<String>();
+
+    save_wifi_nets();
     req->send(200, "application/json", "{\"ok\":true}");
-    // Reinicia após 1.5s para dar tempo da resposta HTTP ser enviada
     xTaskCreate([](void*){ vTaskDelay(pdMS_TO_TICKS(1500)); ESP.restart(); vTaskDelete(nullptr); },
                 "t_reboot", 2048, nullptr, 1, nullptr);
+}
+
+// POST /api/wifi/remove — remove rede por índice
+static void handle_post_wifi_remove(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+    JsonDocument doc;
+    if (deserializeJson(doc, data, len)) { req->send(400); return; }
+    uint8_t idx = doc["index"] | 255;
+    if (idx >= s_net_count) { req->send(400, "application/json", "{\"error\":\"invalid index\"}"); return; }
+
+    // Shift redes para preencher buraco
+    for (uint8_t i = idx; i < s_net_count - 1; i++) s_nets[i] = s_nets[i + 1];
+    s_net_count--;
+    s_nets[s_net_count] = {};
+
+    save_wifi_nets();
+    req->send(200, "application/json", "{\"ok\":true}");
 }
 
 static void handle_post_reboot(AsyncWebServerRequest* req) {
@@ -377,62 +501,82 @@ static void task_ws_broadcast(void*) {
     }
 }
 
-// ── Wi-Fi init ────────────────────────────────────────────────
-// Prioridade de configuração:
-//   1. NVS (salvo pela Web UI via POST /api/wifi)
-//   2. config.h (defaults em tempo de compilação)
+// ── Wi-Fi init (multi-network) ───────────────────────────────
+// 1. Carrega redes salvas da NVS (até MAX_WIFI_NETS)
+// 2. Faz scan rápido (~3s) para ver quais estão no ar
+// 3. Tenta conectar na melhor rede conhecida (maior RSSI)
+// 4. Se falhou, tenta as demais em ordem
+// 5. Se nenhuma conectou, sobe AP como fallback
 
 static void wifi_start() {
-    Preferences prefs;
-    prefs.begin("wifi", true);
-    // Lê NVS — se vazio, cai para os defaults do config.h
-    String ssid   = prefs.getString("ssid",   STA_SSID);
-    String pass   = prefs.getString("pass",   STA_PASSWORD);
-    String sta_ip = prefs.getString("sta_ip", STA_STATIC_IP);
-    String gw     = prefs.getString("gw",     STA_GATEWAY);
-    String sn     = prefs.getString("sn",     STA_SUBNET);
-    uint8_t mode  = prefs.getUChar ("mode",
-                        (strlen(STA_SSID) > 0) ? CFG_WIFI_STA : CFG_WIFI_AP);
-    prefs.end();
+    load_wifi_nets();
+
+    Serial.printf("[WiFi] %d rede(s) salva(s)\n", s_net_count);
+    for (uint8_t i = 0; i < s_net_count; i++)
+        Serial.printf("[WiFi]   %d: '%s' %s\n", i, s_nets[i].ssid.c_str(),
+                      s_nets[i].ip.length() > 0 ? s_nets[i].ip.c_str() : "(DHCP)");
 
     bool sta_ok = false;
 
-    if ((mode == CFG_WIFI_STA || mode == CFG_WIFI_AP_STA) && ssid.length() > 0) {
-        WiFi.mode(mode == CFG_WIFI_AP_STA ? WIFI_AP_STA : WIFI_STA);
+    if (s_net_count > 0) {
+        WiFi.mode(WIFI_STA);
 
-        // Configura IP fixo antes de conectar
-        IPAddress ip, gateway, subnet, dns1, dns2;
-        if (ip.fromString(sta_ip) && gateway.fromString(gw) && subnet.fromString(sn)) {
-            dns1.fromString(STA_DNS1);
-            dns2.fromString(STA_DNS2);
-            WiFi.config(ip, gateway, subnet, dns1, dns2);
-            Serial.printf("[WiFi] IP fixo configurado: %s\n", sta_ip.c_str());
+        // Scan rápido para ver quais redes estão no ar
+        Serial.println("[WiFi] Escaneando redes...");
+        int16_t n = WiFi.scanNetworks(false, true);
+        Serial.printf("[WiFi] %d redes encontradas\n", n);
+
+        // Ordena matches por RSSI (melhor sinal primeiro)
+        struct Match { uint8_t net_idx; int32_t rssi; };
+        Match matches[MAX_WIFI_NETS];
+        uint8_t match_count = 0;
+
+        for (int s = 0; s < n && match_count < MAX_WIFI_NETS; s++) {
+            for (uint8_t i = 0; i < s_net_count; i++) {
+                if (WiFi.SSID(s) == s_nets[i].ssid) {
+                    // Evita duplicata (mesmo SSID em dois APs)
+                    bool dup = false;
+                    for (uint8_t m = 0; m < match_count; m++)
+                        if (matches[m].net_idx == i) { dup = true; break; }
+                    if (!dup) {
+                        matches[match_count++] = { i, WiFi.RSSI(s) };
+                    }
+                }
+            }
+        }
+        WiFi.scanDelete();
+
+        // Ordena por RSSI (selection sort simples, max 4 itens)
+        for (uint8_t i = 0; i < match_count; i++)
+            for (uint8_t j = i + 1; j < match_count; j++)
+                if (matches[j].rssi > matches[i].rssi) {
+                    Match tmp = matches[i]; matches[i] = matches[j]; matches[j] = tmp;
+                }
+
+        // Tenta conectar (melhor sinal primeiro)
+        for (uint8_t m = 0; m < match_count && !sta_ok; m++) {
+            sta_ok = try_connect(s_nets[matches[m].net_idx]);
         }
 
-        WiFi.begin(ssid.c_str(), pass.c_str());
-        Serial.printf("[WiFi] Conectando a '%s'", ssid.c_str());
-
-        uint8_t tries = 0;
-        while (WiFi.status() != WL_CONNECTED && tries++ < 30) {
-            vTaskDelay(pdMS_TO_TICKS(500));
-            Serial.print(".");
-        }
-        Serial.println();
-
-        if (WiFi.status() == WL_CONNECTED) {
-            sta_ok = true;
-            Serial.printf("[WiFi] Conectado! IP: http://%s\n", WiFi.localIP().toString().c_str());
-            Serial.printf("[WiFi] mDNS:         http://%s.local\n", MDNS_NAME);
-        } else {
-            Serial.println("[WiFi] Falha na conexao STA — iniciando AP...");
-            WiFi.disconnect(true);   // para tentativa STA pendente
-            vTaskDelay(pdMS_TO_TICKS(200));  // deixa driver estabilizar
+        // Se scan não encontrou nenhuma rede salva, tenta cada uma cegamente
+        if (!sta_ok && match_count == 0) {
+            Serial.println("[WiFi] Nenhuma rede conhecida no scan, tentando cada uma...");
+            for (uint8_t i = 0; i < s_net_count && !sta_ok; i++) {
+                sta_ok = try_connect(s_nets[i]);
+            }
         }
     }
 
-    // AP: sempre sobe se modo AP, AP+STA, ou se STA falhou
-    if (mode == CFG_WIFI_AP || mode == CFG_WIFI_AP_STA || !sta_ok) {
-        // Sempre AP+STA para que scan de redes funcione
+    // Se conectou, salva as redes (para gravar seed do config.h no NVS)
+    if (sta_ok && s_net_count > 0) {
+        save_wifi_nets();
+    }
+
+    // Fallback: AP sempre sobe se STA falhou
+    if (!sta_ok) {
+        Serial.println("[WiFi] Nenhuma rede conectou — iniciando AP...");
+        WiFi.disconnect(true);
+        vTaskDelay(pdMS_TO_TICKS(200));
         WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(AP_SSID, AP_PASSWORD);
         Serial.printf("[WiFi] AP: '%s'  senha: '%s'  IP: http://%s\n",
@@ -488,6 +632,8 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
         [](AsyncWebServerRequest* r){ handle_post_wifi_scan(r); });
     server.on("/api/wifi/scan", HTTP_GET,  handle_get_wifi_scan);
     server.on("/api/wifi",      HTTP_GET,  handle_get_wifi);
+    server.on("/api/wifi/remove", HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_wifi_remove);
     server.on("/api/wifi",      HTTP_POST, [](AsyncWebServerRequest*){},
         nullptr, handle_post_wifi);
     server.on("/api/reboot",   HTTP_POST,
