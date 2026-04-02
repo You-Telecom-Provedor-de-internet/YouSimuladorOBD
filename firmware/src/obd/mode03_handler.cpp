@@ -11,6 +11,11 @@ OBDResponse Mode03Handler::handle(const SimulationState& s) {
         r.data[r.len++] = (uint8_t)(s.dtcs[i] >> 8);   // byte alto do DTC
         r.data[r.len++] = (uint8_t)(s.dtcs[i] & 0xFF); // byte baixo
     }
-    // padding se necessário para completar múltiplos de 2
+    // Padding: resposta Mode 03 deve ter comprimento par (sem contar o byte count).
+    // Se dtc_count for ímpar, adiciona 0x0000 extra para completar par de bytes.
+    if ((s.dtc_count & 0x01) && r.len < (uint8_t)sizeof(r.data) - 1) {
+        r.data[r.len++] = 0x00;
+        r.data[r.len++] = 0x00;
+    }
     return r;
 }

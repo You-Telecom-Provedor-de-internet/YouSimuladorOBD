@@ -40,10 +40,10 @@ inline void applyVehicleProfile(SimulationState& s, const VehicleProfile& p) {
     s.ignition_adv     = p.ignition_adv;
     s.engine_load_pct  = p.engine_load_pct;
     s.fuel_level_pct   = p.fuel_level_pct;
+    memset(s.vin, 0, sizeof(s.vin));
     strncpy(s.vin, p.vin, 17);
-    s.vin[17] = '\0';
+    memset(s.profile_id, 0, sizeof(s.profile_id));
     strncpy(s.profile_id, p.id, 23);
-    s.profile_id[23] = '\0';
     s.dtc_count = 0;
 }
 

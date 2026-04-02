@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <cstdint>
 #include <cstring>
+#include "dtc_catalog.h"
 
 // ════════════════════════════════════════════════════════════
 //  Modo de simulação dinâmica
@@ -39,20 +40,21 @@ struct SimulationState {
     float    ltft_pct        = 0.0f;   // -100 a +99.2 % (Long Term Fuel Trim)
 
     // ── DTCs Mode 03 ──────────────────────────────────────────
-    uint8_t  dtc_count       = 0;
-    uint16_t dtcs[8]         = {};     // até 8 DTCs (2 bytes cada)
+    uint8_t  dtc_count        = 0;
+    uint16_t dtcs[16]         = {};    // expandido: até 16 DTCs (2 bytes cada)
+    uint8_t  active_scenario  = 0;    // 0 = nenhum cenário ativo
 
     // ── VIN Mode 09 PID 02 ────────────────────────────────────
-    char vin[18]             = "YOUSIM00000000001";
+    char vin[18]              = "YOUSIM00000000001";
 
     // ── Protocolo ativo ───────────────────────────────────────
-    uint8_t  active_protocol = 0;
+    uint8_t  active_protocol  = 0;
 
     // ── Perfil de veículo ativo ───────────────────────────────
-    char profile_id[24]      = "";     // vazio = nenhum perfil aplicado
+    char profile_id[24]       = "";    // vazio = nenhum perfil aplicado
 
     // ── Modo de simulação ─────────────────────────────────────
-    SimMode  sim_mode        = SIM_STATIC;
+    SimMode  sim_mode         = SIM_STATIC;
 };
 
 // ── Presets de cenário ────────────────────────────────────────
@@ -103,5 +105,45 @@ namespace Preset {
         applyCruise(s);
         s.stft_pct = 12.5f; s.ltft_pct = 10.2f;
         s.dtc_count = 1; s.dtcs[0] = 0x0420;
+    }
+
+    /**
+     * Aplica um cenário de falha do DTC_CATALOG ao estado de simulação.
+     * Parte sempre de marcha lenta e aplica os deltas do cenário.
+     * @param s    Estado de simulação (protegido pelo mutex externamente)
+     * @param id   ID do cenário (1–255), ver DTC_SCENARIOS em dtc_catalog.h
+     * @return     true se o cenário foi encontrado e aplicado
+     */
+    inline bool applyScenario(SimulationState& s, uint8_t id) {
+        const DtcScenario* sc = findScenario(id);
+        if (!sc) return false;
+
+        // Base: marcha lenta com motor aquecido
+        applyIdle(s);
+
+        // Aplica DTCs do cenário (ambos os arrays têm tamanho 16)
+        s.dtc_count = sc->dtc_count;
+        memset(s.dtcs, 0, sizeof(s.dtcs));
+        for (uint8_t i = 0; i < sc->dtc_count && i < 16; i++)
+            s.dtcs[i] = sc->dtcs[i];
+
+        // Aplica deltas de parâmetros
+        s.rpm           = (uint16_t)constrain((int32_t)s.rpm + sc->rpm_delta,       400, 7000);
+        s.coolant_temp_c = (int16_t)constrain((int32_t)s.coolant_temp_c + sc->temp_delta, -40, 140);
+        s.throttle_pct  = (uint8_t)constrain((int32_t)s.throttle_pct + sc->throttle_delta, 0, 100);
+
+        // Marca cenário ativo e limpa perfil
+        s.active_scenario = id;
+        s.profile_id[0]   = '\0';
+        s.sim_mode        = SIM_STATIC;
+
+        return true;
+    }
+
+    /** Limpa todos os DTCs e reseta o cenário ativo */
+    inline void clearScenario(SimulationState& s) {
+        s.dtc_count      = 0;
+        s.active_scenario = 0;
+        memset(s.dtcs, 0, sizeof(s.dtcs));
     }
 }

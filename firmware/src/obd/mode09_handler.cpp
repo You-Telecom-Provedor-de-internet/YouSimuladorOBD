@@ -20,11 +20,11 @@ OBDResponse Mode09Handler::handle(const OBDRequest& req, const SimulationState& 
     }
 
     if (req.pid == 0x02) {
-        // Formato: [count=0x01] + 17 bytes ASCII do VIN
+        // Formato: [count=0x01] + exatamente 17 bytes ASCII do VIN
+        // VINs menores que 17 bytes são padded com 0x00; maiores são truncados.
         r.data[r.len++] = 0x01; // message count
-        size_t vlen = strlen(s.vin);
-        for (size_t i = 0; i < vlen && r.len < sizeof(r.data); i++) {
-            r.data[r.len++] = (uint8_t)s.vin[i];
+        for (uint8_t i = 0; i < 17 && r.len < (uint8_t)sizeof(r.data); i++) {
+            r.data[r.len++] = (i < strlen(s.vin)) ? (uint8_t)s.vin[i] : 0x00;
         }
         return r;
     }

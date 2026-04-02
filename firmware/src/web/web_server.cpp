@@ -1,6 +1,7 @@
 #include "web_server.h"
 #include "config.h"
 #include "vehicle_profiles.h"
+#include "dtc_catalog.h"
 #include "elm327_bt.h"
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
@@ -179,14 +180,15 @@ static String stateToJson() {
     doc["ltft"]             = serialized(String(s_state->ltft_pct, 1));
     auto dtcArr = doc.createNestedArray("dtcs");
     for (uint8_t i = 0; i < s_state->dtc_count; i++) {
-        char buf[6];
+        char buf[7];
         dtcValToStr(s_state->dtcs[i], buf, sizeof(buf));
         dtcArr.add(buf);
     }
-    doc["vin"]        = s_state->vin;
-    doc["profile_id"] = s_state->profile_id;
-    doc["sim_mode"]   = (uint8_t)s_state->sim_mode;
-    doc["bt_connected"] = elm327_bt_connected();
+    doc["vin"]             = s_state->vin;
+    doc["profile_id"]      = s_state->profile_id;
+    doc["sim_mode"]        = (uint8_t)s_state->sim_mode;
+    doc["active_scenario"] = s_state->active_scenario;
+    doc["bt_connected"]    = elm327_bt_connected();
     xSemaphoreGive(s_mutex);
     String out;
     serializeJson(doc, out);
@@ -203,20 +205,34 @@ static void handle_post_params(AsyncWebServerRequest* req, uint8_t* data, size_t
     JsonDocument doc;
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (doc.containsKey("rpm"))              s_state->rpm              = doc["rpm"];
-    if (doc.containsKey("speed"))            s_state->speed_kmh        = doc["speed"];
-    if (doc.containsKey("coolant_temp"))     s_state->coolant_temp_c   = doc["coolant_temp"];
-    if (doc.containsKey("intake_temp"))      s_state->intake_temp_c    = doc["intake_temp"];
-    if (doc.containsKey("maf"))              s_state->maf_gs           = doc["maf"];
-    if (doc.containsKey("map"))              s_state->map_kpa          = doc["map"];
-    if (doc.containsKey("throttle"))         s_state->throttle_pct     = doc["throttle"];
-    if (doc.containsKey("ignition_advance")) s_state->ignition_adv     = doc["ignition_advance"];
-    if (doc.containsKey("engine_load"))      s_state->engine_load_pct  = doc["engine_load"];
-    if (doc.containsKey("fuel_level"))       s_state->fuel_level_pct   = doc["fuel_level"];
-    if (doc.containsKey("battery_voltage")) s_state->battery_voltage  = doc["battery_voltage"];
-    if (doc.containsKey("oil_temp"))        s_state->oil_temp_c        = doc["oil_temp"];
-    if (doc.containsKey("stft"))            s_state->stft_pct          = doc["stft"];
-    if (doc.containsKey("ltft"))            s_state->ltft_pct          = doc["ltft"];
+    if (doc.containsKey("rpm"))
+        s_state->rpm             = (uint16_t)constrain((int32_t)doc["rpm"], 0, 16000);
+    if (doc.containsKey("speed"))
+        s_state->speed_kmh       = (uint8_t)constrain((int32_t)doc["speed"], 0, 255);
+    if (doc.containsKey("coolant_temp"))
+        s_state->coolant_temp_c  = (int16_t)constrain((int32_t)doc["coolant_temp"], -40, 215);
+    if (doc.containsKey("intake_temp"))
+        s_state->intake_temp_c   = (int16_t)constrain((int32_t)doc["intake_temp"], -40, 80);
+    if (doc.containsKey("maf"))
+        s_state->maf_gs          = constrain((float)doc["maf"], 0.0f, 655.35f);
+    if (doc.containsKey("map"))
+        s_state->map_kpa         = (uint8_t)constrain((int32_t)doc["map"], 0, 255);
+    if (doc.containsKey("throttle"))
+        s_state->throttle_pct    = (uint8_t)constrain((int32_t)doc["throttle"], 0, 100);
+    if (doc.containsKey("ignition_advance"))
+        s_state->ignition_adv    = constrain((float)doc["ignition_advance"], -64.0f, 63.5f);
+    if (doc.containsKey("engine_load"))
+        s_state->engine_load_pct = (uint8_t)constrain((int32_t)doc["engine_load"], 0, 100);
+    if (doc.containsKey("fuel_level"))
+        s_state->fuel_level_pct  = (uint8_t)constrain((int32_t)doc["fuel_level"], 0, 100);
+    if (doc.containsKey("battery_voltage"))
+        s_state->battery_voltage = constrain((float)doc["battery_voltage"], 0.0f, 65.535f);
+    if (doc.containsKey("oil_temp"))
+        s_state->oil_temp_c      = (int16_t)constrain((int32_t)doc["oil_temp"], -40, 210);
+    if (doc.containsKey("stft"))
+        s_state->stft_pct        = constrain((float)doc["stft"], -100.0f, 99.2f);
+    if (doc.containsKey("ltft"))
+        s_state->ltft_pct        = constrain((float)doc["ltft"], -100.0f, 99.2f);
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
 }
@@ -239,7 +255,7 @@ static void handle_get_dtcs(AsyncWebServerRequest* req) {
     doc["count"] = s_state->dtc_count;
     auto arr = doc.createNestedArray("dtcs");
     for (uint8_t i = 0; i < s_state->dtc_count; i++) {
-        char buf[6]; dtcValToStr(s_state->dtcs[i], buf, sizeof(buf));
+        char buf[7]; dtcValToStr(s_state->dtcs[i], buf, sizeof(buf));
         arr.add(buf);
     }
     xSemaphoreGive(s_mutex);
@@ -254,7 +270,7 @@ static void handle_add_dtc(AsyncWebServerRequest* req, uint8_t* data, size_t len
     if (strlen(code) < 5) { req->send(400); return; }
     uint16_t val = dtcStrToVal(code);
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (s_state->dtc_count < 8) s_state->dtcs[s_state->dtc_count++] = val;
+    if (s_state->dtc_count < 16) s_state->dtcs[s_state->dtc_count++] = val;
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
 }
@@ -462,8 +478,9 @@ static void start_access_point() {
 
 // ── Wi-Fi Scan ────────────────────────────────────────────────
 
-static volatile bool s_scan_busy   = false;
-static String        s_scan_result = "[]";
+static volatile bool s_scan_busy     = false;
+static volatile bool s_reboot_pending = false;
+static String        s_scan_result  = "[]";
 
 static void task_wifi_scan(void*) {
     WiFi.scanDelete();
@@ -555,8 +572,11 @@ static void handle_post_wifi(AsyncWebServerRequest* req, uint8_t* data, size_t l
 
     save_wifi_nets();
     req->send(200, "application/json", "{\"ok\":true}");
-    xTaskCreate([](void*){ vTaskDelay(pdMS_TO_TICKS(1500)); ESP.restart(); vTaskDelete(nullptr); },
-                "t_reboot", 2048, nullptr, 1, nullptr);
+    if (!s_reboot_pending) {
+        s_reboot_pending = true;
+        xTaskCreate([](void*){ vTaskDelay(pdMS_TO_TICKS(1500)); ESP.restart(); vTaskDelete(nullptr); },
+                    "t_reboot", 2048, nullptr, 1, nullptr);
+    }
 }
 
 // POST /api/wifi/remove — remove rede por índice
@@ -579,6 +599,63 @@ static void handle_post_reboot(AsyncWebServerRequest* req) {
     req->send(200, "application/json", "{\"ok\":true}");
     xTaskCreate([](void*){ vTaskDelay(pdMS_TO_TICKS(800)); ESP.restart(); vTaskDelete(nullptr); },
                 "t_reboot2", 2048, nullptr, 1, nullptr);
+}
+
+// ── Cenários de Falha ─────────────────────────────────────────
+
+// GET /api/scenarios — lista todos os cenários disponíveis
+static void handle_get_scenarios(AsyncWebServerRequest* req) {
+    JsonDocument doc;
+    JsonArray arr = doc.to<JsonArray>();
+    for (uint8_t i = 0; i < DTC_SCENARIO_COUNT; i++) {
+        const DtcScenario& sc = DTC_SCENARIOS[i];
+        JsonObject obj = arr.add<JsonObject>();
+        obj["id"]          = sc.id;
+        obj["name"]        = sc.name;
+        obj["description"] = sc.description;
+        obj["dtc_count"]   = sc.dtc_count;
+        obj["mil_on"]      = sc.mil_on;
+        JsonArray codes = obj["dtcs"].to<JsonArray>();
+        for (uint8_t j = 0; j < sc.dtc_count; j++) {
+            char buf[7];
+            // Reutiliza dtcValToStr para formatar corretamente
+            dtcValToStr(sc.dtcs[j], buf, sizeof(buf));
+            codes.add(buf);
+        }
+    }
+    String out; serializeJson(doc, out);
+    req->send(200, "application/json", out);
+}
+
+// POST /api/scenario — aplica cenário pelo ID
+// Body: {"id": 1}  ou  {"id": 0} para limpar
+static void handle_post_scenario(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+    JsonDocument doc;
+    if (deserializeJson(doc, data, len)) { req->send(400); return; }
+    uint8_t id = doc["id"] | 0;
+    // id=0 = limpar; id=1..DTC_SCENARIO_COUNT = cenário válido
+    if (id > DTC_SCENARIO_COUNT) {
+        req->send(400, "application/json", "{\"error\":\"id out of range\"}");
+        return;
+    }
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    bool ok = false;
+    if (id == 0) {
+        Preset::clearScenario(*s_state);
+        ok = true;
+    } else {
+        ok = Preset::applyScenario(*s_state, id);
+    }
+    xSemaphoreGive(s_mutex);
+    if (!ok) {
+        req->send(404, "application/json", "{\"error\":\"scenario not found\"}");
+        return;
+    }
+    const DtcScenario* sc = findScenario(id);
+    String resp = "{\"ok\":true";
+    if (sc) resp += ",\"name\":\"" + String(sc->name) + "\"";
+    resp += "}";
+    req->send(200, "application/json", resp);
 }
 
 static void handle_get_profiles(AsyncWebServerRequest* req) {
@@ -649,6 +726,10 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
             else if (!strcmp(name, "fullthrottle"))  Preset::applyFullThrottle(*s_state);
             else if (!strcmp(name, "overheat"))      Preset::applyOverheat(*s_state);
             else if (!strcmp(name, "catalyst_fail")) Preset::applyCatalystFail(*s_state);
+        } else if (!strcmp(t, "scenario")) {
+            uint8_t sid = doc["id"] | 0;
+            if (sid == 0) Preset::clearScenario(*s_state);
+            else          Preset::applyScenario(*s_state, sid);
         } else if (!strcmp(t, "profile")) {
             const char* pid = doc["id"] | "";
             const VehicleProfile* p = findProfile(pid);
@@ -662,12 +743,17 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
 }
 
 // ── Task de broadcast WebSocket (500ms) ───────────────────────
+// stateToJson() já toma o mutex internamente, mas segurá-lo durante
+// a serialização inteira aumenta a latência do loop OBD.
+// Solução: capturamos um snapshot com mutex, liberamos, depois serializamos.
 
 static void task_ws_broadcast(void*) {
     while (true) {
         vTaskDelay(pdMS_TO_TICKS(WS_BROADCAST_MS));
         if (ws.count() > 0) {
-            ws.textAll(stateToJson());
+            // Captura snapshot thread-safe antes de serializar
+            String json = stateToJson();
+            ws.textAll(json);
         }
         ws.cleanupClients(); // remove clientes desconectados
     }
@@ -823,6 +909,9 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     protect(server.on("/api/profiles", HTTP_GET,  handle_get_profiles));
     protect(server.on("/api/profile",  HTTP_POST, [](AsyncWebServerRequest*){},
         nullptr, handle_post_profile));
+    protect(server.on("/api/scenarios", HTTP_GET,  handle_get_scenarios));
+    protect(server.on("/api/scenario",  HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_scenario));
     // ⚠️ Registrar /api/wifi/scan ANTES de /api/wifi para evitar prefix-match
     protect(server.on("/api/wifi/scan", HTTP_POST,
         [](AsyncWebServerRequest* r){ handle_post_wifi_scan(r); }));
