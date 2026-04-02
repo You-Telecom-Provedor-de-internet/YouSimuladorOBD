@@ -78,15 +78,17 @@ static uint8_t checksum(const uint8_t* buf, uint8_t len) {
 // ── Envia resposta K-Line (ISO 9141-2 / KWP2000) ─────────────
 
 static void send_kline_response(const OBDResponse& resp, uint8_t pid, uint8_t mode_resp) {
-    // Formato ISO 9141-2: [48][6B][F1][data...][CS]
-    uint8_t buf[20];
+    // Formato ISO 9141-2: [48][6B][F1][mode_resp][PID?][data...][CS]
+    // Mode 01/09: inclui PID | Mode 03/04: sem PID
+    uint8_t buf[32];
     uint8_t len = 0;
     buf[len++] = 0x48; // header
     buf[len++] = 0x6B; // target (resposta ECU)
     buf[len++] = 0xF1; // source (testador)
     buf[len++] = mode_resp;
-    buf[len++] = pid;
-    for (uint8_t i = 1; i < resp.len; i++) // pula o mode byte (já em mode_resp)
+    bool has_pid = (mode_resp == 0x41 || mode_resp == 0x49);
+    if (has_pid) buf[len++] = pid;
+    for (uint8_t i = 1; i < resp.len && len < sizeof(buf) - 1; i++)
         buf[len++] = resp.data[i];
     buf[len] = checksum(buf, len);
     len++;

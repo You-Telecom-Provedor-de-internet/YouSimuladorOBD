@@ -47,12 +47,9 @@ OBDResponse OBDDispatcher::dispatch(const OBDRequest& req, const SimulationState
 }
 
 void OBDDispatcher::prependModeByte(OBDResponse& r, uint8_t modeByte) {
-    // Desloca dados 2 bytes para a direita e insere [modeByte][pid] no início
-    // (o PID já está no request, mas o protocolo espera Mode+PID na resposta)
-    // Para Mode 01/09: resposta = [Mode+0x40][PID][dados...]
-    // Essa função assume que r.data contém apenas os dados brutos
-    // sem o byte de modo — o caller deve inserir PID no req antes.
-    // Abordagem simples: inserir apenas o mode byte (PID é adicionado pelo protocol layer)
+    // Insere mode byte no início: [ModeByte][dados existentes...]
+    // PID é adicionado pelo protocol layer (CAN/K-Line)
+    if (r.len >= sizeof(r.data)) return; // sem espaço — protege overflow
     memmove(r.data + 1, r.data, r.len);
     r.data[0] = modeByte;
     r.len++;

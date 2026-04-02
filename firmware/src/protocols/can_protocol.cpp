@@ -47,12 +47,12 @@ static ParseResult parse_frame(const twai_message_t& msg, OBDRequest& req) {
     if (type != 0) return ParseResult::UNSUPPORTED; // só Single Frame por ora
 
     uint8_t dlen = n_pci & 0x0F;
-    if (dlen < 2 || dlen > 6) return ParseResult::INVALID;
+    if (dlen < 1 || dlen > 7) return ParseResult::INVALID;
 
     req.mode     = msg.data[1];
     req.pid      = (dlen >= 2) ? msg.data[2] : 0x00;
     req.data_len = (dlen > 2)  ? dlen - 2    : 0;
-    for (uint8_t i = 0; i < req.data_len; i++)
+    for (uint8_t i = 0; i < req.data_len && i < sizeof(req.data); i++)
         req.data[i] = msg.data[3 + i];
 
     return ParseResult::OK;
@@ -73,18 +73,20 @@ static void send_response(const OBDResponse& resp, uint8_t pid, bool extended) {
         // restante = 0x00 (padding)
     } else {
         // [N_PCI][dados...] — Single Frame
-        uint8_t total = resp.len + 1; // +1 para o byte PID que precede os dados
-        // Formato: [N_PCI=0x0N][Mode+0x40][PID][data...]
         // resp.data[0] já contém Mode+0x40 (inserido pelo dispatcher)
-        // Precisamos inserir o PID após o mode byte
+        // Mode 01/09: inserir PID após mode byte → [Mode+40][PID][data...]
+        // Mode 03/04: sem PID → [Mode+40][data...]
         uint8_t payload[7];
-        payload[0] = resp.data[0]; // Mode+0x40
-        payload[1] = pid;          // PID
-        for (uint8_t i = 1; i < resp.len && i < 7; i++)
-            payload[i + 1] = resp.data[i];
+        uint8_t plen = 0;
+        bool has_pid = (resp.data[0] == 0x41 || resp.data[0] == 0x49);
 
-        tx.data[0] = (resp.len + 1) & 0x0F; // N_PCI: Single Frame, tamanho
-        for (uint8_t i = 0; i < 7 && i < (resp.len + 1); i++)
+        payload[plen++] = resp.data[0]; // Mode+0x40
+        if (has_pid) payload[plen++] = pid;
+        for (uint8_t i = 1; i < resp.len && plen < 7; i++)
+            payload[plen++] = resp.data[i];
+
+        tx.data[0] = plen & 0x0F; // N_PCI: Single Frame, tamanho
+        for (uint8_t i = 0; i < plen && i < 7; i++)
             tx.data[1 + i] = payload[i];
     }
 

@@ -145,21 +145,23 @@ static void render(const SimulationState& s) {
 
 // ── Task FreeRTOS ─────────────────────────────────────────────
 
+static bool s_oled_ok = false;
+
 static void task_ui(void*) {
     Wire.begin(PIN_OLED_SDA, PIN_OLED_SCL);
     Wire.setClock(400000UL); // I2C Fast Mode 400kHz — reduz tempo de frame:
                              // 128×128 = 2048 bytes → ~41ms (vs ~164ms a 100kHz)
 
-    if (!oled.begin(OLED_I2C_ADDR, false)) {
+    s_oled_ok = oled.begin(OLED_I2C_ADDR, false);
+    if (!s_oled_ok) {
         // false = sem pino de reset (módulo 4-fios: VCC GND SCL SDA)
         Serial.println("[OLED] SH1107 não encontrado em 0x3C!");
+    } else {
+        oled.setRotation(0);
+        oled.setContrast(0xFF);
+        oled.clearDisplay();
+        oled.display();
     }
-    // Ajuste de rotação: 0=normal, 1=90°, 2=180°, 3=270°
-    // Mude para setRotation(1) se a imagem aparecer rotacionada
-    oled.setRotation(0);
-    oled.setContrast(0xFF);
-    oled.clearDisplay();
-    oled.display();
 
     btn_prev.attach(PIN_BTN_PREV,     INPUT_PULLUP); btn_prev.interval(BTN_DEBOUNCE_MS);
     btn_next.attach(PIN_BTN_NEXT,     INPUT_PULLUP); btn_next.interval(BTN_DEBOUNCE_MS);
@@ -239,7 +241,7 @@ static void task_ui(void*) {
                     || (snap_cursor != prev_cursor)
                     || (snap_edit   != prev_edit);
 
-        if (changed) {
+        if (changed && s_oled_ok) {
             render(snap);
             prev_snap   = snap;
             prev_cursor = snap_cursor;

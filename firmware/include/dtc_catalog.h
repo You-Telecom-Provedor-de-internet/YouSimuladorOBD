@@ -5,7 +5,7 @@
  * Define:
  *  - DtcEntry    : struct de um código de falha OBD2 com descrição em português
  *  - DtcScenario : conjunto de DTCs que simulam uma falha específica do veículo
- *  - DTC_CATALOG[]    : 75 códigos reais organizados por sistema
+ *  - DTC_CATALOG[]    : 70 códigos reais organizados por sistema
  *  - DTC_SCENARIOS[]  : 12 cenários prontos para uso imediato
  *
  * Como usar nos demais módulos:
@@ -546,10 +546,21 @@ static const uint8_t DTC_SCENARIO_COUNT =
 //  FUNÇÕES UTILITÁRIAS
 // ============================================================
 
-/** Busca DTC pelo código. Retorna nullptr se não encontrado. */
-inline const DtcEntry* findDtc(uint16_t code) {
+/** Converte DtcEntry para o código wire OBD2 (bits 15-14 = prefixo). */
+inline uint16_t dtcWireCode(const DtcEntry& e) {
+    uint16_t w = e.code;
+    switch (e.prefix) {
+        case 'C': w |= 0x4000; break;
+        case 'B': w |= 0x8000; break;
+        case 'U': w |= 0xC000; break;
+    }
+    return w;
+}
+
+/** Busca DTC pelo código wire (com prefixo). Retorna nullptr se não encontrado. */
+inline const DtcEntry* findDtc(uint16_t wireCode) {
     for (uint8_t i = 0; i < DTC_CATALOG_SIZE; i++)
-        if (DTC_CATALOG[i].code == code) return &DTC_CATALOG[i];
+        if (dtcWireCode(DTC_CATALOG[i]) == wireCode) return &DTC_CATALOG[i];
     return nullptr;
 }
 
