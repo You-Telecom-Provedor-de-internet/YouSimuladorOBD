@@ -76,6 +76,8 @@
   .card .val.warn{color:var(--red)}
   #proto-badge{font-size:.72rem;padding:4px 9px;border-radius:12px;font-weight:600;letter-spacing:.04em;background:#1a2a1a;color:var(--green);border:1px solid var(--green)}
   #proto-badge.kline{background:#2a1a00;color:#ffaa00;border-color:#ffaa00}
+  #bt-badge{font-size:.72rem;padding:4px 9px;border-radius:12px;font-weight:600;letter-spacing:.04em;background:#1a1a2a;color:var(--muted);border:1px solid var(--muted);transition:all .3s}
+  #bt-badge.on{background:#1a1a3a;color:#5588ff;border-color:#5588ff}
   .dtc-bank-card{grid-column:1/-1}
   .dtc-bank-card summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;user-select:none}
   .dtc-bank-card summary::-webkit-details-marker{display:none}
@@ -110,6 +112,7 @@
     <option value="6">KWP Fast</option>
   </select>
   <span id="proto-badge">CAN</span>
+  <span id="bt-badge" title="Bluetooth ELM327">BT</span>
   <div id="status-dot" title="WebSocket"></div>
 </header>
 
@@ -390,6 +393,11 @@ function update(d) {
   if (d.profile_id !== undefined) {
     const sel = document.getElementById('vehicle-sel');
     if (document.activeElement !== sel) sel.value = d.profile_id || '';
+  }
+  if (d.bt_connected !== undefined) {
+    const btb = document.getElementById('bt-badge');
+    btb.classList.toggle('on', d.bt_connected);
+    btb.title = d.bt_connected ? 'Bluetooth: conectado' : 'Bluetooth: aguardando';
   }
   if (d.sim_mode !== undefined) {
     for (let i = 0; i < 6; i++) {

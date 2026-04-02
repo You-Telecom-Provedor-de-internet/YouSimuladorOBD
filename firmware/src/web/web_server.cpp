@@ -1,6 +1,7 @@
 #include "web_server.h"
 #include "config.h"
 #include "vehicle_profiles.h"
+#include "elm327_bt.h"
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
@@ -65,6 +66,7 @@ static String stateToJson() {
     doc["vin"]        = s_state->vin;
     doc["profile_id"] = s_state->profile_id;
     doc["sim_mode"]   = (uint8_t)s_state->sim_mode;
+    doc["bt_connected"] = elm327_bt_connected();
     xSemaphoreGive(s_mutex);
     String out;
     serializeJson(doc, out);

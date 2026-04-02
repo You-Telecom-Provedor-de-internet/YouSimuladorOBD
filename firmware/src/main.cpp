@@ -13,6 +13,7 @@ void protocol_init(SimulationState* state, SemaphoreHandle_t mutex);
 void ui_init(SimulationState* state, SemaphoreHandle_t mutex);
 void web_init(SimulationState* state, SemaphoreHandle_t mutex);
 void dynamic_init(SimulationState* state, SemaphoreHandle_t mutex);
+void elm327_bt_init(SimulationState* state, SemaphoreHandle_t mutex);
 
 // ── Estado global (acessado por todas as tasks via mutex) ─────
 SimulationState  g_sim;
@@ -48,6 +49,7 @@ void setup() {
     ui_init      (&g_sim, g_sim_mutex);   // Core 1 — baixa prioridade
     web_init     (&g_sim, g_sim_mutex);   // Core 1 — Wi-Fi + WebServer
     dynamic_init (&g_sim, g_sim_mutex);   // Core 1 — motor dinâmico 100ms
+    elm327_bt_init(&g_sim, g_sim_mutex);  // Core 1 — Bluetooth ELM327
 
     Serial.println("[YouSimuladorOBD] Tasks iniciadas.");
 }

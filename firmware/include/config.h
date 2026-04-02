@@ -102,6 +102,12 @@ constexpr char STA_SUBNET[]     = "255.255.255.0";
 constexpr char STA_DNS1[]       = "192.168.1.1";
 constexpr char STA_DNS2[]       = "8.8.8.8";
 
+// ── Bluetooth Classic SPP (ELM327 emulator) ─────────────────
+constexpr char BT_DEVICE_NAME[] = "OBD-Simulator";   // nome visível ao parear
+constexpr char BT_PIN[]         = "1234";             // PIN padrão ELM327
+constexpr char ELM_VERSION[]    = "ELM327 v1.5";     // versão reportada pelo AT I / AT Z
+constexpr char ELM_DEVICE_DESC[]= "YouSimuladorOBD";  // AT @1
+
 // ── Geral ─────────────────────────────────────────────────────
 constexpr char MDNS_NAME[]   = "obdsim";     // → http://obdsim.local
 constexpr uint16_t WEB_PORT  = 80;
