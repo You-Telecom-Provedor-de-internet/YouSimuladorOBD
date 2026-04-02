@@ -74,8 +74,8 @@ struct DtcScenario {
     uint8_t     id;
     const char* name;              ///< Nome curto (display OLED / web)
     const char* description;       ///< Descrição detalhada do problema
-    uint8_t     dtc_count;         ///< Número de DTCs (máx 8)
-    uint16_t    dtcs[8];
+    uint8_t     dtc_count;         ///< Número de DTCs (máx 16)
+    uint16_t    dtcs[16];
     int16_t     rpm_delta;         ///< Variação de RPM (negativo = motor falhando)
     int8_t      temp_delta;        ///< Variação de temperatura em °C
     int8_t      throttle_delta;    ///< Variação na posição do acelerador em %
@@ -406,77 +406,77 @@ static const DtcEntry DTC_CATALOG[] = {
     // --------------------------------------------------------
     // Bxxxx – Carroceria (Airbag / SRS)
     // --------------------------------------------------------
-    {0xB001,'B',DtcSystem::BODY, DtcSeverity::CRITICO,
+    {0x0001,'B',DtcSystem::BODY, DtcSeverity::CRITICO,
      "Airbag Motorista - Resistencia Fora do Padrao",
      "Airbag do motorista com circuito aberto"},
 
-    {0xB002,'B',DtcSystem::BODY, DtcSeverity::CRITICO,
+    {0x0002,'B',DtcSystem::BODY, DtcSeverity::CRITICO,
      "Airbag Passageiro - Resistencia Fora do Padrao",
      "Airbag do passageiro com falha no circuito"},
 
-    {0xB010,'B',DtcSystem::BODY, DtcSeverity::CRITICO,
+    {0x0010,'B',DtcSystem::BODY, DtcSeverity::CRITICO,
      "Modulo SRS/Airbag - Falha Interna",
      "Modulo de airbag com defeito interno"},
 
-    {0xB011,'B',DtcSystem::BODY, DtcSeverity::GRAVE,
+    {0x0011,'B',DtcSystem::BODY, DtcSeverity::GRAVE,
      "Pre-Tensionador do Cinto - Motorista",
      "Pre-tensionador do cinto do motorista com falha"},
 
-    {0xB012,'B',DtcSystem::BODY, DtcSeverity::GRAVE,
+    {0x0012,'B',DtcSystem::BODY, DtcSeverity::GRAVE,
      "Pre-Tensionador do Cinto - Passageiro",
      "Pre-tensionador do cinto do passageiro com falha"},
 
     // --------------------------------------------------------
     // Cxxxx – Chassi (ABS / ESP)
     // --------------------------------------------------------
-    {0xC031,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
+    {0x0031,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
      "Sensor ABS Roda Dianteira Esquerda - Circuito",
      "Sensor ABS da roda DE com falha ou fiacao danificada"},
 
-    {0xC034,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
+    {0x0034,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
      "Sensor ABS Roda Dianteira Direita - Circuito",
      "Sensor ABS da roda DD com falha ou fiacao danificada"},
 
-    {0xC037,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
+    {0x0037,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
      "Sensor ABS Roda Traseira Esquerda - Circuito",
      "Sensor ABS da roda TE com falha ou fiacao danificada"},
 
-    {0xC040,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
+    {0x0040,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
      "Sensor ABS Roda Traseira Direita - Circuito",
      "Sensor ABS da roda TD com falha ou fiacao danificada"},
 
-    {0xC045,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
+    {0x0045,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
      "Modulo ABS - Falha Interna",
      "Modulo de controle do ABS com defeito"},
 
-    {0xC110,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
+    {0x0110,'C',DtcSystem::CHASSIS, DtcSeverity::GRAVE,
      "Bomba do ABS - Circuito",
      "Motor da bomba hidraulica do ABS com falha"},
 
     // --------------------------------------------------------
     // Uxxxx – Rede CAN / Comunicação
     // --------------------------------------------------------
-    {0xU001,'U',DtcSystem::NETWORK, DtcSeverity::GRAVE,
+    {0x0001,'U',DtcSystem::NETWORK, DtcSeverity::GRAVE,
      "Barramento CAN - Falha de Comunicacao",
      "CAN bus interrompido, terminador ausente ou modulo com falha"},
 
-    {0xU100,'U',DtcSystem::NETWORK, DtcSeverity::GRAVE,
+    {0x0100,'U',DtcSystem::NETWORK, DtcSeverity::GRAVE,
      "Perda de Comunicacao com ECM/PCM",
      "ECU principal nao responde na rede CAN"},
 
-    {0xU101,'U',DtcSystem::NETWORK, DtcSeverity::GRAVE,
+    {0x0101,'U',DtcSystem::NETWORK, DtcSeverity::GRAVE,
      "Perda de Comunicacao com TCM (Cambio)",
      "Modulo do cambio automatico nao responde"},
 
-    {0xU121,'U',DtcSystem::NETWORK, DtcSeverity::MODERADO,
+    {0x0121,'U',DtcSystem::NETWORK, DtcSeverity::MODERADO,
      "Perda de Comunicacao com Modulo ABS/ESC",
      "Modulo ABS/ESP nao responde na rede CAN"},
 
-    {0xU140,'U',DtcSystem::NETWORK, DtcSeverity::MODERADO,
+    {0x0140,'U',DtcSystem::NETWORK, DtcSeverity::MODERADO,
      "Perda de Comunicacao com BCM",
      "Modulo de carroceria sem comunicacao"},
 
-    {0xU155,'U',DtcSystem::NETWORK, DtcSeverity::LEVE,
+    {0x0155,'U',DtcSystem::NETWORK, DtcSeverity::LEVE,
      "Perda de Comunicacao com Painel de Instrumentos",
      "Cluster de instrumentos sem resposta na rede CAN"},
 };
@@ -504,7 +504,7 @@ static const DtcScenario DTC_SCENARIOS[] = {
 
     {0x04, "ABS - 4 Rodas",
      "Todos os sensores de velocidade de roda com falha simultanea. Indica problema no modulo ABS.",
-     4, {0xC031, 0xC034, 0xC037, 0xC040}, 0, 0, 0, true},
+     4, {0x4031, 0x4034, 0x4037, 0x4040}, 0, 0, 0, true},
 
     {0x05, "Cambio Automatico",
      "Transmissao com falha de comunicacao e relacao incorreta. Caixa pode travar em limp mode.",
@@ -512,11 +512,11 @@ static const DtcScenario DTC_SCENARIOS[] = {
 
     {0x06, "Airbag SRS Critico",
      "Sistema de airbag inoperante. Ambos os sacos com resistencia fora do padrao e modulo SRS com falha.",
-     3, {0xB001, 0xB002, 0xB010}, 0, 0, 0, true},
+     3, {0x8001, 0x8002, 0x8010}, 0, 0, 0, true},
 
     {0x07, "Rede CAN Offline",
      "Barramento CAN interrompido. ECU principal e modulo de cambio sem comunicacao.",
-     3, {0xU001, 0xU100, 0xU101}, 0, 0, 0, true},
+     3, {0xC001, 0xC100, 0xC101}, 0, 0, 0, true},
 
     {0x08, "MAF Defeituoso",
      "Fluximetro com circuito aberto causando mistura enriquecida e catalisador saturado.",
@@ -528,7 +528,7 @@ static const DtcScenario DTC_SCENARIOS[] = {
 
     {0x0A, "Bateria/Alternador",
      "Tensao do sistema abaixo de 11V. Alternador nao carrega a bateria. Risco de desligamento.",
-     2, {0x0562, 0xU001}, -100, 0, 0, true},
+     2, {0x0562, 0xC001}, -100, 0, 0, true},
 
     {0x0B, "Vazamento EVAP",
      "Vazamento detectado no sistema de vapores de combustivel. Tampa do tanque mal fechada.",
@@ -563,10 +563,10 @@ inline const DtcScenario* findScenario(uint8_t id) {
 /**
  * Converte DtcEntry para string OBD2 padrão (ex: P0171).
  * @param entry  DtcEntry válido
- * @param buf    Buffer destino — mínimo 6 bytes
+ * @param buf    Buffer destino — mínimo 7 bytes
  */
 inline void dtcToString(const DtcEntry& entry, char* buf) {
-    snprintf(buf, 6, "%c%02X%02X",
+    snprintf(buf, 7, "%c%02X%02X",
              entry.prefix,
              (entry.code >> 8) & 0xFF,
               entry.code        & 0xFF);

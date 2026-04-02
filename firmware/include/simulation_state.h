@@ -121,10 +121,10 @@ namespace Preset {
         // Base: marcha lenta com motor aquecido
         applyIdle(s);
 
-        // Aplica DTCs do cenário
+        // Aplica DTCs do cenário (ambos os arrays têm tamanho 16)
         s.dtc_count = sc->dtc_count;
         memset(s.dtcs, 0, sizeof(s.dtcs));
-        for (uint8_t i = 0; i < sc->dtc_count; i++)
+        for (uint8_t i = 0; i < sc->dtc_count && i < 16; i++)
             s.dtcs[i] = sc->dtcs[i];
 
         // Aplica deltas de parâmetros

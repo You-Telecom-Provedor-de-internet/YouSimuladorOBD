@@ -67,7 +67,7 @@ inline const char* protoName(uint8_t p) {
         case 4: return "ISO 9141-2";
         case 5: return "KWP 5-baud";
         case 6: return "KWP Fast";
-        default: return "???";
+        default: return "INVALID";
     }
 }
 
@@ -93,8 +93,9 @@ constexpr char AP_IP[]       = "192.168.4.1";
 
 // ── Modo STA — conecta na sua rede ───────────────────────────
 // Deixe STA_SSID vazio ("") para não tentar conectar (modo AP puro)
-constexpr char STA_SSID[]    = "You-Enzo-e-Eloise";
-constexpr char STA_PASSWORD[]= "cd1aamss";
+// NOTA: configure via interface web /api/wifi — não comite credenciais aqui.
+constexpr char STA_SSID[]    = "";
+constexpr char STA_PASSWORD[]= "";
 
 // IP fixo na sua rede 192.168.1.x
 // Mude STA_STATIC_IP para qualquer .x livre (evite .1 = roteador)

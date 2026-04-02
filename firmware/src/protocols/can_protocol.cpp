@@ -80,7 +80,7 @@ static void send_response(const OBDResponse& resp, uint8_t pid, bool extended) {
         uint8_t payload[7];
         payload[0] = resp.data[0]; // Mode+0x40
         payload[1] = pid;          // PID
-        for (uint8_t i = 1; i < resp.len && i < 6; i++)
+        for (uint8_t i = 1; i < resp.len && i < 7; i++)
             payload[i + 1] = resp.data[i];
 
         tx.data[0] = (resp.len + 1) & 0x0F; // N_PCI: Single Frame, tamanho
