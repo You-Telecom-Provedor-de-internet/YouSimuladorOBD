@@ -423,14 +423,15 @@ static void wifi_start() {
             Serial.printf("[WiFi] mDNS:         http://%s.local\n", MDNS_NAME);
         } else {
             Serial.println("[WiFi] Falha na conexao STA — iniciando AP...");
+            WiFi.disconnect(true);   // para tentativa STA pendente
+            vTaskDelay(pdMS_TO_TICKS(200));  // deixa driver estabilizar
         }
     }
 
     // AP: sempre sobe se modo AP, AP+STA, ou se STA falhou
     if (mode == CFG_WIFI_AP || mode == CFG_WIFI_AP_STA || !sta_ok) {
-        // Mantém AP+STA (não AP puro) para que o rádio STA fique ativo e o
-        // scan de redes funcione mesmo sem conexão STA estabelecida.
-        if (mode == CFG_WIFI_STA && !sta_ok) WiFi.mode(WIFI_AP_STA);
+        // Sempre AP+STA para que scan de redes funcione
+        WiFi.mode(WIFI_AP_STA);
         WiFi.softAP(AP_SSID, AP_PASSWORD);
         Serial.printf("[WiFi] AP: '%s'  senha: '%s'  IP: http://%s\n",
                       AP_SSID, AP_PASSWORD, WiFi.softAPIP().toString().c_str());
