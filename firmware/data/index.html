@@ -41,6 +41,15 @@
   .modes button:hover{border-color:var(--accent);color:var(--accent)}
   .modes button.mode-active{background:#0a2040;color:var(--accent);border-color:var(--accent);font-weight:700}
   .modes button.mode-active.mode-fault{background:#2a0a0a;color:var(--red);border-color:var(--red)}
+  .scenario-card{grid-column:1/-1}
+  .scenario-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .scenario-header label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+  .sc-clear-btn{background:transparent;color:var(--muted);border:1px solid #3a3d4a;padding:4px 10px;font-size:.75rem;border-radius:6px;cursor:pointer}
+  .sc-clear-btn:hover{border-color:var(--red);color:var(--red)}
+  .scenario-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+  .sc-btn{background:#1e2130;color:#ff8888;border:1px solid #3a1a1a;border-radius:8px;padding:9px 6px;font-size:.8rem;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s;text-align:center;line-height:1.3}
+  .sc-btn:hover{background:#2a1a1a;border-color:#ff4444}
+  .sc-btn.sc-active{background:#2a0a0a;border-color:var(--red);color:var(--red);box-shadow:0 0 8px #ff000033}
   .wifi-card{grid-column:1/-1}
   .wifi-card summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;user-select:none}
   .wifi-card summary::-webkit-details-marker{display:none}
@@ -281,6 +290,29 @@
     <button class="secondary" onclick="preset('catalyst_fail')">Falha Catalis.</button>
   </div>
 
+  <!-- Cenários de Falha -->
+  <div class="card scenario-card">
+    <div class="scenario-header">
+      <label>&#9888; Cenários de Falha</label>
+      <button class="sc-clear-btn" onclick="applyScenario(0)">&#10006; Limpar</button>
+    </div>
+    <div class="scenario-grid">
+      <button class="sc-btn" data-id="1"  onclick="applyScenario(1)"  title="Sensor O2 B1S1 com resposta lenta">&#128308; Lambda</button>
+      <button class="sc-btn" data-id="2"  onclick="applyScenario(2)"  title="Motor falhando em todos os cilindros">&#128308; Combustão Total</button>
+      <button class="sc-btn" data-id="3"  onclick="applyScenario(3)"  title="Catalisador com eficiência reduzida">&#128308; Catalisador</button>
+      <button class="sc-btn" data-id="4"  onclick="applyScenario(4)"  title="Todos os sensores de roda com falha">&#128308; ABS 4 Rodas</button>
+      <button class="sc-btn" data-id="5"  onclick="applyScenario(5)"  title="Transmissão em limp mode">&#128308; Câmbio Auto.</button>
+      <button class="sc-btn" data-id="6"  onclick="applyScenario(6)"  title="Sistema de airbag inoperante">&#128308; Airbag SRS</button>
+      <button class="sc-btn" data-id="7"  onclick="applyScenario(7)"  title="Barramento CAN interrompido">&#128308; Rede CAN</button>
+      <button class="sc-btn" data-id="8"  onclick="applyScenario(8)"  title="Fluxímetro com circuito aberto">&#128308; MAF Defeituoso</button>
+      <button class="sc-btn" data-id="9"  onclick="applyScenario(9)"  title="Injetores 1 e 3 com circuito aberto">&#128308; Injetores 1&3</button>
+      <button class="sc-btn" data-id="10" onclick="applyScenario(10)" title="Tensão abaixo de 11V">&#128308; Bateria/Altern.</button>
+      <button class="sc-btn" data-id="11" onclick="applyScenario(11)" title="Vazamento no sistema EVAP">&#128308; Vazam. EVAP</button>
+      <button class="sc-btn" data-id="12" onclick="applyScenario(12)" title="ECU com falha interna crítica">&#128308; ECU Crítica</button>
+    </div>
+    <div id="scenario-info" style="font-size:.78rem;color:var(--muted);margin-top:8px;min-height:18px"></div>
+  </div>
+
   <!-- Modo Dinâmico -->
   <div class="card mode-card">
     <label>Modo de Simulação</label>
@@ -410,6 +442,7 @@ function update(d) {
       if (btn) btn.classList.toggle('mode-active', i === d.sim_mode);
     }
   }
+  if (d.active_scenario !== undefined) syncScenario(d.active_scenario);
   // ── Alertas visuais ───────────────────────────────────────────
   setWarn('v-cool', d.coolant_temp > 108 || d.coolant_temp < 0);
   setWarn('v-oil',  d.oil_temp     > 110 || d.oil_temp     < 0);
@@ -445,7 +478,18 @@ function renderDtcs(dtcs) {
   });
   if (!dtcs.length) el.innerHTML = '<span style="color:var(--muted);font-size:.8rem">Sem DTCs ativos</span>';
   const bank = document.getElementById('dtc-bank-panel');
-  if (bank) bank.toggleAttribute('data-full', dtcs.length >= 8);
+  if (bank) bank.toggleAttribute('data-full', dtcs.length >= 16);
+}
+
+function syncScenario(activeId) {
+  document.querySelectorAll('.sc-btn').forEach(b => {
+    b.classList.toggle('sc-active', +b.dataset.id === activeId && activeId !== 0);
+  });
+  const info = document.getElementById('scenario-info');
+  if (info && activeId !== 0) {
+    const names = {1:'Lambda Defeituoso',2:'Falha Combustão Total',3:'Catalisador Saturado',4:'ABS 4 Rodas',5:'Câmbio Automático',6:'Airbag SRS Crítico',7:'Rede CAN Offline',8:'MAF Defeituoso',9:'Injetores 1 e 3',10:'Bateria/Alternador',11:'Vazamento EVAP',12:'ECU Crítica'};
+    info.textContent = '▶ Cenário ativo: ' + (names[activeId] || '#'+activeId);
+  } else if (info) { info.textContent = ''; }
 }
 
 function send(key, val) {
@@ -461,6 +505,17 @@ function setProtocol(id) {
 function preset(name) {
   if (ws && ws.readyState === 1)
     ws.send(JSON.stringify({type:'preset', name}));
+}
+
+function applyScenario(id) {
+  if (ws && ws.readyState === 1)
+    ws.send(JSON.stringify({type:'scenario', id: +id}));
+  // Destaca o botão ativo
+  document.querySelectorAll('.sc-btn').forEach(b => b.classList.remove('sc-active'));
+  if (id !== 0) {
+    const btn = document.querySelector(`.sc-btn[data-id="${id}"]`);
+    if (btn) btn.classList.add('sc-active');
+  }
 }
 
 function setMode(id) {

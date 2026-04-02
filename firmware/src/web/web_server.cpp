@@ -1,6 +1,7 @@
 #include "web_server.h"
 #include "config.h"
 #include "vehicle_profiles.h"
+#include "dtc_catalog.h"
 #include "elm327_bt.h"
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
@@ -63,10 +64,11 @@ static String stateToJson() {
         dtcValToStr(s_state->dtcs[i], buf, sizeof(buf));
         dtcArr.add(buf);
     }
-    doc["vin"]        = s_state->vin;
-    doc["profile_id"] = s_state->profile_id;
-    doc["sim_mode"]   = (uint8_t)s_state->sim_mode;
-    doc["bt_connected"] = elm327_bt_connected();
+    doc["vin"]             = s_state->vin;
+    doc["profile_id"]      = s_state->profile_id;
+    doc["sim_mode"]        = (uint8_t)s_state->sim_mode;
+    doc["active_scenario"] = s_state->active_scenario;
+    doc["bt_connected"]    = elm327_bt_connected();
     xSemaphoreGive(s_mutex);
     String out;
     serializeJson(doc, out);
@@ -134,7 +136,7 @@ static void handle_add_dtc(AsyncWebServerRequest* req, uint8_t* data, size_t len
     if (strlen(code) < 5) { req->send(400); return; }
     uint16_t val = dtcStrToVal(code);
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (s_state->dtc_count < 8) s_state->dtcs[s_state->dtc_count++] = val;
+    if (s_state->dtc_count < 16) s_state->dtcs[s_state->dtc_count++] = val;
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
 }
@@ -409,6 +411,58 @@ static void handle_post_reboot(AsyncWebServerRequest* req) {
                 "t_reboot2", 2048, nullptr, 1, nullptr);
 }
 
+// ── Cenários de Falha ─────────────────────────────────────────
+
+// GET /api/scenarios — lista todos os cenários disponíveis
+static void handle_get_scenarios(AsyncWebServerRequest* req) {
+    JsonDocument doc;
+    JsonArray arr = doc.to<JsonArray>();
+    for (uint8_t i = 0; i < DTC_SCENARIO_COUNT; i++) {
+        const DtcScenario& sc = DTC_SCENARIOS[i];
+        JsonObject obj = arr.add<JsonObject>();
+        obj["id"]          = sc.id;
+        obj["name"]        = sc.name;
+        obj["description"] = sc.description;
+        obj["dtc_count"]   = sc.dtc_count;
+        obj["mil_on"]      = sc.mil_on;
+        JsonArray codes = obj["dtcs"].to<JsonArray>();
+        for (uint8_t j = 0; j < sc.dtc_count; j++) {
+            char buf[6];
+            // Reutiliza dtcValToStr para formatar corretamente
+            dtcValToStr(sc.dtcs[j], buf, sizeof(buf));
+            codes.add(buf);
+        }
+    }
+    String out; serializeJson(doc, out);
+    req->send(200, "application/json", out);
+}
+
+// POST /api/scenario — aplica cenário pelo ID
+// Body: {"id": 1}  ou  {"id": 0} para limpar
+static void handle_post_scenario(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+    JsonDocument doc;
+    if (deserializeJson(doc, data, len)) { req->send(400); return; }
+    uint8_t id = doc["id"] | 0;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    bool ok = false;
+    if (id == 0) {
+        Preset::clearScenario(*s_state);
+        ok = true;
+    } else {
+        ok = Preset::applyScenario(*s_state, id);
+    }
+    xSemaphoreGive(s_mutex);
+    if (!ok) {
+        req->send(404, "application/json", "{\"error\":\"scenario not found\"}");
+        return;
+    }
+    const DtcScenario* sc = findScenario(id);
+    String resp = "{\"ok\":true";
+    if (sc) resp += ",\"name\":\"" + String(sc->name) + "\"";
+    resp += "}";
+    req->send(200, "application/json", resp);
+}
+
 static void handle_get_profiles(AsyncWebServerRequest* req) {
     JsonDocument doc;
     JsonArray arr = doc.to<JsonArray>();
@@ -477,6 +531,10 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
             else if (!strcmp(name, "fullthrottle"))  Preset::applyFullThrottle(*s_state);
             else if (!strcmp(name, "overheat"))      Preset::applyOverheat(*s_state);
             else if (!strcmp(name, "catalyst_fail")) Preset::applyCatalystFail(*s_state);
+        } else if (!strcmp(t, "scenario")) {
+            uint8_t sid = doc["id"] | 0;
+            if (sid == 0) Preset::clearScenario(*s_state);
+            else          Preset::applyScenario(*s_state, sid);
         } else if (!strcmp(t, "profile")) {
             const char* pid = doc["id"] | "";
             const VehicleProfile* p = findProfile(pid);
@@ -624,9 +682,12 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
         nullptr, handle_post_preset);
     server.on("/api/mode",     HTTP_POST, [](AsyncWebServerRequest*){},
         nullptr, handle_post_mode);
-    server.on("/api/profiles", HTTP_GET,  handle_get_profiles);
-    server.on("/api/profile",  HTTP_POST, [](AsyncWebServerRequest*){},
+    server.on("/api/profiles",  HTTP_GET,  handle_get_profiles);
+    server.on("/api/profile",   HTTP_POST, [](AsyncWebServerRequest*){},
         nullptr, handle_post_profile);
+    server.on("/api/scenarios", HTTP_GET,  handle_get_scenarios);
+    server.on("/api/scenario",  HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_scenario);
     // ⚠️ Registrar /api/wifi/scan ANTES de /api/wifi para evitar prefix-match
     server.on("/api/wifi/scan", HTTP_POST,
         [](AsyncWebServerRequest* r){ handle_post_wifi_scan(r); });
