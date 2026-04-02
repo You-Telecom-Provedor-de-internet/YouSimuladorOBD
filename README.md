@@ -34,7 +34,7 @@ Emulador/simulador OBD-II baseado em ESP32 (38 pinos) capaz de responder a scann
 ## Conectividade Wi-Fi e Web
 
 - **Modo AP:** ESP32 cria rede `OBD-Simulator` → acessa `http://192.168.4.1`
-- **Modo STA:** conecta ao roteador → acessa `http://obdsim.local`
+- **Modo STA:** conecta ao roteador → acessa `http://youobd.local`
 - **Interface web:** sliders em tempo real para todos os 12 parâmetros
 - **WebSocket:** atualização bidirecional a cada 500ms
 - **API REST:** controle completo via JSON (`/api/params`, `/api/protocol`, `/api/dtcs`)

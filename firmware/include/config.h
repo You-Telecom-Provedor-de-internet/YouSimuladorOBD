@@ -93,25 +93,26 @@ constexpr char AP_IP[]       = "192.168.4.1";
 
 // ── Modo STA — conecta na sua rede ───────────────────────────
 // Deixe STA_SSID vazio ("") para não tentar conectar (modo AP puro)
-constexpr char STA_SSID[]    = "You-Enzo-e-Eloise";
+constexpr char STA_SSID[]    = "YOU_AUTO_CAR_2.4";
 constexpr char STA_PASSWORD[]= "cd1aamss";
 
 // IP fixo na sua rede 192.168.1.x
 // Mude STA_STATIC_IP para qualquer .x livre (evite .1 = roteador)
-constexpr char STA_STATIC_IP[]  = "192.168.1.150";
-constexpr char STA_GATEWAY[]    = "192.168.1.1";
-constexpr char STA_SUBNET[]     = "255.255.255.0";
-constexpr char STA_DNS1[]       = "192.168.1.1";
-constexpr char STA_DNS2[]       = "8.8.8.8";
+constexpr char STA_STATIC_IP[]  = "";
+constexpr char STA_GATEWAY[]    = "";
+constexpr char STA_SUBNET[]     = "";
+constexpr char STA_DNS1[]       = "";
+constexpr char STA_DNS2[]       = "";
 
 // ── Bluetooth Classic SPP (ELM327 emulator) ─────────────────
+constexpr bool ENABLE_BT_SPP    = false;
 constexpr char BT_DEVICE_NAME[] = "OBD-Simulator";   // nome visível ao parear
 constexpr char BT_PIN[]         = "1234";             // PIN padrão ELM327
 constexpr char ELM_VERSION[]    = "ELM327 v1.5";     // versão reportada pelo AT I / AT Z
 constexpr char ELM_DEVICE_DESC[]= "YouSimuladorOBD";  // AT @1
 
 // ── Geral ─────────────────────────────────────────────────────
-constexpr char MDNS_NAME[]   = "obdsim";     // → http://obdsim.local
+constexpr char MDNS_NAME[]   = "youobd";     // → http://youobd.local
 constexpr uint16_t WEB_PORT  = 80;
 constexpr uint32_t WS_BROADCAST_MS = 500;    // intervalo broadcast WebSocket
 

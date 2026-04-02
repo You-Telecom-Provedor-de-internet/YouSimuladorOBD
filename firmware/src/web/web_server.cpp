@@ -8,6 +8,7 @@
 #include <LittleFS.h>
 #include <ESPmDNS.h>
 #include <Preferences.h>
+#include "esp_wifi.h"
 
 // ════════════════════════════════════════════════════════════
 //  Wi-Fi + AsyncWebServer + WebSocket + REST API
@@ -205,6 +206,35 @@ static NetConfig  s_nets[MAX_WIFI_NETS];
 static uint8_t    s_net_count = 0;
 static String     s_connected_ssid;
 
+static NetConfig default_wifi_net() {
+    return { STA_SSID, STA_PASSWORD, STA_STATIC_IP, STA_GATEWAY };
+}
+
+static int find_saved_net_index(const String& ssid) {
+    for (uint8_t i = 0; i < s_net_count; i++) {
+        if (s_nets[i].ssid == ssid) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static void upsert_wifi_net(const NetConfig& net) {
+    if (net.ssid.isEmpty()) {
+        return;
+    }
+
+    int idx = find_saved_net_index(net.ssid);
+    if (idx < 0) {
+        if (s_net_count >= MAX_WIFI_NETS) {
+            return;
+        }
+        idx = s_net_count++;
+    }
+
+    s_nets[idx] = net;
+}
+
 static void load_wifi_nets() {
     Preferences prefs;
     prefs.begin("wifi", true);
@@ -290,6 +320,27 @@ static bool try_connect(const NetConfig& net) {
     return false;
 }
 
+static void start_access_point() {
+    IPAddress ap_ip, ap_gw, ap_subnet;
+    if (ap_ip.fromString(AP_IP)) {
+        ap_gw = ap_ip;
+        ap_subnet.fromString("255.255.255.0");
+        WiFi.softAPConfig(ap_ip, ap_gw, ap_subnet);
+    }
+
+    WiFi.softAP(AP_SSID, AP_PASSWORD, 6);
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    wifi_config_t ap_cfg = {};
+    esp_wifi_get_config(WIFI_IF_AP, &ap_cfg);
+    ap_cfg.ap.authmode        = WIFI_AUTH_WPA2_PSK;
+    ap_cfg.ap.pairwise_cipher = WIFI_CIPHER_TYPE_CCMP;
+    esp_wifi_set_config(WIFI_IF_AP, &ap_cfg);
+
+    Serial.printf("[WiFi] AP: '%s'  senha: '%s'  IP: http://%s\n",
+                  AP_SSID, AP_PASSWORD, WiFi.softAPIP().toString().c_str());
+}
+
 // ── Wi-Fi Scan ────────────────────────────────────────────────
 
 static volatile bool s_scan_busy   = false;
@@ -336,6 +387,7 @@ static void handle_get_wifi_scan(AsyncWebServerRequest* req) {
 // ── Wi-Fi REST handlers ──────────────────────────────────────
 
 static void handle_get_wifi(AsyncWebServerRequest* req) {
+    Serial.println("[HTTP] GET /api/wifi");
     JsonDocument doc;
     doc["connected"]  = (WiFi.status() == WL_CONNECTED);
     doc["current_ssid"] = s_connected_ssid;
@@ -351,6 +403,7 @@ static void handle_get_wifi(AsyncWebServerRequest* req) {
         obj["gw"]   = s_nets[i].gw;
     }
     String out; serializeJson(doc, out);
+    Serial.printf("[HTTP] /api/wifi json len:%u\n", out.length());
     req->send(200, "application/json", out);
 }
 
@@ -510,6 +563,13 @@ static void task_ws_broadcast(void*) {
 
 static void wifi_start() {
     load_wifi_nets();
+    NetConfig factory_net = default_wifi_net();
+    int factory_idx = factory_net.ssid.length() > 0
+        ? find_saved_net_index(factory_net.ssid)
+        : -1;
+    bool prefer_factory_net = factory_net.ssid.length() > 0
+        && (factory_idx < 0
+            || (factory_net.ip.length() == 0 && factory_idx >= 0 && s_nets[factory_idx].ip.length() > 0));
 
     Serial.printf("[WiFi] %d rede(s) salva(s)\n", s_net_count);
     for (uint8_t i = 0; i < s_net_count; i++)
@@ -520,11 +580,22 @@ static void wifi_start() {
 
     if (s_net_count > 0) {
         WiFi.mode(WIFI_STA);
+        WiFi.setAutoReconnect(true);
+        WiFi.setHostname(MDNS_NAME);
+
+        if (prefer_factory_net) {
+            Serial.println("[WiFi] Tentando configuracao padrao antes das redes salvas...");
+            sta_ok = try_connect(factory_net);
+            if (sta_ok) {
+                upsert_wifi_net(factory_net);
+            }
+        }
 
         // Scan rápido para ver quais redes estão no ar
-        Serial.println("[WiFi] Escaneando redes...");
-        int16_t n = WiFi.scanNetworks(false, true);
-        Serial.printf("[WiFi] %d redes encontradas\n", n);
+        if (!sta_ok) {
+            Serial.println("[WiFi] Escaneando redes...");
+            int16_t n = WiFi.scanNetworks(false, true);
+            Serial.printf("[WiFi] %d redes encontradas\n", n);
 
         // Ordena matches por RSSI (melhor sinal primeiro)
         struct Match { uint8_t net_idx; int32_t rssi; };
@@ -559,10 +630,11 @@ static void wifi_start() {
         }
 
         // Se scan não encontrou nenhuma rede salva, tenta cada uma cegamente
-        if (!sta_ok && match_count == 0) {
-            Serial.println("[WiFi] Nenhuma rede conhecida no scan, tentando cada uma...");
-            for (uint8_t i = 0; i < s_net_count && !sta_ok; i++) {
-                sta_ok = try_connect(s_nets[i]);
+            if (!sta_ok && match_count == 0) {
+                Serial.println("[WiFi] Nenhuma rede conhecida no scan, tentando cada uma...");
+                for (uint8_t i = 0; i < s_net_count && !sta_ok; i++) {
+                    sta_ok = try_connect(s_nets[i]);
+                }
             }
         }
     }
@@ -576,11 +648,11 @@ static void wifi_start() {
     if (!sta_ok) {
         Serial.println("[WiFi] Nenhuma rede conectou — iniciando AP...");
         WiFi.disconnect(true);
-        vTaskDelay(pdMS_TO_TICKS(200));
-        WiFi.mode(WIFI_AP_STA);
-        WiFi.softAP(AP_SSID, AP_PASSWORD);
-        Serial.printf("[WiFi] AP: '%s'  senha: '%s'  IP: http://%s\n",
-                      AP_SSID, AP_PASSWORD, WiFi.softAPIP().toString().c_str());
+        WiFi.mode(WIFI_OFF);
+        vTaskDelay(pdMS_TO_TICKS(500));
+        WiFi.mode(WIFI_AP);
+        vTaskDelay(pdMS_TO_TICKS(100));
+        start_access_point();
     }
 
     if (MDNS.begin(MDNS_NAME)) {
@@ -600,6 +672,10 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     // LittleFS — serve index.html da flash
     if (!LittleFS.begin(true)) {
         Serial.println("[LittleFS] Mount falhou!");
+    } else if (!LittleFS.exists("/index.html")) {
+        Serial.println("[LittleFS] /index.html nao encontrado");
+    } else {
+        Serial.println("[LittleFS] /index.html pronto para servir");
     }
 
     // WebSocket
@@ -638,7 +714,12 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
         nullptr, handle_post_wifi);
     server.on("/api/reboot",   HTTP_POST,
         [](AsyncWebServerRequest* r){ handle_post_reboot(r); });
-
+    server.on("/ping", HTTP_GET, [](AsyncWebServerRequest* req) {
+        req->send(200, "text/plain", "pong");
+    });
+    server.on("/ping-json", HTTP_GET, [](AsyncWebServerRequest* req) {
+        req->send(200, "application/json", "{\"ok\":true}");
+    });
     // Serve arquivos do LittleFS (UI web)
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
 

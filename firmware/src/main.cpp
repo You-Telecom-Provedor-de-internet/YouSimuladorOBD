@@ -49,7 +49,11 @@ void setup() {
     ui_init      (&g_sim, g_sim_mutex);   // Core 1 — baixa prioridade
     web_init     (&g_sim, g_sim_mutex);   // Core 1 — Wi-Fi + WebServer
     dynamic_init (&g_sim, g_sim_mutex);   // Core 1 — motor dinâmico 100ms
-    elm327_bt_init(&g_sim, g_sim_mutex);  // Core 1 — Bluetooth ELM327
+    if (ENABLE_BT_SPP) {
+        elm327_bt_init(&g_sim, g_sim_mutex);  // Core 1 — Bluetooth ELM327
+    } else {
+        Serial.println("[BT] Desabilitado para priorizar Wi-Fi/Web");
+    }
 
     Serial.println("[YouSimuladorOBD] Tasks iniciadas.");
 }
