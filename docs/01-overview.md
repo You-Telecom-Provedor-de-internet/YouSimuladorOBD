@@ -8,6 +8,7 @@ O YouSimuladorOBD é um emulador OBD-II que, conectado a um scanner automotivo o
 - Validar aplicativos de diagnóstico veicular
 - Demonstrar e ensinar protocolos automotivos
 - Simular condições de falha (DTCs) de forma controlada
+- Simular comportamento dinâmico realista (marcha lenta, trânsito urbano, rodovia, cold start, falhas)
 
 ---
 
@@ -63,6 +64,14 @@ O YouSimuladorOBD é um emulador OBD-II que, conectado a um scanner automotivo o
 4. CONTROLE DO USUÁRIO
    └─ Botões / encoder ajustam valores dos parâmetros em tempo real
       └─ Display OLED exibe valores atuais e protocolo ativo
+
+5. SIMULAÇÃO DINÂMICA (opcional)
+   └─ Motor de física atualiza parâmetros a cada 100ms
+      ├─ IDLE: marcha lenta com microoscilações
+      ├─ URBAN: stop & go com aceleração/frenagem realista
+      ├─ HIGHWAY: cruzeiro 110 km/h com ultrapassagens
+      ├─ WARMUP: cold start 20°C→90°C em ~3 min
+      └─ FAULT: falha de ignição P0300/P0301/P0304
 ```
 
 ---
@@ -72,7 +81,8 @@ O YouSimuladorOBD é um emulador OBD-II que, conectado a um scanner automotivo o
 ```
 ┌─────────────────────────────────────────────────────┐
 │                   CAMADA DE APLICAÇÃO                │
-│  SimulationManager — mantém estado dos 12 parâmetros│
+│  SimulationManager — mantém estado dos 16 parâmetros│
+│  DynamicEngine     — física de motor (6 modos)      │
 │  DTCManager        — gerencia lista de DTCs ativos  │
 │  VINManager        — gerencia número de quadro      │
 └──────────────────────────┬──────────────────────────┘

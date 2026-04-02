@@ -341,16 +341,22 @@ Se há 2 DTCs (P0300 e P0171):
 
 ### DTCs Disponíveis para Simulação
 
-| Código | Descrição |
-|--------|-----------|
-| P0100 | Circuito MAF — falha |
-| P0171 | Mistura muito pobre — Banco 1 |
-| P0300 | Falha de ignição aleatória |
-| P0301 | Falha cilindro 1 |
-| P0420 | Eficiência catalisador abaixo do limiar |
-| P0500 | Sensor de velocidade — falha |
-| P0505 | Sistema de controle de marcha lenta |
-| P0700 | Falha no sistema de transmissão |
+O simulador inclui um banco de **140 DTCs** com descrições em português, cobrindo todos os sistemas OBD-II:
+
+| Categoria | Qtd | Exemplos |
+|-----------|-----|----------|
+| P01xx — Sensores comb./ar | 39 | P0100 (MAF), P0130 (O2), P0171 (mistura pobre) |
+| P02xx — Injeção | 8 | P0201 (injetor cil. 1), P0230 (bomba) |
+| P03xx — Ignição/falhas | 21 | P0300 (misfire), P0335 (CKP), P0351 (bobina) |
+| P04xx — Emissões | 17 | P0420 (catalisador), P0440 (EVAP), P0401 (EGR) |
+| P05xx — Velocidade/elétrico | 15 | P0500 (VSS), P0505 (marcha lenta), P0562 (tensão) |
+| P06xx — ECU | 8 | P0600 (serial), P0606 (processador) |
+| P07xx — Transmissão | 13 | P0700 (falha geral), P0730 (relação incorreta) |
+| Bxxxx — Carroceria | 6 | B0001 (airbag), B1600 (transponder) |
+| Cxxxx — Chassi/ABS | 7 | C0031 (sensor roda), C0265 (relé ABS) |
+| Uxxxx — Rede | 6 | U0001 (CAN), U0100 (com. ECM perdida) |
+
+A codificação suporta os 4 prefixos OBD-II (P, C, B, U). Ver seção "Formato DTC" acima para o encoding de 2 bytes.
 
 ---
 

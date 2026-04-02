@@ -39,7 +39,8 @@ firmware/
 │   │   └── mode09_handler.cpp/h   # VIN e info do veículo
 │   │
 │   ├── simulation/
-│   │   ├── simulation_manager.cpp/h  # Estado central dos 12 parâmetros
+│   │   ├── simulation_manager.cpp/h  # Estado central dos 16 parâmetros
+│   │   ├── dynamic_engine.cpp/h      # Motor de física dinâmica (6 modos)
 │   │   └── dtc_manager.cpp/h         # Gerenciamento de DTCs
 │   │
 │   └── ui/
@@ -65,6 +66,8 @@ firmware/
 │ task_kline     │ Core 0   │ Alta (10) │ UART K-Line handler  │
 │ task_ui        │ Core 1   │ Baixa (3) │ Botões, display      │
 │ task_sim       │ Core 1   │ Media (5) │ Atualiza parâmetros  │
+│ dyn_engine     │ Core 1   │ Baixa (1) │ Motor dinâmico 10 Hz │
+│ task_ws        │ Core 1   │ Media (3) │ Broadcast WebSocket  │
 └────────────────┴──────────┴───────────┴──────────────────────┘
 
 Comunicação entre tasks:
@@ -82,7 +85,7 @@ Comunicação entre tasks:
 // simulation_state.h
 
 struct SimulationState {
-    // Parâmetros simulados
+    // Parâmetros simulados (16 total)
     uint16_t rpm;               // 0–16000 RPM
     uint8_t  speed_kmh;         // 0–255 km/h
     int16_t  coolant_temp_c;    // -40 a +215 °C
@@ -93,16 +96,21 @@ struct SimulationState {
     float    ignition_advance;  // -64.0 a +63.5 °
     uint8_t  engine_load_pct;   // 0–100 %
     uint8_t  fuel_level_pct;    // 0–100 %
+    float    battery_voltage;   // 0.0–65.5 V
+    int16_t  oil_temp_c;        // -40 a +210 °C
+    float    stft_pct;          // -30 a +30 %
+    float    ltft_pct;          // -30 a +30 %
 
     // DTCs
     uint8_t  dtc_count;
-    uint16_t dtcs[8];           // lista de DTCs (2 bytes cada)
+    uint16_t dtcs[8];           // lista de DTCs (2 bytes cada, encoding P/C/B/U)
 
     // VIN
     char vin[18];               // 17 chars + null terminator
 
-    // Estado do protocolo
+    // Estado do protocolo e simulação
     uint8_t  active_protocol;   // 0–6
+    SimMode  sim_mode;          // STATIC, IDLE, URBAN, HIGHWAY, WARMUP, FAULT
 };
 ```
 
