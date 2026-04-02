@@ -39,8 +39,10 @@ Emulador/simulador OBD-II baseado em ESP32 (38 pinos), capaz de responder a scan
 - WebSocket para atualizacao em tempo real
 - API REST para controle e configuracao
 - OTA web para firmware e filesystem em `/ota.html`
+- configuracao persistente em NVS para hostname, manifest OTA e credenciais web/OTA
+- checagem automatica do manifest OTA sem atualizar sozinha
 
-Credenciais web/OTA atuais:
+Credenciais web/OTA de fabrica:
 
 ```text
 Usuario: admin
@@ -49,7 +51,21 @@ Senha: obd12345
 
 ## OTA
 
-O projeto suporta OTA web no proprio ESP32.
+O projeto suporta OTA web no proprio ESP32, tanto por upload manual quanto por download remoto via manifest.
+
+No modo comercial/campo, a pagina `/ota.html` tambem permite salvar:
+
+- hostname mDNS do equipamento
+- URL padrao do `manifest.json`
+- usuario e senha da interface web/OTA
+- intervalo da checagem automatica de update
+
+Essas configuracoes ficam persistidas na NVS e sobrevivem a reboot.
+
+Importante:
+
+- este repositorio documenta apenas o OTA do `YouSimuladorOBD`
+- o `YouAutoTester` tera trilha OTA separada e nao deve compartilhar `manifest.json` ou binarios com este projeto
 
 Pagina de update:
 
@@ -58,10 +74,22 @@ http://youobd.local/ota.html
 http://<ip-do-esp>/ota.html
 ```
 
-Arquivos usados:
+Arquivos usados no modo manual:
 
 - firmware: `.pio/build/esp32dev/firmware.bin`
 - filesystem: `.pio/build/esp32dev/littlefs.bin`
+
+Fluxo online:
+
+- manifest padrao do firmware: `https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json`
+- informe uma URL de `manifest.json` na pagina `/ota.html`
+- use `Verificar online` para consultar a release
+- use `Baixar firmware` ou `Baixar filesystem` para o ESP32 buscar o `.bin` sozinho
+- se a checagem automatica estiver ligada, o ESP32 consulta esse manifest periodicamente, mas nao atualiza sem comando
+
+Exemplo de manifest:
+
+- [Manifest Exemplo](docs/ota-manifest.example.json)
 
 ## Bluetooth
 
@@ -112,4 +140,7 @@ Validado em hardware:
 - autenticacao funcionando
 - OTA de firmware funcionando
 - OTA de filesystem funcionando
+- OTA online por manifest funcionando
+- persistencia de hostname/manifest/credenciais via NVS
+- checagem automatica de versao OTA funcionando
 - Bluetooth desativado por padrao para manter estabilidade da rede

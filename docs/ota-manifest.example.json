@@ -1,0 +1,14 @@
+{
+  "version": "2026.04.03",
+  "notes": "Release de exemplo para OTA online",
+  "firmware": {
+    "url": "https://app2.youtelecom.com.br/updates/yousimuladorobd/yousimuladorobd-firmware-2026.04.03.bin",
+    "md5": "21ec36332fb68787f89b633ea499df12",
+    "size": 1931696
+  },
+  "filesystem": {
+    "url": "https://app2.youtelecom.com.br/updates/yousimuladorobd/yousimuladorobd-littlefs-2026.04.03.bin",
+    "md5": "d3ad9a3b78c2ab6243133edd777b4346",
+    "size": 131072
+  }
+}

@@ -112,11 +112,16 @@ constexpr char ELM_VERSION[]    = "ELM327 v1.5";     // versão reportada pelo A
 constexpr char ELM_DEVICE_DESC[]= "YouSimuladorOBD";  // AT @1
 
 // ── Geral ─────────────────────────────────────────────────────
+// Defaults de fábrica. Em campo, hostname, manifesto OTA e credenciais
+// podem ser sobrescritos via interface protegida e ficam salvos na NVS.
 constexpr char MDNS_NAME[]   = "youobd";     // → http://youobd.local
+constexpr char APP_VERSION[] = "2026.04.02";
+constexpr char OTA_MANIFEST_URL[] = "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json";
 constexpr char WEB_AUTH_USER[] = "admin";
-constexpr char WEB_AUTH_PASSWORD[] = "obd12345";  // troque em produção
+constexpr char WEB_AUTH_PASSWORD[] = "obd12345";  // troque antes de colocar em campo
 constexpr uint16_t WEB_PORT  = 80;
 constexpr uint32_t WS_BROADCAST_MS = 500;    // intervalo broadcast WebSocket
+constexpr uint32_t OTA_HTTP_TIMEOUT_MS = 15000;
 
 // ── Modos Wi-Fi (prefixo CFG_ evita conflito com esp_wifi_types.h) ──
 constexpr uint8_t CFG_WIFI_AP     = 0;      // só AP  (192.168.4.1)

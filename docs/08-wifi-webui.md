@@ -19,7 +19,7 @@ ESP32
   |- AsyncWebServer
   |- WebSocket /ws
   |- LittleFS
-  `- OTA web para firmware e filesystem
+  `- OTA web por upload e por manifest remoto
 ```
 
 ## Estado Atual do Firmware
@@ -28,7 +28,11 @@ ESP32
 - O Wi-Fi STA usa DHCP por padrao
 - Se a rede STA falhar, o ESP32 sobe AP fallback
 - A interface web inteira exige autenticacao
+- Hostname, `manifest.json` padrao e credenciais web/OTA podem ser alterados na UI e ficam persistidos na NVS
+- O ESP32 pode checar o manifest OTA periodicamente sem atualizar sozinho
 - O Bluetooth SPP existe no codigo, mas esta desabilitado por padrao para priorizar estabilidade do Wi-Fi/Web
+- O OTA online deste repositorio e exclusivo do `YouSimuladorOBD`
+- O futuro `YouAutoTester` deve usar outro `manifest.json` e outro diretório no dominio
 
 ## Modos Wi-Fi
 
@@ -58,14 +62,14 @@ URL: http://192.168.4.1/
 
 Toda a interface web protegida e as rotas sensiveis usam autenticacao HTTP com desafio Digest por padrao.
 
-Credenciais padrao atuais:
+Credenciais de fabrica:
 
 ```text
 Usuario: admin
 Senha: obd12345
 ```
 
-Essas credenciais estao em `firmware/include/config.h` e devem ser trocadas antes de uso em producao.
+Essas credenciais saem de `firmware/include/config.h` no primeiro boot, mas depois podem ser trocadas na pagina `/ota.html` e ficam gravadas na NVS. Para uso em campo, troque a senha padrao antes da entrega.
 
 ## URLs Importantes
 
@@ -108,6 +112,7 @@ Todas as rotas abaixo exigem autenticacao.
 - `GET /api/wifi`
 - `GET /api/wifi/scan`
 - `GET /api/ota/info`
+- `GET /api/device/settings`
 
 ### Escrita e controle
 
@@ -123,6 +128,9 @@ Todas as rotas abaixo exigem autenticacao.
 - `POST /api/wifi/remove`
 - `POST /api/wifi/scan`
 - `POST /api/reboot`
+- `POST /api/device/settings`
+- `POST /api/ota/check`
+- `POST /api/ota/online`
 - `POST /api/ota/firmware`
 - `POST /api/ota/filesystem`
 
@@ -183,20 +191,51 @@ GET /api/ota/info
 {
   "enabled": true,
   "auth_user": "admin",
+  "auth_default": true,
+  "current_version": "2026.04.02",
+  "default_manifest_url": "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json",
   "build_date": "Apr  2 2026",
-  "build_time": "15:56:44",
+  "build_time": "16:24:28",
   "hostname": "youobd.local",
+  "hostname_hint": "youobd-cfc1c0.local",
   "chip_model": "ESP32-D0WD-V3",
-  "sketch_size": 1751216,
+  "sketch_size": 1931696,
   "free_sketch_space": 1966080,
   "fs_total": 131072,
-  "fs_used": 69632,
+  "fs_used": 77824,
+  "auto_check_enabled": true,
+  "auto_check_hours": 12,
   "running_partition": "app0",
   "last_target": "idle",
   "last_ok": true,
   "last_error": "",
   "last_written": 0,
-  "last_total": 0
+  "last_total": 0,
+  "job_running": false,
+  "job_stage": "idle",
+  "check_ok": false,
+  "check_error": "",
+  "checked_manifest_url": "",
+  "checked_version": "",
+  "checked_notes": "",
+  "checked_has_firmware": false,
+  "checked_has_filesystem": false,
+  "update_available": false
+}
+```
+
+### Exemplo - configuracao persistente
+
+```json
+GET /api/device/settings
+{
+  "hostname": "youobd-01",
+  "hostname_hint": "youobd-cfc1c0",
+  "manifest_url": "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json",
+  "auth_user": "admin",
+  "auth_default": false,
+  "ota_auto_check": true,
+  "ota_auto_check_hours": 12
 }
 ```
 
@@ -218,6 +257,8 @@ O projeto usa a propria stack web do ESP32 para OTA.
 
 - Firmware principal com `POST /api/ota/firmware`
 - Filesystem da interface web com `POST /api/ota/filesystem`
+- Checagem de release com `POST /api/ota/check`
+- Download remoto com `POST /api/ota/online`
 
 ### Pagina recomendada
 
@@ -230,10 +271,16 @@ Use a pagina:
 Ela mostra:
 
 - particao ativa
+- versao atual do firmware
 - tamanho atual do firmware
 - espaco livre para OTA
 - uso do LittleFS
 - ultimo resultado de OTA
+- configuracao persistente de hostname, credenciais e manifest OTA
+- campo para `manifest.json`
+- checagem de versao online
+- botoes para baixar firmware ou filesystem diretamente da rede
+- estado da checagem automatica do manifest
 
 ### Fluxo de uso
 
@@ -262,6 +309,53 @@ Arquivo esperado:
 ```
 
 4. O ESP32 reinicia automaticamente apos OTA bem-sucedido.
+
+### Fluxo online
+
+1. Hospede um `manifest.json` e os arquivos `.bin` em um servidor HTTP/HTTPS acessivel pelo ESP32.
+
+Padrao atual do projeto:
+
+```text
+https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json
+```
+
+2. Estrutura esperada do manifest:
+
+```json
+{
+  "version": "2026.04.03",
+  "notes": "Release de exemplo para OTA online",
+  "firmware": {
+    "url": "https://app2.youtelecom.com.br/updates/yousimuladorobd/yousimuladorobd-firmware-2026.04.03.bin",
+    "md5": "21ec36332fb68787f89b633ea499df12",
+    "size": 1931696
+  },
+  "filesystem": {
+    "url": "https://app2.youtelecom.com.br/updates/yousimuladorobd/yousimuladorobd-littlefs-2026.04.03.bin",
+    "md5": "d3ad9a3b78c2ab6243133edd777b4346",
+    "size": 131072
+  }
+}
+```
+
+3. Na pagina `/ota.html`, informe a URL do manifest e use `Verificar online`.
+
+4. Se houver release disponivel, use `Baixar firmware` ou `Baixar filesystem`.
+
+5. O ESP32 baixa o arquivo diretamente, grava a particao e reinicia automaticamente.
+
+### Processo de release recomendado
+
+1. Atualize `APP_VERSION` em `firmware/include/config.h`.
+2. Gere `firmware.bin` e `littlefs.bin` no `YouSimuladorOBD`.
+3. Publique os artefatos no projeto web `YouAutoCarvAPP2` em `updates/yousimuladorobd/`.
+4. Gere ou atualize o `manifest.json` com a mesma versao.
+5. Faça deploy do web e valide:
+   - `manifest.json`
+   - `firmware.bin`
+   - `littlefs.bin`
+6. No equipamento, use `Verificar online` para confirmar a nova release antes de iniciar a gravacao.
 
 ## Particionamento Atual
 
@@ -311,6 +405,13 @@ Observacao importante:
 
 As redes Wi-Fi salvas ficam na NVS.
 
+Agora tambem ficam persistidos na NVS:
+
+- hostname mDNS do equipamento
+- URL padrao do `manifest.json`
+- usuario e senha da interface web/OTA
+- politica de checagem automatica do manifest
+
 Hoje o firmware armazena uma lista de redes conhecidas e tenta:
 
 1. a configuracao padrao do `config.h`
@@ -319,9 +420,14 @@ Hoje o firmware armazena uma lista de redes conhecidas e tenta:
 
 ## Seguranca e Operacao
 
-- Troque `WEB_AUTH_PASSWORD` antes de colocar em campo
+- Troque a senha padrao da interface antes de colocar em campo
+- Defina um hostname unico por unidade para evitar conflito em redes com mais de um ESP32
 - Troque a senha do AP fallback se o equipamento for sair do laboratorio
 - Evite deixar credenciais fixas de Wi-Fi no `config.h` em ambiente final
+- Defina `APP_VERSION` para controlar comparacao de release
+- Se quiser preload de fabrica, defina `OTA_MANIFEST_URL` no `config.h`
+- O `OTA_MANIFEST_URL` deste projeto deve apontar apenas para `updates/yousimuladorobd/`
+- A checagem automatica consulta o manifest, mas nao instala update sozinha
 - Para automacao via script, use autenticacao HTTP no cliente
 
 ## Validacao Atual
@@ -332,6 +438,7 @@ Foi validado em hardware:
 - autenticacao protegendo a UI
 - OTA de firmware trocando a particao ativa
 - OTA de filesystem atualizando a UI
+- OTA online buscando `firmware.bin` e `littlefs.bin` por manifest remoto
 
 ## Diferencas em Relacao a Documentacao Antiga
 

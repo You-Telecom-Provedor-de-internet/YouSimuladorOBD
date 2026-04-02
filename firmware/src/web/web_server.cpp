@@ -3,13 +3,18 @@
 #include "vehicle_profiles.h"
 #include "elm327_bt.h"
 #include <WiFi.h>
+#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <ESPAsyncWebServer.h>
+#include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <LittleFS.h>
 #include <ESPmDNS.h>
 #include <Preferences.h>
 #include <Update.h>
 #include <esp_ota_ops.h>
+#include <cctype>
+#include <cstring>
 #include "esp_wifi.h"
 
 // ════════════════════════════════════════════════════════════
@@ -25,13 +30,225 @@ static char s_ota_last_error[128] = "";
 static size_t s_ota_total = 0;
 static size_t s_ota_written = 0;
 static bool s_ota_last_ok = true;
+static volatile bool s_ota_busy = false;
+static volatile bool s_ota_job_running = false;
+static char s_ota_job_stage[48] = "idle";
+static char s_ota_checked_manifest_url[256] = "";
+static char s_ota_checked_version[32] = "";
+static char s_ota_checked_notes[256] = "";
+static char s_ota_last_check_error[128] = "";
+static bool s_ota_last_check_ok = false;
+static bool s_ota_checked_has_firmware = false;
+static bool s_ota_checked_has_filesystem = false;
+static bool s_ota_update_available = false;
+
+struct OtaAsset {
+    String url;
+    String md5;
+    size_t size = 0;
+};
+
+struct OtaManifest {
+    String version;
+    String notes;
+    OtaAsset firmware;
+    OtaAsset filesystem;
+};
+
+struct OtaRemoteJob {
+    char target[16];
+    char version[32];
+    char url[256];
+    char md5[40];
+    size_t size = 0;
+    int command = U_FLASH;
+};
+
+constexpr uint16_t OTA_AUTO_CHECK_HOURS_DEFAULT = 12;
+constexpr uint16_t OTA_AUTO_CHECK_HOURS_MIN = 1;
+constexpr uint16_t OTA_AUTO_CHECK_HOURS_MAX = 168;
+
+struct DeviceSettings {
+    char hostname[32] = "";
+    char manifest_url[256] = "";
+    char auth_user[32] = "";
+    char auth_password[64] = "";
+    bool ota_auto_check = true;
+    uint16_t ota_auto_check_hours = OTA_AUTO_CHECK_HOURS_DEFAULT;
+};
+
+static DeviceSettings s_device_settings;
+static char s_hostname_hint[32] = "";
+static uint32_t s_ota_last_check_ms = 0;
+
+static const char* current_hostname();
+static const char* current_manifest_url();
+static const char* current_auth_user();
+static const char* current_auth_password();
 
 // ── Helpers ───────────────────────────────────────────────────
 
 template <typename T>
 static T& protect(T& handler) {
-    handler.setAuthentication(WEB_AUTH_USER, WEB_AUTH_PASSWORD);
+    handler.setAuthentication(current_auth_user(), current_auth_password());
     return handler;
+}
+
+static void copy_text(char* dst, size_t dst_size, const char* src) {
+    if (dst_size == 0) {
+        return;
+    }
+    snprintf(dst, dst_size, "%s", src ? src : "");
+}
+
+static void copy_text(char* dst, size_t dst_size, const String& src) {
+    copy_text(dst, dst_size, src.c_str());
+}
+
+static const char* current_hostname() {
+    return s_device_settings.hostname[0] ? s_device_settings.hostname : MDNS_NAME;
+}
+
+static const char* current_manifest_url() {
+    return s_device_settings.manifest_url[0] ? s_device_settings.manifest_url : OTA_MANIFEST_URL;
+}
+
+static const char* current_auth_user() {
+    return s_device_settings.auth_user[0] ? s_device_settings.auth_user : WEB_AUTH_USER;
+}
+
+static const char* current_auth_password() {
+    return s_device_settings.auth_password[0] ? s_device_settings.auth_password : WEB_AUTH_PASSWORD;
+}
+
+static bool using_default_auth() {
+    return strcmp(current_auth_user(), WEB_AUTH_USER) == 0
+        && strcmp(current_auth_password(), WEB_AUTH_PASSWORD) == 0;
+}
+
+static void build_hostname_hint() {
+    uint64_t mac = ESP.getEfuseMac();
+    snprintf(s_hostname_hint, sizeof(s_hostname_hint), "%s-%06llx",
+             MDNS_NAME,
+             static_cast<unsigned long long>(mac & 0xFFFFFFULL));
+}
+
+static bool is_valid_hostname(const String& value) {
+    if (value.isEmpty() || value.length() > 31) {
+        return false;
+    }
+    if (value[0] == '-' || value[value.length() - 1] == '-') {
+        return false;
+    }
+    for (size_t i = 0; i < value.length(); i++) {
+        const unsigned char c = static_cast<unsigned char>(value[i]);
+        if (!(std::isalnum(c) || c == '-')) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool is_valid_auth_user(const String& value) {
+    if (value.isEmpty() || value.length() > 24) {
+        return false;
+    }
+    for (size_t i = 0; i < value.length(); i++) {
+        const unsigned char c = static_cast<unsigned char>(value[i]);
+        if (!(std::isalnum(c) || c == '-' || c == '_' || c == '.')) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool is_valid_manifest_url(const String& value) {
+    return value.isEmpty()
+        || value.startsWith("http://")
+        || value.startsWith("https://");
+}
+
+static bool is_valid_auth_password(const String& value) {
+    return value.length() >= 8 && value.length() <= 63;
+}
+
+static void apply_device_settings_defaults() {
+    memset(&s_device_settings, 0, sizeof(s_device_settings));
+    build_hostname_hint();
+    copy_text(s_device_settings.hostname, sizeof(s_device_settings.hostname), MDNS_NAME);
+    copy_text(s_device_settings.manifest_url, sizeof(s_device_settings.manifest_url), OTA_MANIFEST_URL);
+    copy_text(s_device_settings.auth_user, sizeof(s_device_settings.auth_user), WEB_AUTH_USER);
+    copy_text(s_device_settings.auth_password, sizeof(s_device_settings.auth_password), WEB_AUTH_PASSWORD);
+    s_device_settings.ota_auto_check = true;
+    s_device_settings.ota_auto_check_hours = OTA_AUTO_CHECK_HOURS_DEFAULT;
+}
+
+static void normalize_device_settings() {
+    String hostname = s_device_settings.hostname;
+    hostname.trim();
+    hostname.toLowerCase();
+    if (!is_valid_hostname(hostname)) {
+        hostname = MDNS_NAME;
+    }
+    copy_text(s_device_settings.hostname, sizeof(s_device_settings.hostname), hostname);
+
+    String manifest_url = s_device_settings.manifest_url;
+    manifest_url.trim();
+    if (!is_valid_manifest_url(manifest_url)) {
+        manifest_url = OTA_MANIFEST_URL;
+    }
+    copy_text(s_device_settings.manifest_url, sizeof(s_device_settings.manifest_url), manifest_url);
+
+    String auth_user = s_device_settings.auth_user;
+    auth_user.trim();
+    if (!is_valid_auth_user(auth_user)) {
+        auth_user = WEB_AUTH_USER;
+    }
+    copy_text(s_device_settings.auth_user, sizeof(s_device_settings.auth_user), auth_user);
+
+    String auth_password = s_device_settings.auth_password;
+    auth_password.trim();
+    if (!is_valid_auth_password(auth_password)) {
+        auth_password = WEB_AUTH_PASSWORD;
+    }
+    copy_text(s_device_settings.auth_password, sizeof(s_device_settings.auth_password), auth_password);
+
+    if (s_device_settings.ota_auto_check_hours < OTA_AUTO_CHECK_HOURS_MIN
+        || s_device_settings.ota_auto_check_hours > OTA_AUTO_CHECK_HOURS_MAX) {
+        s_device_settings.ota_auto_check_hours = OTA_AUTO_CHECK_HOURS_DEFAULT;
+    }
+}
+
+static void load_device_settings() {
+    apply_device_settings_defaults();
+
+    Preferences prefs;
+    prefs.begin("device", true);
+    copy_text(s_device_settings.hostname, sizeof(s_device_settings.hostname), prefs.getString("host", s_device_settings.hostname));
+    copy_text(s_device_settings.manifest_url, sizeof(s_device_settings.manifest_url), prefs.getString("manifest", s_device_settings.manifest_url));
+    copy_text(s_device_settings.auth_user, sizeof(s_device_settings.auth_user), prefs.getString("user", s_device_settings.auth_user));
+    copy_text(s_device_settings.auth_password, sizeof(s_device_settings.auth_password), prefs.getString("pass", s_device_settings.auth_password));
+    s_device_settings.ota_auto_check = prefs.getBool("ota_chk", s_device_settings.ota_auto_check);
+    s_device_settings.ota_auto_check_hours = prefs.getUShort("ota_hrs", s_device_settings.ota_auto_check_hours);
+    prefs.end();
+
+    normalize_device_settings();
+}
+
+static void save_device_settings() {
+    Preferences prefs;
+    prefs.begin("device", false);
+    prefs.putString("host", current_hostname());
+    prefs.putString("manifest", current_manifest_url());
+    prefs.putString("user", current_auth_user());
+    prefs.putString("pass", current_auth_password());
+    prefs.putBool("ota_chk", s_device_settings.ota_auto_check);
+    prefs.putUShort("ota_hrs", s_device_settings.ota_auto_check_hours);
+    prefs.end();
+}
+
+static void ota_set_stage(const char* stage) {
+    copy_text(s_ota_job_stage, sizeof(s_ota_job_stage), stage);
 }
 
 static void ota_reset_state(const char* target) {
@@ -42,18 +259,24 @@ static void ota_reset_state(const char* target) {
     s_ota_last_error[0] = '\0';
 }
 
+static void ota_set_error_text(const char* stage, const char* detail) {
+    snprintf(s_ota_last_error, sizeof(s_ota_last_error), "%s: %s",
+             stage, detail ? detail : "erro desconhecido");
+    s_ota_last_ok = false;
+    ota_set_stage("falha");
+    Serial.printf("[OTA] %s\n", s_ota_last_error);
+}
+
 static void ota_set_error(const char* stage) {
     const char* err = Update.errorString();
-    snprintf(s_ota_last_error, sizeof(s_ota_last_error), "%s: %s",
-             stage, err ? err : "erro desconhecido");
-    s_ota_last_ok = false;
-    Serial.printf("[OTA] %s\n", s_ota_last_error);
+    ota_set_error_text(stage, err ? err : "erro desconhecido");
 }
 
 static void ota_finish_ok(size_t total) {
     s_ota_total = total;
     s_ota_last_ok = true;
     s_ota_last_error[0] = '\0';
+    ota_set_stage("pronto");
     Serial.printf("[OTA] %s concluido (%u bytes)\n", s_ota_last_target, (unsigned)s_ota_total);
 }
 
@@ -66,10 +289,285 @@ static void schedule_restart(uint32_t delay_ms = 1200) {
     }, "t_restart", 3072, (void*)(uintptr_t)delay_ms, 1, nullptr);
 }
 
+static int ota_next_version_part(const char*& text) {
+    int value = 0;
+    while (*text && (*text < '0' || *text > '9')) {
+        if (*text == '.') {
+            text++;
+            break;
+        }
+        text++;
+    }
+    while (*text >= '0' && *text <= '9') {
+        value = value * 10 + (*text - '0');
+        text++;
+    }
+    if (*text == '.') {
+        text++;
+    }
+    return value;
+}
+
+static int ota_compare_versions(const char* current, const char* remote) {
+    const char* lhs = current ? current : "";
+    const char* rhs = remote ? remote : "";
+    const char* lhs_scan = lhs;
+    const char* rhs_scan = rhs;
+    while (*lhs_scan || *rhs_scan) {
+        int left_part = ota_next_version_part(lhs_scan);
+        int right_part = ota_next_version_part(rhs_scan);
+        if (left_part != right_part) {
+            return left_part < right_part ? -1 : 1;
+        }
+    }
+    return strcmp(lhs, rhs);
+}
+
+static void ota_clear_manifest_state(const char* manifest_url = nullptr) {
+    s_ota_last_check_ok = false;
+    copy_text(s_ota_checked_manifest_url, sizeof(s_ota_checked_manifest_url), manifest_url);
+    s_ota_checked_version[0] = '\0';
+    s_ota_checked_notes[0] = '\0';
+    s_ota_last_check_error[0] = '\0';
+    s_ota_checked_has_firmware = false;
+    s_ota_checked_has_filesystem = false;
+    s_ota_update_available = false;
+}
+
+static void ota_store_manifest_state(const char* manifest_url, const OtaManifest& manifest, bool ok,
+                                     const char* error_message = nullptr) {
+    s_ota_last_check_ms = millis();
+    s_ota_last_check_ok = ok;
+    copy_text(s_ota_checked_manifest_url, sizeof(s_ota_checked_manifest_url), manifest_url);
+    if (ok) {
+        copy_text(s_ota_checked_version, sizeof(s_ota_checked_version), manifest.version);
+        copy_text(s_ota_checked_notes, sizeof(s_ota_checked_notes), manifest.notes);
+        s_ota_checked_has_firmware = !manifest.firmware.url.isEmpty();
+        s_ota_checked_has_filesystem = !manifest.filesystem.url.isEmpty();
+        s_ota_update_available = ota_compare_versions(APP_VERSION, manifest.version.c_str()) < 0;
+        s_ota_last_check_error[0] = '\0';
+    } else {
+        s_ota_checked_version[0] = '\0';
+        s_ota_checked_notes[0] = '\0';
+        s_ota_checked_has_firmware = false;
+        s_ota_checked_has_filesystem = false;
+        s_ota_update_available = false;
+        copy_text(s_ota_last_check_error, sizeof(s_ota_last_check_error), error_message);
+    }
+}
+
+static bool ota_http_begin(HTTPClient& http, WiFiClient& plain, WiFiClientSecure& secure,
+                           const String& url) {
+    if (url.startsWith("https://")) {
+        secure.setInsecure();
+        return http.begin(secure, url);
+    }
+    return http.begin(plain, url);
+}
+
+static bool ota_fetch_text(const String& url, String& payload, char* error_buf, size_t error_buf_len) {
+    HTTPClient http;
+    WiFiClient plain;
+    WiFiClientSecure secure;
+    if (!ota_http_begin(http, plain, secure, url)) {
+        copy_text(error_buf, error_buf_len, "nao foi possivel abrir a URL");
+        return false;
+    }
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    http.setTimeout(OTA_HTTP_TIMEOUT_MS);
+
+    int code = http.GET();
+    if (code != HTTP_CODE_OK) {
+        copy_text(error_buf, error_buf_len, HTTPClient::errorToString(code));
+        http.end();
+        return false;
+    }
+
+    payload = http.getString();
+    http.end();
+
+    if (payload.isEmpty()) {
+        copy_text(error_buf, error_buf_len, "manifest vazio");
+        return false;
+    }
+    return true;
+}
+
+static bool ota_parse_manifest(const String& payload, OtaManifest& manifest,
+                               char* error_buf, size_t error_buf_len) {
+    JsonDocument doc;
+    DeserializationError err = deserializeJson(doc, payload);
+    if (err) {
+        copy_text(error_buf, error_buf_len, err.c_str());
+        return false;
+    }
+
+    manifest.version = doc["version"] | "";
+    manifest.notes = doc["notes"] | "";
+    manifest.firmware.url = doc["firmware"]["url"] | "";
+    if (manifest.firmware.url.isEmpty()) {
+        manifest.firmware.url = doc["firmware_url"] | "";
+    }
+    manifest.firmware.md5 = doc["firmware"]["md5"] | "";
+    if (manifest.firmware.md5.isEmpty()) {
+        manifest.firmware.md5 = doc["firmware_md5"] | "";
+    }
+    manifest.firmware.size = doc["firmware"]["size"] | 0;
+    if (manifest.firmware.size == 0) {
+        manifest.firmware.size = doc["firmware_size"] | 0;
+    }
+
+    manifest.filesystem.url = doc["filesystem"]["url"] | "";
+    if (manifest.filesystem.url.isEmpty()) {
+        manifest.filesystem.url = doc["filesystem_url"] | "";
+    }
+    manifest.filesystem.md5 = doc["filesystem"]["md5"] | "";
+    if (manifest.filesystem.md5.isEmpty()) {
+        manifest.filesystem.md5 = doc["filesystem_md5"] | "";
+    }
+    manifest.filesystem.size = doc["filesystem"]["size"] | 0;
+    if (manifest.filesystem.size == 0) {
+        manifest.filesystem.size = doc["filesystem_size"] | 0;
+    }
+
+    if (manifest.version.isEmpty()) {
+        copy_text(error_buf, error_buf_len, "manifest sem campo version");
+        return false;
+    }
+    if (manifest.firmware.url.isEmpty() && manifest.filesystem.url.isEmpty()) {
+        copy_text(error_buf, error_buf_len, "manifest sem URLs de firmware/filesystem");
+        return false;
+    }
+    return true;
+}
+
+static bool ota_fetch_manifest(const String& manifest_url, OtaManifest& manifest,
+                               char* error_buf, size_t error_buf_len) {
+    String payload;
+    if (!ota_fetch_text(manifest_url, payload, error_buf, error_buf_len)) {
+        return false;
+    }
+    return ota_parse_manifest(payload, manifest, error_buf, error_buf_len);
+}
+
+static bool ota_download_and_apply(const OtaRemoteJob& job) {
+    ota_set_stage("baixando");
+    Serial.printf("[OTA] Baixando %s online: %s\n", job.target, job.url);
+
+    HTTPClient http;
+    WiFiClient plain;
+    WiFiClientSecure secure;
+    if (!ota_http_begin(http, plain, secure, job.url)) {
+        ota_set_error_text("http begin", "nao foi possivel abrir a URL");
+        return false;
+    }
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+    http.setTimeout(OTA_HTTP_TIMEOUT_MS);
+
+    int code = http.GET();
+    if (code != HTTP_CODE_OK) {
+        ota_set_error_text("download", HTTPClient::errorToString(code).c_str());
+        http.end();
+        return false;
+    }
+
+    int remote_size = http.getSize();
+    size_t expected_size = job.size > 0 ? job.size
+                                        : (remote_size > 0 ? static_cast<size_t>(remote_size)
+                                                           : UPDATE_SIZE_UNKNOWN);
+    s_ota_total = expected_size == UPDATE_SIZE_UNKNOWN
+        ? (remote_size > 0 ? static_cast<size_t>(remote_size) : 0)
+        : expected_size;
+    ota_set_stage("gravando");
+
+    if (!Update.begin(expected_size, job.command)) {
+        ota_set_error("begin");
+        http.end();
+        return false;
+    }
+    if (job.md5[0] != '\0' && !Update.setMD5(job.md5)) {
+        Update.abort();
+        ota_set_error_text("md5", "manifest com md5 invalido");
+        http.end();
+        return false;
+    }
+
+    WiFiClient* stream = http.getStreamPtr();
+    uint8_t buffer[1024];
+    size_t written = 0;
+    size_t remaining = remote_size > 0 ? static_cast<size_t>(remote_size) : 0;
+    uint32_t last_activity = millis();
+
+    while (http.connected() && (remaining > 0 || remote_size <= 0)) {
+        size_t available = stream->available();
+        if (available > 0) {
+            size_t chunk = available > sizeof(buffer) ? sizeof(buffer) : available;
+            int read = stream->readBytes(buffer, chunk);
+            if (read <= 0) {
+                break;
+            }
+            if (Update.write(buffer, static_cast<size_t>(read)) != static_cast<size_t>(read)) {
+                Update.abort();
+                ota_set_error("write");
+                http.end();
+                return false;
+            }
+            written += static_cast<size_t>(read);
+            s_ota_written = written;
+            if (remaining > 0) {
+                remaining -= static_cast<size_t>(read);
+            }
+            last_activity = millis();
+            continue;
+        }
+
+        if (!http.connected()) {
+            break;
+        }
+        if (millis() - last_activity > OTA_HTTP_TIMEOUT_MS) {
+            Update.abort();
+            ota_set_error_text("download", "timeout lendo o stream");
+            http.end();
+            return false;
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+
+    bool even_if_remaining = (expected_size == UPDATE_SIZE_UNKNOWN);
+    if (!Update.end(even_if_remaining)) {
+        ota_set_error("end");
+        http.end();
+        return false;
+    }
+
+    http.end();
+    ota_finish_ok(written);
+    return true;
+}
+
+static void task_ota_online(void* param) {
+    OtaRemoteJob* job = reinterpret_cast<OtaRemoteJob*>(param);
+    bool ok = ota_download_and_apply(*job);
+    delete job;
+    s_ota_job_running = false;
+    s_ota_busy = false;
+    if (ok) {
+        schedule_restart();
+    }
+    vTaskDelete(nullptr);
+}
+
 static void ota_upload_chunk(const String& filename, size_t index, uint8_t* data, size_t len,
                              bool final, int command, const char* target) {
     if (index == 0) {
+        if (s_ota_busy) {
+            ota_set_error_text("busy", "outra atualizacao ja esta em andamento");
+            return;
+        }
+        s_ota_busy = true;
+        s_ota_job_running = true;
         ota_reset_state(target);
+        ota_set_stage("upload");
         Serial.printf("[OTA] Iniciando %s: %s\n", target, filename.c_str());
         if (!Update.begin(UPDATE_SIZE_UNKNOWN, command)) {
             ota_set_error("begin");
@@ -101,15 +599,22 @@ static void handle_get_ota_info(AsyncWebServerRequest* req) {
     JsonDocument doc;
     const esp_partition_t* running = esp_ota_get_running_partition();
     doc["enabled"] = true;
-    doc["auth_user"] = WEB_AUTH_USER;
+    doc["auth_user"] = current_auth_user();
+    doc["auth_default"] = using_default_auth();
+    doc["current_version"] = APP_VERSION;
+    doc["default_manifest_url"] = current_manifest_url();
     doc["build_date"] = __DATE__;
     doc["build_time"] = __TIME__;
-    doc["hostname"] = String(MDNS_NAME) + ".local";
+    doc["hostname"] = String(current_hostname()) + ".local";
+    doc["hostname_hint"] = String(s_hostname_hint) + ".local";
     doc["chip_model"] = ESP.getChipModel();
     doc["sketch_size"] = ESP.getSketchSize();
     doc["free_sketch_space"] = ESP.getFreeSketchSpace();
     doc["fs_total"] = LittleFS.totalBytes();
     doc["fs_used"] = LittleFS.usedBytes();
+    doc["auto_check_enabled"] = s_device_settings.ota_auto_check;
+    doc["auto_check_hours"] = s_device_settings.ota_auto_check_hours;
+    doc["last_check_ms"] = s_ota_last_check_ms;
     if (running) {
         doc["running_partition"] = running->label;
     }
@@ -118,6 +623,16 @@ static void handle_get_ota_info(AsyncWebServerRequest* req) {
     doc["last_error"] = s_ota_last_error;
     doc["last_written"] = s_ota_written;
     doc["last_total"] = s_ota_total;
+    doc["job_running"] = s_ota_job_running;
+    doc["job_stage"] = s_ota_job_stage;
+    doc["check_ok"] = s_ota_last_check_ok;
+    doc["check_error"] = s_ota_last_check_error;
+    doc["checked_manifest_url"] = s_ota_checked_manifest_url;
+    doc["checked_version"] = s_ota_checked_version;
+    doc["checked_notes"] = s_ota_checked_notes;
+    doc["checked_has_firmware"] = s_ota_checked_has_firmware;
+    doc["checked_has_filesystem"] = s_ota_checked_has_filesystem;
+    doc["update_available"] = s_ota_update_available;
     String out;
     serializeJson(doc, out);
     req->send(200, "application/json", out);
@@ -135,9 +650,257 @@ static void handle_post_ota_result(AsyncWebServerRequest* req) {
     String out;
     serializeJson(doc, out);
     req->send(s_ota_last_ok ? 200 : 500, "application/json", out);
+    s_ota_job_running = false;
+    s_ota_busy = false;
     if (s_ota_last_ok) {
         schedule_restart();
     }
+}
+
+static void handle_post_ota_check(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+    JsonDocument doc;
+    if (deserializeJson(doc, data, len)) {
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"json invalido\"}");
+        return;
+    }
+
+    String manifest_url = doc["manifest_url"] | current_manifest_url();
+    manifest_url.trim();
+    if (manifest_url.isEmpty()) {
+        ota_store_manifest_state("", OtaManifest{}, false, "manifest_url vazio");
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"manifest_url vazio\"}");
+        return;
+    }
+
+    OtaManifest manifest;
+    char error_buf[128] = "";
+    if (!ota_fetch_manifest(manifest_url, manifest, error_buf, sizeof(error_buf))) {
+        ota_store_manifest_state(manifest_url.c_str(), manifest, false, error_buf);
+        String out = "{\"ok\":false,\"error\":\"" + String(error_buf) + "\"}";
+        req->send(502, "application/json", out);
+        return;
+    }
+
+    ota_store_manifest_state(manifest_url.c_str(), manifest, true);
+
+    JsonDocument resp;
+    resp["ok"] = true;
+    resp["manifest_url"] = manifest_url;
+    resp["current_version"] = APP_VERSION;
+    resp["available_version"] = manifest.version;
+    resp["update_available"] = s_ota_update_available;
+    resp["notes"] = manifest.notes;
+    resp["has_firmware"] = !manifest.firmware.url.isEmpty();
+    resp["has_filesystem"] = !manifest.filesystem.url.isEmpty();
+    resp["firmware_url"] = manifest.firmware.url;
+    resp["filesystem_url"] = manifest.filesystem.url;
+    resp["firmware_size"] = manifest.firmware.size;
+    resp["filesystem_size"] = manifest.filesystem.size;
+    String out;
+    serializeJson(resp, out);
+    req->send(200, "application/json", out);
+}
+
+static void handle_post_ota_online(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+    if (s_ota_busy) {
+        req->send(409, "application/json", "{\"ok\":false,\"error\":\"outra atualizacao ja esta em andamento\"}");
+        return;
+    }
+
+    JsonDocument doc;
+    if (deserializeJson(doc, data, len)) {
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"json invalido\"}");
+        return;
+    }
+
+    String manifest_url = doc["manifest_url"] | current_manifest_url();
+    String target = doc["target"] | "firmware";
+    manifest_url.trim();
+    target.trim();
+    if (manifest_url.isEmpty()) {
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"manifest_url vazio\"}");
+        return;
+    }
+    if (target != "firmware" && target != "filesystem") {
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"target invalido\"}");
+        return;
+    }
+
+    OtaManifest manifest;
+    char error_buf[128] = "";
+    if (!ota_fetch_manifest(manifest_url, manifest, error_buf, sizeof(error_buf))) {
+        ota_store_manifest_state(manifest_url.c_str(), manifest, false, error_buf);
+        String out = "{\"ok\":false,\"error\":\"" + String(error_buf) + "\"}";
+        req->send(502, "application/json", out);
+        return;
+    }
+    ota_store_manifest_state(manifest_url.c_str(), manifest, true);
+
+    const OtaAsset* asset = target == "filesystem" ? &manifest.filesystem : &manifest.firmware;
+    int command = target == "filesystem" ? U_SPIFFS : U_FLASH;
+    if (asset->url.isEmpty()) {
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"manifest sem URL para o alvo pedido\"}");
+        return;
+    }
+
+    OtaRemoteJob* job = new OtaRemoteJob();
+    copy_text(job->target, sizeof(job->target), target);
+    copy_text(job->version, sizeof(job->version), manifest.version);
+    copy_text(job->url, sizeof(job->url), asset->url);
+    copy_text(job->md5, sizeof(job->md5), asset->md5);
+    job->size = asset->size;
+    job->command = command;
+
+    s_ota_busy = true;
+    s_ota_job_running = true;
+    ota_reset_state(job->target);
+    ota_set_stage("fila");
+
+    if (xTaskCreate(task_ota_online, "ota_online", 10240, job, 1, nullptr) != pdPASS) {
+        delete job;
+        s_ota_busy = false;
+        s_ota_job_running = false;
+        ota_set_error_text("task", "nao foi possivel iniciar a task OTA");
+        req->send(500, "application/json", "{\"ok\":false,\"error\":\"falha ao iniciar task OTA\"}");
+        return;
+    }
+
+    JsonDocument resp;
+    resp["ok"] = true;
+    resp["started"] = true;
+    resp["target"] = target;
+    resp["version"] = manifest.version;
+    resp["manifest_url"] = manifest_url;
+    String out;
+    serializeJson(resp, out);
+    req->send(202, "application/json", out);
+}
+
+static void handle_get_device_settings(AsyncWebServerRequest* req) {
+    JsonDocument doc;
+    doc["hostname"] = current_hostname();
+    doc["hostname_hint"] = s_hostname_hint;
+    doc["manifest_url"] = current_manifest_url();
+    doc["auth_user"] = current_auth_user();
+    doc["auth_default"] = using_default_auth();
+    doc["ota_auto_check"] = s_device_settings.ota_auto_check;
+    doc["ota_auto_check_hours"] = s_device_settings.ota_auto_check_hours;
+    String out;
+    serializeJson(doc, out);
+    req->send(200, "application/json", out);
+}
+
+static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+    JsonDocument doc;
+    if (deserializeJson(doc, data, len)) {
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"json invalido\"}");
+        return;
+    }
+
+    DeviceSettings next = s_device_settings;
+    bool changed = false;
+
+    if (doc["hostname"].is<String>()) {
+        String hostname = doc["hostname"].as<String>();
+        hostname.trim();
+        hostname.toLowerCase();
+        if (!is_valid_hostname(hostname)) {
+            req->send(400, "application/json", "{\"ok\":false,\"error\":\"hostname invalido\"}");
+            return;
+        }
+        if (strcmp(next.hostname, hostname.c_str()) != 0) {
+            copy_text(next.hostname, sizeof(next.hostname), hostname);
+            changed = true;
+        }
+    }
+
+    if (doc["manifest_url"].is<String>()) {
+        String manifest_url = doc["manifest_url"].as<String>();
+        manifest_url.trim();
+        if (!is_valid_manifest_url(manifest_url)) {
+            req->send(400, "application/json", "{\"ok\":false,\"error\":\"manifest_url invalido\"}");
+            return;
+        }
+        if (strcmp(next.manifest_url, manifest_url.c_str()) != 0) {
+            copy_text(next.manifest_url, sizeof(next.manifest_url), manifest_url);
+            changed = true;
+        }
+    }
+
+    if (doc["auth_user"].is<String>()) {
+        String auth_user = doc["auth_user"].as<String>();
+        auth_user.trim();
+        if (!is_valid_auth_user(auth_user)) {
+            req->send(400, "application/json", "{\"ok\":false,\"error\":\"usuario invalido\"}");
+            return;
+        }
+        if (strcmp(next.auth_user, auth_user.c_str()) != 0) {
+            copy_text(next.auth_user, sizeof(next.auth_user), auth_user);
+            changed = true;
+        }
+    }
+
+    if (doc["auth_password"].is<String>()) {
+        String auth_password = doc["auth_password"].as<String>();
+        auth_password.trim();
+        if (!auth_password.isEmpty()) {
+            if (!is_valid_auth_password(auth_password)) {
+                req->send(400, "application/json", "{\"ok\":false,\"error\":\"senha deve ter entre 8 e 63 caracteres\"}");
+                return;
+            }
+            if (strcmp(next.auth_password, auth_password.c_str()) != 0) {
+                copy_text(next.auth_password, sizeof(next.auth_password), auth_password);
+                changed = true;
+            }
+        }
+    }
+
+    if (!doc["ota_auto_check"].isNull()) {
+        bool ota_auto_check = doc["ota_auto_check"] | next.ota_auto_check;
+        if (next.ota_auto_check != ota_auto_check) {
+            next.ota_auto_check = ota_auto_check;
+            changed = true;
+        }
+    }
+
+    if (!doc["ota_auto_check_hours"].isNull()) {
+        int ota_auto_check_hours = doc["ota_auto_check_hours"] | next.ota_auto_check_hours;
+        if (ota_auto_check_hours < OTA_AUTO_CHECK_HOURS_MIN
+            || ota_auto_check_hours > OTA_AUTO_CHECK_HOURS_MAX) {
+            req->send(400, "application/json", "{\"ok\":false,\"error\":\"intervalo deve ficar entre 1 e 168 horas\"}");
+            return;
+        }
+        if (next.ota_auto_check_hours != static_cast<uint16_t>(ota_auto_check_hours)) {
+            next.ota_auto_check_hours = static_cast<uint16_t>(ota_auto_check_hours);
+            changed = true;
+        }
+    }
+
+    if (!changed) {
+        req->send(200, "application/json", "{\"ok\":true,\"changed\":false}");
+        return;
+    }
+
+    s_device_settings = next;
+    save_device_settings();
+    ota_clear_manifest_state(current_manifest_url());
+
+    JsonDocument resp;
+    resp["ok"] = true;
+    resp["changed"] = true;
+    resp["restart_required"] = true;
+    resp["hostname"] = String(current_hostname()) + ".local";
+    resp["manifest_url"] = current_manifest_url();
+    resp["auth_default"] = using_default_auth();
+    String out;
+    serializeJson(resp, out);
+    req->send(200, "application/json", out);
+    schedule_restart();
+}
+
+static void handle_head_page(AsyncWebServerRequest* req, const char* content_type) {
+    AsyncWebServerResponse* resp = req->beginResponse(200, content_type, "");
+    req->send(resp);
 }
 
 // OBD-II DTC encoding: bits 15-14 = system (00=P 01=C 10=B 11=U)
@@ -513,7 +1276,8 @@ static void handle_get_wifi(AsyncWebServerRequest* req) {
     doc["current_ip"] = WiFi.localIP().toString();
     doc["ap_ip"]      = WiFi.softAPIP().toString();
     doc["ap_ssid"]    = AP_SSID;
-    doc["hostname"]   = String(MDNS_NAME) + ".local";
+    doc["hostname"]   = String(current_hostname()) + ".local";
+    doc["hostname_hint"] = String(s_hostname_hint) + ".local";
     auto arr = doc["networks"].to<JsonArray>();
     for (uint8_t i = 0; i < s_net_count; i++) {
         JsonObject obj = arr.add<JsonObject>();
@@ -673,6 +1437,34 @@ static void task_ws_broadcast(void*) {
     }
 }
 
+static void task_ota_auto_check(void*) {
+    vTaskDelay(pdMS_TO_TICKS(15000));
+
+    while (true) {
+        if (s_device_settings.ota_auto_check
+            && current_manifest_url()[0] != '\0'
+            && WiFi.status() == WL_CONNECTED
+            && !s_ota_busy
+            && !s_ota_job_running) {
+            uint32_t interval_ms = static_cast<uint32_t>(s_device_settings.ota_auto_check_hours) * 3600000UL;
+            if (s_ota_last_check_ms == 0 || millis() - s_ota_last_check_ms >= interval_ms) {
+                OtaManifest manifest;
+                char error_buf[128] = "";
+                String manifest_url = current_manifest_url();
+                if (ota_fetch_manifest(manifest_url, manifest, error_buf, sizeof(error_buf))) {
+                    ota_store_manifest_state(manifest_url.c_str(), manifest, true);
+                    Serial.printf("[OTA] Check automatico OK: %s\n", manifest.version.c_str());
+                } else {
+                    ota_store_manifest_state(manifest_url.c_str(), manifest, false, error_buf);
+                    Serial.printf("[OTA] Check automatico falhou: %s\n", error_buf);
+                }
+            }
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(30000));
+    }
+}
+
 // ── Wi-Fi init (multi-network) ───────────────────────────────
 // 1. Carrega redes salvas da NVS (até MAX_WIFI_NETS)
 // 2. Faz scan rápido (~3s) para ver quais estão no ar
@@ -681,6 +1473,7 @@ static void task_ws_broadcast(void*) {
 // 5. Se nenhuma conectou, sobe AP como fallback
 
 static void wifi_start() {
+    load_device_settings();
     load_wifi_nets();
     NetConfig factory_net = default_wifi_net();
     int factory_idx = factory_net.ssid.length() > 0
@@ -700,7 +1493,7 @@ static void wifi_start() {
     if (s_net_count > 0) {
         WiFi.mode(WIFI_STA);
         WiFi.setAutoReconnect(true);
-        WiFi.setHostname(MDNS_NAME);
+        WiFi.setHostname(current_hostname());
 
         if (prefer_factory_net) {
             Serial.println("[WiFi] Tentando configuracao padrao antes das redes salvas...");
@@ -774,9 +1567,9 @@ static void wifi_start() {
         start_access_point();
     }
 
-    if (MDNS.begin(MDNS_NAME)) {
+    if (MDNS.begin(current_hostname())) {
         MDNS.addService("http", "tcp", WEB_PORT);
-        Serial.printf("[mDNS] http://%s.local registrado\n", MDNS_NAME);
+        Serial.printf("[mDNS] http://%s.local registrado\n", current_hostname());
     }
 }
 
@@ -834,7 +1627,14 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
         nullptr, handle_post_wifi));
     protect(server.on("/api/reboot",   HTTP_POST,
         [](AsyncWebServerRequest* r){ handle_post_reboot(r); }));
+    protect(server.on("/api/device/settings", HTTP_GET, handle_get_device_settings));
+    protect(server.on("/api/device/settings", HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_device_settings));
     protect(server.on("/api/ota/info", HTTP_GET, handle_get_ota_info));
+    protect(server.on("/api/ota/check", HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_ota_check));
+    protect(server.on("/api/ota/online", HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_ota_online));
     protect(server.on("/api/ota/firmware", HTTP_POST,
         [](AsyncWebServerRequest* req) { handle_post_ota_result(req); },
         [](AsyncWebServerRequest*, const String& filename, size_t index, uint8_t* data, size_t len, bool final) {
@@ -851,6 +1651,12 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     server.on("/ping-json", HTTP_GET, [](AsyncWebServerRequest* req) {
         req->send(200, "application/json", "{\"ok\":true}");
     });
+    protect(server.on("/", HTTP_HEAD,
+        [](AsyncWebServerRequest* req) { handle_head_page(req, "text/html"); }));
+    protect(server.on("/index.html", HTTP_HEAD,
+        [](AsyncWebServerRequest* req) { handle_head_page(req, "text/html"); }));
+    protect(server.on("/ota.html", HTTP_HEAD,
+        [](AsyncWebServerRequest* req) { handle_head_page(req, "text/html"); }));
     // Serve arquivos do LittleFS (UI web)
     protect(server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html"));
 
@@ -862,4 +1668,5 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
 
     // Task broadcast WebSocket — Core 1
     xTaskCreatePinnedToCore(task_ws_broadcast, "task_ws", 4096, nullptr, 3, nullptr, 1);
+    xTaskCreatePinnedToCore(task_ota_auto_check, "task_ota_chk", 6144, nullptr, 1, nullptr, 1);
 }
