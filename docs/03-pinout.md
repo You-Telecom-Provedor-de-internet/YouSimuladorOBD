@@ -33,8 +33,8 @@
 
 | GPIO | Pino Físico | Função | Destino |
 |------|------------|--------|---------|
-| GPIO4 | D4 | TWAI TX (CAN TX) | SN65HVD230 pino TXD |
-| GPIO5 | D5 | TWAI RX (CAN RX) | SN65HVD230 pino RXD |
+| GPIO4 | D4 | TWAI TX (CAN TX) | SN65HVD230 `TXD` / breakout `CTX` |
+| GPIO5 | D5 | TWAI RX (CAN RX) | SN65HVD230 `RXD` / breakout `CRX` |
 | GPIO17 | TX2 | K-Line TX | Transistor NPN (coletor) |
 | GPIO16 | RX2 | K-Line RX | K-Line via pull-up 510Ω → 12V |
 

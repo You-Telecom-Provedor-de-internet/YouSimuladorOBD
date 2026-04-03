@@ -73,6 +73,37 @@ GND ──────────────│ GND    RS ├── GND (modo 
 - Pino RS: GND = modo rápido (até 1 Mbps) | resistor 10kΩ para 3.3V = modo silencioso
 - Resistor 120Ω: instalar se o simulador for o único nó ou ponta do barramento
 
+### Ligação rápida do módulo SN65HVD230 na bancada atual
+
+Breakout efetivamente usado na bancada desta rodada:
+
+```text
+3V3
+GND
+CTX
+CRX
+CANH
+CANL
+```
+
+Nesse modelo, a ligação prática fica:
+
+| Breakout SN65HVD230 | ESP32 / OBD | Observação |
+|---|---|---|
+| `3V3` | `3V3` do ESP32 | Não alimente a lógica em 5V |
+| `GND` | `GND` comum | Mesmo GND do ESP32 e do OBD |
+| `CTX` | `GPIO4` | TWAI TX do ESP32 |
+| `CRX` | `GPIO5` | TWAI RX do ESP32 |
+| `CANH` | OBD pino `6` | Linha CAN High |
+| `CANL` | OBD pino `14` | Linha CAN Low |
+
+Checklist de montagem:
+
+- manter os fios `CANH` e `CANL` curtos e, se possível, trançados
+- este breakout usado em bancada aparenta trazer terminação onboard no próprio módulo, então não somar outra terminação sem necessidade
+- usar apenas uma terminação `120Ω` quando o simulador estiver na ponta do barramento de bancada
+- ligar primeiro só `3V3/GND/CTX/CRX`, validar o boot do ESP32 e depois conectar `CANH/CANL` ao chicote OBD
+
 ---
 
 ## Circuito Interface K-Line (ISO 9141-2 / KWP2000)

@@ -134,6 +134,29 @@ twai_filter_config_t f_config = {
 };
 ```
 
+### Validação de bancada já concluída no CAN
+
+Rodada validada em `2026-04-02` com:
+
+- ESP32 + transceiver `SN65HVD230`
+- `ELM327`
+- app `Torque Pro`
+
+Cobertura confirmada:
+
+- `CAN 11-bit 500k`
+- `CAN 11-bit 250k`
+- `CAN 29-bit 500k`
+- `CAN 29-bit 250k`
+- leitura de PIDs em tempo real
+- leitura de DTC (`Mode 03`)
+- limpeza de DTC (`Mode 04`)
+- leitura de VIN (`Mode 09`) com resposta CAN multi-frame
+
+Observação:
+
+- a troca de protocolo em runtime pela UI/web foi validada nos 4 protocolos CAN acima
+
 ---
 
 ## Protocolo 5: ISO 9141-2

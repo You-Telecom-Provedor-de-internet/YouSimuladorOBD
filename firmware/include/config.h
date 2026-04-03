@@ -115,7 +115,7 @@ constexpr char ELM_DEVICE_DESC[]= "YouSimuladorOBD";  // AT @1
 // Defaults de fábrica. Em campo, hostname, manifesto OTA e credenciais
 // podem ser sobrescritos via interface protegida e ficam salvos na NVS.
 constexpr char MDNS_NAME[]   = "youobd";     // → http://youobd.local
-constexpr char APP_VERSION[] = "2026.04.02";
+constexpr char APP_VERSION[] = "2026.04.02.1";
 constexpr char OTA_MANIFEST_URL[] = "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json";
 constexpr char WEB_AUTH_USER[] = "admin";
 constexpr char WEB_AUTH_PASSWORD[] = "obd12345";  // troque antes de colocar em campo

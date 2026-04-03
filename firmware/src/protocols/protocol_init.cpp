@@ -8,15 +8,11 @@
 // ── Ponto único de entrada para inicialização de protocolo ────
 
 void protocol_init(SimulationState* state, SemaphoreHandle_t mutex) {
-    uint8_t proto = state->active_protocol;
+    digitalWrite(PIN_LED_CAN, LOW);
+    digitalWrite(PIN_LED_KLINE, LOW);
 
-    if (proto <= PROTO_CAN_29B_250K) {
-        digitalWrite(PIN_LED_CAN,   HIGH);
-        digitalWrite(PIN_LED_KLINE, LOW);
-        can_protocol_init(state, mutex, proto);
-    } else {
-        digitalWrite(PIN_LED_CAN,   LOW);
-        digitalWrite(PIN_LED_KLINE, HIGH);
-        kline_protocol_init(state, mutex, proto);
-    }
+    // Os dois workers sobem juntos e ativam/desativam seu hardware
+    // conforme active_protocol muda na UI, web ou perfil.
+    can_protocol_init(state, mutex, state->active_protocol);
+    kline_protocol_init(state, mutex, state->active_protocol);
 }

@@ -108,6 +108,7 @@ O emulador ELM327 via Bluetooth SPP existe no codigo, mas esta desabilitado por 
 - [09 - Perfis de Veiculo](docs/09-vehicle-profiles.md)
 - [10 - Simulacao Dinamica](docs/10-dynamic-simulation.md)
 - [11 - Bluetooth SPP / ELM327](docs/11-bluetooth-elm327.md)
+- [12 - Auditoria do Firmware e Bancada](docs/12-auditoria-firmware-e-bancada.md)
 
 ## Estrutura do Projeto
 
@@ -143,4 +144,18 @@ Validado em hardware:
 - OTA online por manifest funcionando
 - persistencia de hostname/manifest/credenciais via NVS
 - checagem automatica de versao OTA funcionando
+- troca de protocolo em runtime reinicializando CAN/K-Line corretamente
+- framing fisico corrigido para Mode 03 / Mode 04
+- transmissao CAN multi-frame para respostas longas como VIN
+- barramento CAN validado em bancada com `SN65HVD230 + ELM327 + Torque Pro`
+- leitura de PIDs em tempo real validada nos 4 protocolos CAN
+- leitura de DTC (`Mode 03`) validada via Torque Pro
+- limpeza de DTC (`Mode 04`) validada via Torque Pro
+- leitura de VIN (`Mode 09`) validada via Torque Pro
+- troca em runtime validada em `CAN 11b 500k`, `CAN 11b 250k`,
+  `CAN 29b 500k` e `CAN 29b 250k`
 - Bluetooth desativado por padrao para manter estabilidade da rede
+
+## Auditoria Recente
+
+- [12 - Auditoria do Firmware e Bancada](docs/12-auditoria-firmware-e-bancada.md)
