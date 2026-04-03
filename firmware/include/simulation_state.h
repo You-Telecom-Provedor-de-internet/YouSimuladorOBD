@@ -20,6 +20,14 @@ constexpr uint8_t SIM_MAX_DTCS = 8;
 constexpr uint8_t DIAG_MAX_ACTIVE_FAULTS = 6;
 constexpr uint8_t DIAG_MAX_ALERTS = 6;
 
+enum OdometerSource : uint8_t {
+    ODOMETER_SOURCE_NONE = 0,
+    ODOMETER_SOURCE_CLUSTER = 1,
+    ODOMETER_SOURCE_BCM = 2,
+    ODOMETER_SOURCE_ABS = 3,
+    ODOMETER_SOURCE_ECM = 4,
+};
+
 struct SimulationState {
     uint16_t rpm = 800;
     uint8_t  speed_kmh = 0;
@@ -53,6 +61,11 @@ struct SimulationState {
     uint16_t manual_dtcs[SIM_MAX_DTCS] = {};
     ActiveFault active_faults[DIAG_MAX_ACTIVE_FAULTS] = {};
     DiagnosticAlert alerts[DIAG_MAX_ALERTS] = {};
+    uint32_t odometer_total_km_x10 = 0;
+    uint16_t distance_since_clear_km = 0;
+    uint16_t distance_mil_on_km = 0;
+    uint8_t odometer_source = ODOMETER_SOURCE_CLUSTER;
+    uint8_t pid_a6_supported = 0;
 };
 
 inline void simulation_clear_effective_dtcs(SimulationState& s) {
@@ -115,8 +128,24 @@ inline void diagnostic_reset_fields(SimulationState& s) {
     memset(s.alerts, 0, sizeof(s.alerts));
 }
 
+inline void simulation_reset_odometer_fields(SimulationState& s) {
+    s.odometer_total_km_x10 = 0;
+    s.distance_since_clear_km = 0;
+    s.distance_mil_on_km = 0;
+    s.odometer_source = ODOMETER_SOURCE_CLUSTER;
+    s.pid_a6_supported = 0;
+}
+
+inline void simulation_reset_distance_since_clear(SimulationState& s) {
+    s.distance_since_clear_km = 0;
+}
+
+inline bool simulation_mil_active(const SimulationState& s) {
+    return s.dtc_count > 0;
+}
+
 static_assert(std::is_trivially_copyable<SimulationState>::value, "SimulationState must stay trivially copyable");
-static_assert(sizeof(SimulationState) <= 216, "SimulationState exceeded diagnostic budget");
+static_assert(sizeof(SimulationState) <= 224, "SimulationState exceeded shared-state budget");
 
 namespace Preset {
     inline void applyOff(SimulationState& s) {

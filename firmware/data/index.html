@@ -111,6 +111,14 @@
   .diagnostic-card{grid-column:1/-1}
   .diag-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
   .diag-actions select{flex:1;min-width:250px;background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:6px;padding:8px 10px;font-size:.85rem;cursor:pointer}
+  .diag-odometer-hero{margin-top:12px;padding:14px 16px;border-radius:10px;border:1px solid rgba(0,212,255,.45);background:linear-gradient(135deg,rgba(0,212,255,.14),rgba(14,18,28,.96));display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .diag-odometer-copy span{display:block;font-size:.72rem;color:#9ddfff;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}
+  .diag-odometer-copy strong{display:block;font-size:1.65rem;line-height:1;color:var(--accent)}
+  .diag-odometer-copy small{display:block;color:var(--muted);font-size:.8rem;margin-top:8px}
+  .diag-odometer-badges{display:flex;gap:10px;flex-wrap:wrap}
+  .diag-odometer-pill{min-width:150px;padding:10px 12px;border-radius:9px;background:rgba(11,15,24,.78);border:1px solid #2a2d3a}
+  .diag-odometer-pill span{display:block;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .diag-odometer-pill strong{display:block;font-size:1rem;color:var(--text)}
   .diag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px}
   .diag-box{background:#141823;border:1px solid #2a2d3a;border-radius:8px;padding:10px 12px}
   .diag-box span{display:block;font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
@@ -325,6 +333,23 @@
       <button onclick="applyScenario()">Ativar Cenario</button>
       <button class="secondary" onclick="clearScenario()">Limpar Cenario</button>
     </div>
+    <div class="diag-odometer-hero">
+      <div class="diag-odometer-copy">
+        <span>Km Total do Veiculo</span>
+        <strong id="diag-odo-total-main">0.0 km</strong>
+        <small>Odometro acumulado e persistente do simulador.</small>
+      </div>
+      <div class="diag-odometer-badges">
+        <div class="diag-odometer-pill">
+          <span>Desde Clear</span>
+          <strong id="diag-odo-clear-main">0 km</strong>
+        </div>
+        <div class="diag-odometer-pill">
+          <span>Com MIL</span>
+          <strong id="diag-odo-mil-main">0 km</strong>
+        </div>
+      </div>
+    </div>
     <div class="diag-grid">
       <div class="diag-box">
         <span>Cenario Ativo</span>
@@ -451,6 +476,11 @@ function setHealthClass(el, value) {
   else el.classList.add('health-bad');
 }
 
+function formatKm(value, digits = 1) {
+  const num = Number(value ?? 0);
+  return `${num.toFixed(digits)} km`;
+}
+
 function renderFaultsList(activeFaults) {
   const host = document.getElementById('diag-faults');
   if (!host) return;
@@ -483,6 +513,12 @@ function renderDiagnostics(diag) {
   const limpEl = document.getElementById('diag-limp');
   limpEl.textContent = diag.limp_mode ? 'Sim' : 'Nao';
   limpEl.classList.toggle('limp-on', !!diag.limp_mode);
+  const odometerTotal = formatKm(diag.vehicle?.odometer_current_km, 1);
+  const odometerClear = `${diag.obd_counters?.distance_since_clear_km ?? 0} km`;
+  const odometerMil = `${diag.obd_counters?.distance_mil_on_km ?? 0} km`;
+  document.getElementById('diag-odo-total-main').textContent = odometerTotal;
+  document.getElementById('diag-odo-clear-main').textContent = odometerClear;
+  document.getElementById('diag-odo-mil-main').textContent = odometerMil;
   renderFaultsList(diag.active_faults || []);
 }
 
@@ -571,12 +607,17 @@ function update(d) {
   if (d.primary_alert !== undefined) {
     document.getElementById('diag-primary').textContent = d.primary_alert ? 'Alerta ativo' : 'Nenhum';
   }
+  if (d.odometer_total_km !== undefined) {
+    const totalText = formatKm(d.odometer_total_km, 1);
+    document.getElementById('diag-odo-total-main').textContent = totalText;
+  }
   const nextFingerprint = [
     d.scenario_id ?? '',
     d.health_score ?? '',
     d.limp_mode ?? '',
     d.active_faults_count ?? '',
-    d.alert_count ?? ''
+    d.alert_count ?? '',
+    Math.trunc(Number(d.odometer_total_km ?? 0))
   ].join('|');
   if (nextFingerprint !== diagFingerprint) {
     diagFingerprint = nextFingerprint;

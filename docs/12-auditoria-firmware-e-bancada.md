@@ -175,3 +175,29 @@ Build final estavel desta rodada:
 - `bss = 36249`
 - `flash usada = 1958921 / 1966080`
 - `firmware.bin = 1965504 bytes`
+
+## Atualizacao de Capacidade em 2026-04-03 Noite
+
+Rodada seguinte focada em recuperar folga de firmware e manter o produto operacional:
+
+- OTA local por arquivo removida da API e da pagina `/ota.html`
+- OTA mantida apenas no fluxo online por `manifest.json`
+- `CORE_DEBUG_LEVEL` reduzido para `0`
+- odometro total persistente adicionado com destaque na UI principal
+- `PID 21`, `PID 31` e `PID A6` adicionados
+
+Build final depois dessa reducao:
+
+- `text = 1647404`
+- `data = 292824`
+- `bss = 36201`
+- `flash usada = 1917945 / 1966080`
+- `firmware.bin = 1924528 bytes`
+
+Estado operacional validado na placa:
+
+- firmware gravado em `COM3`
+- filesystem gravado em `COM3`
+- `/api/ota/info` respondendo com `online_only = true`
+- `/api/status` e `/api/diagnostics` respondendo
+- UI principal mostrando `KM TOTAL DO VEICULO`

@@ -301,24 +301,28 @@ Medicoes desta tranche:
 - `sizeof(ActiveFault) = 8`
 - `sizeof(DiagnosticAlert) = 6`
 - `sizeof(SimulationState)` antes: `104`
-- `sizeof(SimulationState)` depois: `208`
+- `sizeof(SimulationState)` depois: `220`
 
-Comparacao do ELF da build final gravada em `2026-04-03`:
+Comparacao das tranches mais recentes:
 
-- `text`: `1651600 -> 1668492`
-- `data`: `306824 -> 312712`
-- `bss`: `36249 -> 36249`
+- camada diagnostica composta:
+  - `text`: `1651600 -> 1668492`
+  - `data`: `306824 -> 312712`
+  - `bss`: `36249 -> 36249`
+- camada de odometria + reducao final:
+  - `text`: `1668492 -> 1647404`
+  - `data`: `312712 -> 292824`
+  - `bss`: `36249 -> 36201`
 
 Impacto:
 
-- `text`: `+16892`
-- `data`: `+5888`
-- `bss`: `+0`
+- a camada diagnostica aumentou o firmware
+- a rodada de simplificacao OTA e debug recuperou folga relevante de flash e RAM
 
 Tamanho final observado:
 
-- `flash usada`: `1958921 / 1966080`
-- `firmware.bin`: `1965504 bytes`
+- `flash usada`: `1917945 / 1966080`
+- `firmware.bin`: `1924528 bytes`
 
 Observacao operacional:
 
@@ -346,12 +350,16 @@ Validado no ESP32 real:
 Validado com scanner real:
 
 - leitura de PIDs via `OBDLink MX+ + Torque`
+- odometro total persistente exposto na UI e na API local
+- `PID 21`, `PID 31` e `PID A6` adicionados na mesma trilha de aceite
 
 Observacao honesta desta rodada:
 
 - a camada diagnostica foi validada na placa real por API e WebSocket
 - `Mode 03`, `Mode 04` e `Mode 09` ja tinham sido validados anteriormente em bancada CAN/Torque
 - nesta ultima rodada de aceite, o scanner externo confirmou novamente os PIDs vivos com `OBDLink MX+`
+- a OTA local por arquivo foi removida depois disso para recuperar folga no slot OTA
+- o fluxo final de campo ficou online-only por manifest
 
 ## Observacao sobre OLED e `memcmp`
 

@@ -28,19 +28,23 @@ Emulador/simulador OBD-II baseado em ESP32 (38 pinos), capaz de responder a scan
 | 0x0E | Avanco de ignicao | Mode 01 |
 | 0x04 | Carga do motor | Mode 01 |
 | 0x2F | Nivel de combustivel | Mode 01 |
+| 0x21 | Distancia com MIL ativa | Mode 01 |
+| 0x31 | Distancia desde clear de DTC | Mode 01 |
+| 0xA6 | Odometria total por perfil compativel | Mode 01 |
 | - | DTCs | Mode 03 |
 | - | VIN | Mode 09 |
 
 ## Conectividade Web Atual
 
-- STA com DHCP e mDNS em `http://youobd.local`
+- STA com DHCP e hostname mDNS configuravel, por exemplo `http://youobd.local`
 - AP fallback `OBD-Simulator` em `http://192.168.4.1`
 - interface web protegida por autenticacao
 - WebSocket para atualizacao em tempo real
 - API REST para controle e configuracao
-- OTA web para firmware e filesystem em `/ota.html`
+- OTA online por manifest remoto em `/ota.html`
 - configuracao persistente em NVS para hostname, manifest OTA e credenciais web/OTA
 - checagem automatica do manifest OTA sem atualizar sozinha
+- odometro total persistente com espelhos internos de `cluster`, `BCM`, `ABS` e `ECM`
 
 Credenciais web/OTA de fabrica:
 
@@ -51,7 +55,7 @@ Senha: obd12345
 
 ## OTA
 
-O projeto suporta OTA web no proprio ESP32, tanto por upload manual quanto por download remoto via manifest.
+O projeto suporta OTA no proprio ESP32 apenas por download remoto via `manifest.json`.
 
 No modo comercial/campo, a pagina `/ota.html` tambem permite salvar:
 
@@ -74,11 +78,6 @@ http://youobd.local/ota.html
 http://<ip-do-esp>/ota.html
 ```
 
-Arquivos usados no modo manual:
-
-- firmware: `.pio/build/esp32dev/firmware.bin`
-- filesystem: `.pio/build/esp32dev/littlefs.bin`
-
 Fluxo online:
 
 - manifest padrao do firmware: `https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json`
@@ -86,6 +85,7 @@ Fluxo online:
 - use `Verificar online` para consultar a release
 - use `Baixar firmware` ou `Baixar filesystem` para o ESP32 buscar o `.bin` sozinho
 - se a checagem automatica estiver ligada, o ESP32 consulta esse manifest periodicamente, mas nao atualiza sem comando
+- o upload local por arquivo foi removido para reduzir o tamanho do firmware e manter folga no slot OTA
 
 Exemplo de manifest:
 
@@ -146,6 +146,9 @@ Validado em hardware:
 - OTA online por manifest funcionando
 - persistencia de hostname/manifest/credenciais via NVS
 - checagem automatica de versao OTA funcionando
+- OTA simplificada para modo online-only
+- odometro total persistente exposto na UI, em `/api/status` e em `/api/diagnostics`
+- `PID 21`, `PID 31` e `PID A6` implementados
 - camada diagnostica com cenarios compostos, progressivos e correlacionados
 - endpoints `GET /api/scenarios`, `POST /api/scenario` e `GET /api/diagnostics`
 - payload rico para futura integracao com health engine e mecanico online
@@ -168,11 +171,11 @@ Validado em hardware:
 Observacoes importantes desta tranche:
 
 - houve um travamento real por excesso no slot OTA durante a rodada diagnostica
-- o binario foi reduzido sem mexer na logica dos cenarios
+- o firmware foi reduzido removendo upload OTA local e baixando o nivel de debug
 - a placa voltou a subir normalmente e foi revalidada em bancada
 - build final gravada:
-  `flash = 1958921 / 1966080`
-  `firmware.bin = 1965504 bytes`
+  `flash = 1917945 / 1966080`
+  `firmware.bin = 1924528 bytes`
 
 ## Auditoria Recente
 

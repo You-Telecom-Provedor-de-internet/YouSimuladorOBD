@@ -1,7 +1,9 @@
 #include "dynamic_engine.h"
 #include "config.h"
 #include "diagnostic_scenario_engine.h"
+#include "vehicle_profiles.h"
 #include <Arduino.h>
+#include <Preferences.h>
 #include <esp_random.h>
 #include <cmath>
 
@@ -22,6 +24,104 @@
 
 static SimulationState*  s_state = nullptr;
 static SemaphoreHandle_t s_mutex = nullptr;
+
+static constexpr const char* ODOMETER_NVS_NAMESPACE = "odometer";
+static constexpr const char* ODOMETER_TOTAL_KEY = "total_x10";
+static constexpr uint32_t ODOMETER_FLUSH_STEP_X10 = 10; // 1.0 km
+
+static uint32_t s_total_meter_fraction_36 = 0;
+static uint16_t s_total_meter_bucket = 0;
+static uint32_t s_last_saved_odometer_total_x10 = 0;
+static uint32_t s_distance_since_clear_anchor_x10 = 0;
+static uint32_t s_mil_anchor_x10 = 0;
+static bool s_mil_tracking = false;
+static bool s_odometer_dirty = false;
+
+static void load_odometer_state(SimulationState& state) {
+    simulation_reset_odometer_fields(state);
+    Preferences prefs;
+    prefs.begin(ODOMETER_NVS_NAMESPACE, true);
+    state.odometer_total_km_x10 = prefs.getULong(ODOMETER_TOTAL_KEY, 0);
+    prefs.end();
+
+    state.distance_since_clear_km = 0;
+    state.distance_mil_on_km = 0;
+    state.odometer_source = ODOMETER_SOURCE_CLUSTER;
+    if (state.profile_id[0] == '\0') {
+        state.pid_a6_supported = defaultPidA6SupportForProtocol(state.active_protocol) ? 1 : 0;
+    }
+
+    s_total_meter_fraction_36 = 0;
+    s_total_meter_bucket = 0;
+    s_last_saved_odometer_total_x10 = state.odometer_total_km_x10;
+    s_distance_since_clear_anchor_x10 = state.odometer_total_km_x10;
+    s_mil_anchor_x10 = state.odometer_total_km_x10;
+    s_mil_tracking = false;
+    s_odometer_dirty = false;
+}
+
+void dynamic_persist_odometer_now() {
+    if (!s_state || !s_odometer_dirty || s_state->odometer_total_km_x10 == s_last_saved_odometer_total_x10) {
+        return;
+    }
+
+    Preferences prefs;
+    prefs.begin(ODOMETER_NVS_NAMESPACE, false);
+    prefs.putULong(ODOMETER_TOTAL_KEY, s_state->odometer_total_km_x10);
+    prefs.end();
+
+    s_last_saved_odometer_total_x10 = s_state->odometer_total_km_x10;
+    s_odometer_dirty = false;
+}
+
+void dynamic_reset_odometer_service_counters(const SimulationState& state) {
+    s_distance_since_clear_anchor_x10 = state.odometer_total_km_x10;
+    s_mil_anchor_x10 = state.odometer_total_km_x10;
+    s_mil_tracking = false;
+}
+
+static void update_odometer(SimulationState& state) {
+    s_total_meter_fraction_36 += state.speed_kmh;
+
+    const uint32_t whole_meters = s_total_meter_fraction_36 / 36u;
+    s_total_meter_fraction_36 %= 36u;
+
+    if (whole_meters > 0) {
+        s_total_meter_bucket = static_cast<uint16_t>(s_total_meter_bucket + whole_meters);
+        while (s_total_meter_bucket >= 100u) {
+            s_total_meter_bucket = static_cast<uint16_t>(s_total_meter_bucket - 100u);
+            if (state.odometer_total_km_x10 < UINT32_MAX) {
+                state.odometer_total_km_x10++;
+                s_odometer_dirty = true;
+            }
+        }
+    }
+
+    state.distance_since_clear_km = static_cast<uint16_t>(
+        (state.odometer_total_km_x10 - s_distance_since_clear_anchor_x10) / 10u > UINT16_MAX
+            ? UINT16_MAX
+            : (state.odometer_total_km_x10 - s_distance_since_clear_anchor_x10) / 10u
+    );
+
+    if (simulation_mil_active(state)) {
+        if (!s_mil_tracking) {
+            s_mil_tracking = true;
+            s_mil_anchor_x10 = state.odometer_total_km_x10;
+        }
+        const uint32_t mil_distance = (state.odometer_total_km_x10 - s_mil_anchor_x10) / 10u;
+        state.distance_mil_on_km = static_cast<uint16_t>(mil_distance > UINT16_MAX ? UINT16_MAX : mil_distance);
+    } else {
+        s_mil_tracking = false;
+        s_mil_anchor_x10 = state.odometer_total_km_x10;
+        state.distance_mil_on_km = 0;
+    }
+
+    if (s_odometer_dirty &&
+        state.odometer_total_km_x10 >= s_last_saved_odometer_total_x10 &&
+        (state.odometer_total_km_x10 - s_last_saved_odometer_total_x10) >= ODOMETER_FLUSH_STEP_X10) {
+        dynamic_persist_odometer_now();
+    }
+}
 
 // ── Helpers matemáticos ───────────────────────────────────────
 
@@ -667,6 +767,7 @@ static void task_dynamic_engine(void*) {
         }
 
         diagnostic_engine_step(*s_state, 0.1f);
+        update_odometer(*s_state);
 
         xSemaphoreGive(s_mutex);
     }
@@ -677,6 +778,7 @@ static void task_dynamic_engine(void*) {
 void dynamic_init(SimulationState* state, SemaphoreHandle_t mutex) {
     s_state = state;
     s_mutex = mutex;
+    load_odometer_state(*s_state);
     diagnostic_engine_init();
     xTaskCreatePinnedToCore(
         task_dynamic_engine, "dyn_engine",

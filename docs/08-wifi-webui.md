@@ -19,7 +19,7 @@ ESP32
   |- AsyncWebServer
   |- WebSocket /ws
   |- LittleFS
-  `- OTA web por upload e por manifest remoto
+  `- OTA online por manifest remoto
 ```
 
 ## Estado Atual do Firmware
@@ -30,6 +30,7 @@ ESP32
 - A interface web inteira exige autenticacao
 - Hostname, `manifest.json` padrao e credenciais web/OTA podem ser alterados na UI e ficam persistidos na NVS
 - O ESP32 pode checar o manifest OTA periodicamente sem atualizar sozinho
+- O upload OTA local por arquivo foi removido para reduzir o firmware
 - O Bluetooth SPP existe no codigo, mas esta desabilitado por padrao para priorizar estabilidade do Wi-Fi/Web
 - O OTA online deste repositorio e exclusivo do `YouSimuladorOBD`
 - O futuro `YouAutoTester` deve usar outro `manifest.json` e outro diretório no dominio
@@ -131,8 +132,6 @@ Todas as rotas abaixo exigem autenticacao.
 - `POST /api/device/settings`
 - `POST /api/ota/check`
 - `POST /api/ota/online`
-- `POST /api/ota/firmware`
-- `POST /api/ota/filesystem`
 
 ### Exemplo - status
 
@@ -192,19 +191,21 @@ GET /api/ota/info
   "enabled": true,
   "auth_user": "admin",
   "auth_default": true,
-  "current_version": "2026.04.02",
+  "current_version": "2026.04.02.1",
+  "online_only": true,
   "default_manifest_url": "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json",
-  "build_date": "Apr  2 2026",
-  "build_time": "16:24:28",
-  "hostname": "youobd.local",
-  "hostname_hint": "youobd-cfc1c0.local",
+  "build_date": "Apr  3 2026",
+  "build_time": "19:28:19",
+  "hostname": "youobd2.local",
+  "hostname_hint": "youobd-ea6be8.local",
   "chip_model": "ESP32-D0WD-V3",
-  "sketch_size": 1931696,
+  "sketch_size": 1924528,
   "free_sketch_space": 1966080,
   "fs_total": 131072,
-  "fs_used": 77824,
+  "fs_used": 90112,
   "auto_check_enabled": true,
   "auto_check_hours": 12,
+  "last_check_ms": 24648,
   "running_partition": "app0",
   "last_target": "idle",
   "last_ok": true,
@@ -213,13 +214,13 @@ GET /api/ota/info
   "last_total": 0,
   "job_running": false,
   "job_stage": "idle",
-  "check_ok": false,
+  "check_ok": true,
   "check_error": "",
-  "checked_manifest_url": "",
-  "checked_version": "",
-  "checked_notes": "",
-  "checked_has_firmware": false,
-  "checked_has_filesystem": false,
+  "checked_manifest_url": "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json",
+  "checked_version": "2026.04.02",
+  "checked_notes": "Release OTA do YouSimuladorOBD separada por produto no ecossistema You Auto Car",
+  "checked_has_firmware": true,
+  "checked_has_filesystem": true,
   "update_available": false
 }
 ```
@@ -255,10 +256,9 @@ O projeto usa a propria stack web do ESP32 para OTA.
 
 ### O que pode ser atualizado
 
-- Firmware principal com `POST /api/ota/firmware`
-- Filesystem da interface web com `POST /api/ota/filesystem`
 - Checagem de release com `POST /api/ota/check`
-- Download remoto com `POST /api/ota/online`
+- Download remoto de firmware com `POST /api/ota/online`
+- Download remoto de filesystem com `POST /api/ota/online`
 
 ### Pagina recomendada
 
@@ -281,34 +281,7 @@ Ela mostra:
 - checagem de versao online
 - botoes para baixar firmware ou filesystem diretamente da rede
 - estado da checagem automatica do manifest
-
-### Fluxo de uso
-
-1. Build do firmware:
-
-```bash
-pio run
-```
-
-2. Para atualizar o firmware via web, envie:
-
-```text
-.pio/build/esp32dev/firmware.bin
-```
-
-3. Para atualizar a interface web via web, gere e envie:
-
-```bash
-pio run --target buildfs
-```
-
-Arquivo esperado:
-
-```text
-.pio/build/esp32dev/littlefs.bin
-```
-
-4. O ESP32 reinicia automaticamente apos OTA bem-sucedido.
+- indicador de modo `online_only`
 
 ### Fluxo online
 
@@ -344,6 +317,11 @@ https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json
 4. Se houver release disponivel, use `Baixar firmware` ou `Baixar filesystem`.
 
 5. O ESP32 baixa o arquivo diretamente, grava a particao e reinicia automaticamente.
+
+Observacao:
+
+- o firmware atual nao aceita mais upload local por arquivo em `/ota.html`
+- a reducao foi feita para recuperar folga no slot OTA e evitar novo overflow do binario
 
 ### Processo de release recomendado
 
@@ -394,7 +372,8 @@ pio run --target uploadfs
 Upload remoto:
 
 - use `/ota.html`
-- envie `littlefs.bin`
+- informe o `manifest.json`
+- mande o ESP32 baixar `firmware` ou `filesystem`
 
 Observacao importante:
 
@@ -439,6 +418,7 @@ Foi validado em hardware:
 - OTA de firmware trocando a particao ativa
 - OTA de filesystem atualizando a UI
 - OTA online buscando `firmware.bin` e `littlefs.bin` por manifest remoto
+- OTA operando em modo online-only
 
 ## Diferencas em Relacao a Documentacao Antiga
 

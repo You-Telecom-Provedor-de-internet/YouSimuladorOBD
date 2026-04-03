@@ -25,7 +25,18 @@ struct VehicleProfile {
     uint8_t  engine_load_pct;
     uint8_t  fuel_level_pct;
     const char* vin;         // 17 caracteres exatos
+    uint8_t  supports_pid_a6_odometer = 0xFF; // 0xFF=auto, 0=false, 1=true
 };
+
+inline bool defaultPidA6SupportForProtocol(uint8_t protocol) {
+    return protocol <= PROTO_CAN_29B_250K;
+}
+
+inline bool vehicleProfileSupportsPidA6(const VehicleProfile& p) {
+    return p.supports_pid_a6_odometer == 0xFF
+        ? defaultPidA6SupportForProtocol(p.protocol)
+        : p.supports_pid_a6_odometer != 0;
+}
 
 // Aplica perfil ao estado (em marcha lenta, sem DTCs)
 inline void applyVehicleProfile(SimulationState& s, const VehicleProfile& p) {
@@ -46,6 +57,10 @@ inline void applyVehicleProfile(SimulationState& s, const VehicleProfile& p) {
     s.profile_id[23] = '\0';
     simulation_clear_manual_dtcs(s);
     simulation_clear_effective_dtcs(s);
+    s.distance_since_clear_km = 0;
+    s.distance_mil_on_km = 0;
+    s.odometer_source = ODOMETER_SOURCE_CLUSTER;
+    s.pid_a6_supported = vehicleProfileSupportsPidA6(p) ? 1 : 0;
 }
 
 // ── Catálogo de veículos ──────────────────────────────────────

@@ -47,7 +47,7 @@
   <div class="hero">
     <div>
       <h1>OTA Update</h1>
-      <div class="sub">Atualize firmware e filesystem por arquivo ou por download remoto.</div>
+      <div class="sub">Atualize firmware e filesystem apenas por download remoto.</div>
     </div>
     <a class="home-link" href="/">Voltar ao painel</a>
   </div>
@@ -112,29 +112,13 @@
     </div>
   </section>
 
-  <div class="grid">
-    <section class="card">
-      <h2>Firmware OTA por Arquivo</h2>
-      <p class="hint">Selecione o <code>firmware.bin</code> gerado pelo PlatformIO para atualizar a aplicacao principal.</p>
-      <label for="fw-file">Arquivo .bin</label>
-      <input id="fw-file" type="file" accept=".bin,application/octet-stream">
-      <button id="fw-btn" data-ota-action type="button" onclick="uploadFile('firmware')">Enviar firmware</button>
-      <div class="progress"><div class="bar" id="fw-bar"></div></div>
-      <div class="status" id="fw-status">Aguardando arquivo.</div>
-    </section>
+  <section class="card">
+    <h2>OTA Online Apenas</h2>
+    <p class="hint">O upload local por arquivo foi removido desta versao para reduzir o tamanho do firmware e simplificar o fluxo de campo. O dispositivo agora atualiza apenas a partir do <code>manifest.json</code> hospedado no seu servidor.</p>
+    <div class="status ok">Fluxo ativo: verificar online, escolher firmware ou filesystem e deixar o ESP32 baixar sozinho.</div>
+  </section>
 
-    <section class="card">
-      <h2>Filesystem OTA por Arquivo</h2>
-      <p class="hint">Selecione a imagem do filesystem, normalmente <code>littlefs.bin</code>, para atualizar a UI web.</p>
-      <label for="fs-file">Arquivo .bin</label>
-      <input id="fs-file" type="file" accept=".bin,application/octet-stream">
-      <button id="fs-btn" data-ota-action type="button" onclick="uploadFile('filesystem')">Enviar filesystem</button>
-      <div class="progress"><div class="bar" id="fs-bar"></div></div>
-      <div class="status" id="fs-status">Aguardando arquivo.</div>
-    </section>
-  </div>
-
-  <p class="foot">Depois de um OTA bem-sucedido, o ESP32 reinicia automaticamente. Use firmware quando houver mudanca no codigo C++ e filesystem quando a alteracao estiver so na interface web. No modo online, o manifest pode apontar para arquivos hospedados no seu servidor ou em uma release publica.</p>
+  <p class="foot">Depois de um OTA bem-sucedido, o ESP32 reinicia automaticamente. O manifest pode apontar para arquivos hospedados no seu servidor ou em uma release publica. Para publicar uma nova versao, atualize o <code>manifest.json</code> e os binarios remotos.</p>
 </main>
 
 <script>
@@ -473,56 +457,6 @@ async function startOnline(target) {
     setActionButtonsBusy(false);
     await loadInfo(true);
   }
-}
-
-function uploadFile(target) {
-  const kind = target === 'firmware' ? 'fw' : 'fs';
-  const input = document.getElementById(`${kind}-file`);
-  const file = input.files[0];
-  if (!file) {
-    setStatus(kind, 'Selecione um arquivo .bin antes de enviar.', 'err');
-    return;
-  }
-
-  const url = target === 'firmware' ? '/api/ota/firmware' : '/api/ota/filesystem';
-  const form = new FormData();
-  form.append('update', file, file.name);
-
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', url, true);
-
-  xhr.upload.onprogress = (evt) => {
-    if (!evt.lengthComputable) return;
-    const pct = (evt.loaded / evt.total) * 100;
-    setProgress(kind, pct);
-    setStatus(kind, `Enviando ${file.name}\n${pct.toFixed(1)}%`);
-  };
-
-  xhr.onload = async () => {
-    setActionButtonsBusy(false);
-    let payload = {};
-    try { payload = JSON.parse(xhr.responseText || '{}'); } catch (_) {}
-    if (xhr.status >= 200 && xhr.status < 300) {
-      setProgress(kind, 100);
-      setStatus(kind, 'Upload concluido com sucesso.\nO ESP32 vai reiniciar automaticamente.', 'ok');
-      startPolling();
-      return;
-    }
-    const errMsg = payload.error || `Falha HTTP ${xhr.status}`;
-    setStatus(kind, `OTA falhou.\n${errMsg}`, 'err');
-    await loadInfo(true);
-  };
-
-  xhr.onerror = async () => {
-    setActionButtonsBusy(false);
-    setStatus(kind, 'Erro de rede durante o upload OTA.', 'err');
-    await loadInfo(true);
-  };
-
-  setActionButtonsBusy(true);
-  setProgress(kind, 0);
-  setStatus(kind, `Preparando upload de ${file.name}...`);
-  xhr.send(form);
 }
 
 loadInfo();

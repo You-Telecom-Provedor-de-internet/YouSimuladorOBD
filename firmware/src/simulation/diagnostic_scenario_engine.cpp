@@ -1,4 +1,5 @@
 #include "diagnostic_scenario_engine.h"
+#include "dynamic_engine.h"
 
 #include <Arduino.h>
 #include <cmath>
@@ -585,6 +586,9 @@ bool diagnostic_remove_manual_dtc(SimulationState& state, uint16_t dtc) {
 
 void diagnostic_engine_handle_mode04_clear(SimulationState& state) {
     simulation_clear_manual_dtcs(state);
+    simulation_reset_distance_since_clear(state);
+    state.distance_mil_on_km = 0;
+    dynamic_reset_odometer_service_counters(state);
     for (uint8_t i = 0; i < DIAG_SCENARIO_MAX_FAULTS; i++) {
         s_diag_runtime.faults[i].dtc_latched = 0;
         s_diag_runtime.faults[i].newly_latched = 0;

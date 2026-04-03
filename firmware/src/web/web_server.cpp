@@ -1,6 +1,7 @@
 #include "web_server.h"
 #include "config.h"
 #include "diagnostic_scenario_engine.h"
+#include "dynamic_engine.h"
 #include "vehicle_profiles.h"
 #include "elm327_bt.h"
 #include <WiFi.h>
@@ -558,44 +559,6 @@ static void task_ota_online(void* param) {
     vTaskDelete(nullptr);
 }
 
-static void ota_upload_chunk(const String& filename, size_t index, uint8_t* data, size_t len,
-                             bool final, int command, const char* target) {
-    if (index == 0) {
-        if (s_ota_busy) {
-            ota_set_error_text("busy", "outra atualizacao ja esta em andamento");
-            return;
-        }
-        s_ota_busy = true;
-        s_ota_job_running = true;
-        ota_reset_state(target);
-        ota_set_stage("upload");
-        Serial.printf("[OTA] Iniciando %s: %s\n", target, filename.c_str());
-        if (!Update.begin(UPDATE_SIZE_UNKNOWN, command)) {
-            ota_set_error("begin");
-            return;
-        }
-    }
-
-    if (Update.hasError()) {
-        return;
-    }
-
-    if (Update.write(data, len) != len) {
-        ota_set_error("write");
-        return;
-    }
-
-    s_ota_written = index + len;
-
-    if (final) {
-        if (!Update.end(true)) {
-            ota_set_error("end");
-            return;
-        }
-        ota_finish_ok(index + len);
-    }
-}
-
 static void handle_get_ota_info(AsyncWebServerRequest* req) {
     JsonDocument doc;
     const esp_partition_t* running = esp_ota_get_running_partition();
@@ -603,6 +566,7 @@ static void handle_get_ota_info(AsyncWebServerRequest* req) {
     doc["auth_user"] = current_auth_user();
     doc["auth_default"] = using_default_auth();
     doc["current_version"] = APP_VERSION;
+    doc["online_only"] = true;
     doc["default_manifest_url"] = current_manifest_url();
     doc["build_date"] = __DATE__;
     doc["build_time"] = __TIME__;
@@ -637,25 +601,6 @@ static void handle_get_ota_info(AsyncWebServerRequest* req) {
     String out;
     serializeJson(doc, out);
     req->send(200, "application/json", out);
-}
-
-static void handle_post_ota_result(AsyncWebServerRequest* req) {
-    JsonDocument doc;
-    doc["ok"] = s_ota_last_ok;
-    doc["target"] = s_ota_last_target;
-    doc["written"] = s_ota_written;
-    doc["total"] = s_ota_total;
-    if (s_ota_last_error[0] != '\0') {
-        doc["error"] = s_ota_last_error;
-    }
-    String out;
-    serializeJson(doc, out);
-    req->send(s_ota_last_ok ? 200 : 500, "application/json", out);
-    s_ota_job_running = false;
-    s_ota_busy = false;
-    if (s_ota_last_ok) {
-        schedule_restart();
-    }
 }
 
 static void handle_post_ota_check(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
@@ -933,6 +878,16 @@ static const char* driveContextSlug(uint8_t sim_mode) {
     }
 }
 
+static const char* odometerSourceSlug(uint8_t source) {
+    switch (source) {
+        case ODOMETER_SOURCE_CLUSTER: return "cluster";
+        case ODOMETER_SOURCE_BCM: return "bcm";
+        case ODOMETER_SOURCE_ABS: return "abs";
+        case ODOMETER_SOURCE_ECM: return "ecm";
+        default: return "unknown";
+    }
+}
+
 static void appendDtcArray(JsonArray arr, const uint16_t* dtcs, uint8_t count) {
     for (uint8_t i = 0; i < count; i++) {
         char buf[6] = {};
@@ -988,6 +943,7 @@ static String stateToJson() {
     doc["limp_mode"]        = snap.limp_mode != 0;
     doc["active_faults_count"] = snap.active_fault_count;
     doc["alert_count"]      = snap.alert_count;
+    doc["odometer_total_km"] = static_cast<float>(snap.odometer_total_km_x10) / 10.0f;
     appendPrimaryAlert(doc, snap);
     doc["bt_connected"] = elm327_bt_connected();
 
@@ -1133,6 +1089,19 @@ static String diagnosticsToJson() {
     vehicle["profile_id"] = snap.profile_id;
     vehicle["protocol"] = protoName(snap.active_protocol);
     vehicle["protocol_id"] = snap.active_protocol;
+    vehicle["odometer_current_km"] = static_cast<float>(snap.odometer_total_km_x10) / 10.0f;
+    vehicle["odometer_source"] = odometerSourceSlug(snap.odometer_source);
+    JsonObject module_odometer = vehicle["module_odometer"].to<JsonObject>();
+    const float odometer_km = static_cast<float>(snap.odometer_total_km_x10) / 10.0f;
+    module_odometer["cluster_km"] = odometer_km;
+    module_odometer["bcm_km"] = odometer_km;
+    module_odometer["abs_km"] = odometer_km;
+    module_odometer["ecm_km"] = odometer_km;
+
+    JsonObject obd_counters = doc["obd_counters"].to<JsonObject>();
+    obd_counters["distance_since_clear_km"] = snap.distance_since_clear_km;
+    obd_counters["distance_mil_on_km"] = snap.distance_mil_on_km;
+    obd_counters["pid_a6_supported"] = snap.pid_a6_supported != 0;
 
     JsonObject sensors = doc["sensors"].to<JsonObject>();
     sensors["rpm"] = snap.rpm;
@@ -1358,6 +1327,9 @@ static void handle_post_preset(AsyncWebServerRequest* req, uint8_t* data, size_t
     const char* name = doc["preset"] | "idle";
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     diagnostic_engine_clear_scenario(*s_state, false);
+    s_state->profile_id[0] = '\0';
+    s_state->pid_a6_supported = defaultPidA6SupportForProtocol(s_state->active_protocol) ? 1 : 0;
+    s_state->odometer_source = ODOMETER_SOURCE_CLUSTER;
     if      (!strcmp(name, "off"))           Preset::applyOff(*s_state);
     else if (!strcmp(name, "idle"))          Preset::applyIdle(*s_state);
     else if (!strcmp(name, "cruise"))        Preset::applyCruise(*s_state);
@@ -1610,6 +1582,7 @@ static void handle_post_wifi(AsyncWebServerRequest* req, uint8_t* data, size_t l
     if (!doc["gateway"].isNull()) s_nets[idx].gw = doc["gateway"].as<String>();
 
     save_wifi_nets();
+    dynamic_persist_odometer_now();
     req->send(200, "application/json", "{\"ok\":true}");
     xTaskCreate([](void*){ vTaskDelay(pdMS_TO_TICKS(1500)); ESP.restart(); vTaskDelete(nullptr); },
                 "t_reboot", 2048, nullptr, 1, nullptr);
@@ -1632,6 +1605,7 @@ static void handle_post_wifi_remove(AsyncWebServerRequest* req, uint8_t* data, s
 }
 
 static void handle_post_reboot(AsyncWebServerRequest* req) {
+    dynamic_persist_odometer_now();
     req->send(200, "application/json", "{\"ok\":true}");
     xTaskCreate([](void*){ vTaskDelay(pdMS_TO_TICKS(800)); ESP.restart(); vTaskDelete(nullptr); },
                 "t_reboot2", 2048, nullptr, 1, nullptr);
@@ -1647,6 +1621,7 @@ static void handle_get_profiles(AsyncWebServerRequest* req) {
         obj["model"]    = VEHICLE_PROFILES[i].model;
         obj["year"]     = VEHICLE_PROFILES[i].year;
         obj["protocol"] = VEHICLE_PROFILES[i].protocol;
+        obj["pid_a6_supported"] = vehicleProfileSupportsPidA6(VEHICLE_PROFILES[i]);
     }
     String out; serializeJson(doc, out);
     req->send(200, "application/json", out);
@@ -1659,7 +1634,9 @@ static void handle_post_profile(AsyncWebServerRequest* req, uint8_t* data, size_
     const VehicleProfile* p = findProfile(id);
     if (!p) { req->send(404, "application/json", "{\"error\":\"perfil nao encontrado\"}"); return; }
     xSemaphoreTake(s_mutex, portMAX_DELAY);
+    dynamic_persist_odometer_now();
     applyVehicleProfile(*s_state, *p);
+    dynamic_reset_odometer_service_counters(*s_state);
     diagnostic_engine_rebuild_effective_dtcs(*s_state);
     xSemaphoreGive(s_mutex);
     String resp = "{\"ok\":true,\"brand\":\"" + String(p->brand) +
@@ -1697,11 +1674,18 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
             else if (!strcmp(key, "ltft"))             s_state->ltft_pct        = val;
         } else if (!strcmp(t, "protocol")) {
             uint8_t pid = doc["id"] | 0;
-            if (pid < PROTO_COUNT) s_state->active_protocol = pid;
+            if (pid < PROTO_COUNT) {
+                s_state->active_protocol = pid;
+                if (s_state->profile_id[0] == '\0') {
+                    s_state->pid_a6_supported = defaultPidA6SupportForProtocol(pid) ? 1 : 0;
+                }
+            }
         } else if (!strcmp(t, "preset")) {
             const char* name = doc["name"] | "idle";
             diagnostic_engine_clear_scenario(*s_state, false);
             s_state->profile_id[0] = '\0';  // preset limpa perfil ativo
+            s_state->pid_a6_supported = defaultPidA6SupportForProtocol(s_state->active_protocol) ? 1 : 0;
+            s_state->odometer_source = ODOMETER_SOURCE_CLUSTER;
             if      (!strcmp(name, "off"))           Preset::applyOff(*s_state);
             else if (!strcmp(name, "idle"))          Preset::applyIdle(*s_state);
             else if (!strcmp(name, "cruise"))        Preset::applyCruise(*s_state);
@@ -1712,7 +1696,9 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
             const char* pid = doc["id"] | "";
             const VehicleProfile* p = findProfile(pid);
             if (p) {
+                dynamic_persist_odometer_now();
                 applyVehicleProfile(*s_state, *p);
+                dynamic_reset_odometer_service_counters(*s_state);
                 diagnostic_engine_rebuild_effective_dtcs(*s_state);
             }
         } else if (!strcmp(t, "mode")) {
@@ -1950,16 +1936,6 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
         nullptr, handle_post_ota_check));
     protect(server.on("/api/ota/online", HTTP_POST, [](AsyncWebServerRequest*){},
         nullptr, handle_post_ota_online));
-    protect(server.on("/api/ota/firmware", HTTP_POST,
-        [](AsyncWebServerRequest* req) { handle_post_ota_result(req); },
-        [](AsyncWebServerRequest*, const String& filename, size_t index, uint8_t* data, size_t len, bool final) {
-            ota_upload_chunk(filename, index, data, len, final, U_FLASH, "firmware");
-        }));
-    protect(server.on("/api/ota/filesystem", HTTP_POST,
-        [](AsyncWebServerRequest* req) { handle_post_ota_result(req); },
-        [](AsyncWebServerRequest*, const String& filename, size_t index, uint8_t* data, size_t len, bool final) {
-            ota_upload_chunk(filename, index, data, len, final, U_SPIFFS, "filesystem");
-        }));
     server.on("/ping", HTTP_GET, [](AsyncWebServerRequest* req) {
         req->send(200, "text/plain", "pong");
     });

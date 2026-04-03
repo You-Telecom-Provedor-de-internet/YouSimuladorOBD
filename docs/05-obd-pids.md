@@ -1,441 +1,256 @@
-# 05 — PIDs OBD-II e Formato de Dados
+# 05 - PIDs OBD-II e Formato de Dados
 
-## Modo 01 — Dados Correntes (Current Data)
+## Visao Geral
 
-### PID 0x00 — PIDs Suportados [01–20]
+O `YouSimuladorOBD` responde PIDs genericos de `Mode 01`, DTCs em `Mode 03`, limpeza em `Mode 04` e VIN em `Mode 09`.
 
-Obrigatório. O scanner sempre consulta este PID primeiro para saber quais PIDs a ECU suporta.
+Nesta versao, o firmware tambem expoe odometria e contadores de servico:
 
-```
-Resposta: 4 bytes = bitmask de PIDs 01–20
-Byte A: PIDs 01–08 | Byte B: PIDs 09–10 | Byte C: PIDs 11–18 | Byte D: PIDs 19–20
+- `PID 0x21`: distancia com MIL ativa
+- `PID 0x31`: distancia desde o ultimo clear de DTC
+- `PID 0xA6`: odometria total, quando o perfil suporta esse PID
 
-PIDs que implementamos: 0x04, 0x05, 0x06, 0x07, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11
-  Byte A:  PID04=bit4, PID05=bit3, PID06=bit2, PID07=bit1  → 0x1E
-  Byte B:  PID0B=bit5, PID0C=bit4, PID0D=bit3, PID0E=bit2, PID0F=bit1, PID10=bit0 → 0x3F
-  Byte C:  PID11=bit7                                        → 0x80
-  Byte D:  PID20=bit0 (indica que há PIDs 21–40)             → 0x01
+## PIDs Suportados por Range
 
-Resposta:  04 41 00 1E 3F 80 01
-```
+### PID 0x00 - PIDs suportados [01-20]
 
-### PID 0x20 — PIDs Suportados [21–40]
+PIDs atuais neste range:
 
-```
-PIDs que implementamos neste range: 0x2F
-  Byte B bit 1 = PID 0x2F → 0x02
-  Byte D bit 0 = PID 0x40 (indica suporte a range 41-60) → 0x01
+- `0x04` carga do motor
+- `0x05` temperatura do motor
+- `0x06` STFT
+- `0x07` LTFT
+- `0x0B` MAP
+- `0x0C` RPM
+- `0x0D` velocidade
+- `0x0E` avanco de ignicao
+- `0x0F` temperatura de admissao
+- `0x10` MAF
+- `0x11` TPS
 
-Resposta: 06 41 20 00 02 00 01
-```
+### PID 0x20 - PIDs suportados [21-40]
 
-### PID 0x40 — PIDs Suportados [41–60]
+PIDs atuais neste range:
 
-```
-PIDs que implementamos neste range: 0x42, 0x5C
-  Byte A bit 6 = PID 0x42 (tensão bateria)  → 0x40
-  Byte D bit 4 = PID 0x5C (temp. óleo)      → 0x10
+- `0x21` distancia com MIL ativa
+- `0x2F` nivel de combustivel
+- `0x31` distancia desde clear
 
-Resposta: 06 41 40 40 00 00 10
-```
+O firmware anuncia `PID 0x40` para o range seguinte.
 
----
+### PID 0x40 - PIDs suportados [41-60]
+
+PIDs atuais neste range:
+
+- `0x42` tensao do modulo de controle
+- `0x5C` temperatura do oleo
+
+Se o perfil suportar `PID A6`, o firmware tambem anuncia `PID 0x60` para os ranges estendidos.
+
+### PID 0x60, 0x80 e 0xA0
+
+Quando `PID A6` esta habilitado para o perfil atual, o firmware anuncia os ranges estendidos em cascata:
+
+- `0x60` anuncia `0x80`
+- `0x80` anuncia `0xA0`
+- `0xA0` anuncia `0xA6`
+
+Quando o perfil nao suporta odometro por OBD generico, esses ranges nao sao anunciados.
 
 ## Tabela de PIDs Implementados
 
-### PID 0x04 — Carga Calculada do Motor
+### PID 0x04 - Carga do motor
 
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | Valor = A × 100 / 255 (%) |
-| Fórmula inversa (codificar) | A = valor_percent × 255 / 100 |
-| Range | 0–100% |
-| Default simulação | 25% (A = 0x40) |
+- Formula: `A * 100 / 255`
+- Unidade: `%`
+- Default: `25%`
 
-```
-Exemplo: 30% carga
-A = 30 × 255 / 100 = 76 = 0x4C
-Resposta: 03 41 04 4C
-```
+### PID 0x05 - Temperatura do motor
 
-### PID 0x05 — Temperatura do Líquido Refrigerante
+- Formula: `A - 40`
+- Unidade: `C`
+- Default: `90 C`
 
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | Temp(°C) = A − 40 |
-| Fórmula inversa | A = temp + 40 |
-| Range | −40 a +215°C |
-| Default simulação | 90°C (A = 0x82) |
+### PID 0x06 - STFT banco 1
 
-```
-Exemplo: 90°C
-A = 90 + 40 = 130 = 0x82
-Resposta: 03 41 05 82
-```
+- Formula: `(A - 128) * 100 / 128`
+- Unidade: `%`
+- Default: `0.0%`
 
-### PID 0x06 — Short Term Fuel Trim (STFT) — Banco 1
+### PID 0x07 - LTFT banco 1
 
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | STFT(%) = (A − 128) × 100 / 128 |
-| Fórmula inversa | A = (stft_pct × 128 / 100) + 128 |
-| Range | −100 a +99.2% |
-| Default simulação | 0.0% (A = 0x80) |
+- Formula: `(A - 128) * 100 / 128`
+- Unidade: `%`
+- Default: `0.0%`
 
-```
-Exemplo: +4.7%
-A = (4.7 × 128 / 100) + 128 ≈ 134 = 0x86
-Resposta: 03 41 06 86
+### PID 0x0B - MAP
 
-Exemplo: −3.1%
-A = (−3.1 × 128 / 100) + 128 ≈ 124 = 0x7C
-Resposta: 03 41 06 7C
-```
+- Formula: `A`
+- Unidade: `kPa`
+- Default: `35 kPa`
 
-> Valores |STFT| > 10% geralmente indicam problema de mistura (sensor O₂, injetor, escape).
+### PID 0x0C - RPM
 
-### PID 0x07 — Long Term Fuel Trim (LTFT) — Banco 1
+- Formula: `(A * 256 + B) / 4`
+- Unidade: `rpm`
+- Default: `800 rpm`
 
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | LTFT(%) = (A − 128) × 100 / 128 |
-| Fórmula inversa | A = (ltft_pct × 128 / 100) + 128 |
-| Range | −100 a +99.2% |
-| Default simulação | 0.0% (A = 0x80) |
+### PID 0x0D - Velocidade
 
-```
-Exemplo: 0.0%
-A = 128 = 0x80
-Resposta: 03 41 07 80
-```
+- Formula: `A`
+- Unidade: `km/h`
+- Default: `0 km/h`
 
-### PID 0x0B — Pressão do Coletor de Admissão (MAP)
+### PID 0x0E - Avanco de ignicao
 
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | Pressão(kPa) = A |
-| Range | 0–255 kPa |
-| Default simulação | 35 kPa em idle (A = 0x23) |
+- Formula: `A / 2 - 64`
+- Unidade: `graus`
+- Default: `10 graus`
 
-```
-Exemplo: 35 kPa
-Resposta: 03 41 0B 23
+### PID 0x0F - Temperatura de admissao
+
+- Formula: `A - 40`
+- Unidade: `C`
+- Default: `30 C`
+
+### PID 0x10 - MAF
+
+- Formula: `(A * 256 + B) / 100`
+- Unidade: `g/s`
+- Default: `3.0 g/s`
+
+### PID 0x11 - TPS
+
+- Formula: `A * 100 / 255`
+- Unidade: `%`
+- Default: `15%`
+
+### PID 0x21 - Distancia com MIL ativa
+
+- Formula: `A * 256 + B`
+- Unidade: `km`
+- Fonte: `distance_mil_on_km`
+- Semantica: acumula apenas enquanto ha DTC ativo
+
+Exemplo:
+
+```text
+12 km com MIL ativa
+Resposta: 04 41 21 00 0C
 ```
 
-### PID 0x0C — Rotação do Motor (RPM)
+### PID 0x2F - Nivel de combustivel
 
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 2 |
-| Fórmula | RPM = (A × 256 + B) / 4 |
-| Fórmula inversa | raw = RPM × 4; A = raw >> 8; B = raw & 0xFF |
-| Range | 0–16383.75 RPM |
-| Default simulação | 800 RPM (idle) |
+- Formula: `A * 100 / 255`
+- Unidade: `%`
+- Default: `75%`
 
-```
-Exemplo: 1500 RPM
-raw = 1500 × 4 = 6000 = 0x1770
-A = 0x17, B = 0x70
-Resposta: 04 41 0C 17 70
+### PID 0x31 - Distancia desde clear de DTC
 
-Exemplo: 800 RPM
-raw = 3200 = 0x0C80
-A = 0x0C, B = 0x80
-Resposta: 04 41 0C 0C 80
+- Formula: `A * 256 + B`
+- Unidade: `km`
+- Fonte: `distance_since_clear_km`
+- Semantica: zera em `Mode 04`
+
+Exemplo:
+
+```text
+257 km desde o clear
+Resposta: 04 41 31 01 01
 ```
 
-### PID 0x0D — Velocidade do Veículo
+### PID 0x42 - Tensao do modulo de controle
 
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | Vel(km/h) = A |
-| Range | 0–255 km/h |
-| Default simulação | 0 km/h |
+- Formula: `(A * 256 + B) / 1000`
+- Unidade: `V`
+- Default: `14.2 V`
 
-```
-Exemplo: 60 km/h
-A = 0x3C
-Resposta: 03 41 0D 3C
-```
+### PID 0x5C - Temperatura do oleo
 
-### PID 0x0E — Ângulo de Avanço de Ignição
+- Formula: `A - 40`
+- Unidade: `C`
+- Default: `85 C`
 
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | Ângulo(°) = A / 2 − 64 |
-| Fórmula inversa | A = (ângulo + 64) × 2 |
-| Range | −64 a +63.5° antes do PMS |
-| Default simulação | 10° (A = 0x94) |
+### PID 0xA6 - Odometria total
 
-```
-Exemplo: 10°
-A = (10 + 64) × 2 = 148 = 0x94
-Resposta: 03 41 0E 94
+- Formula: inteiro de 32 bits em unidade de `0.1 km`
+- Fonte: `odometer_total_km_x10`
+- Persistencia: NVS
+- Disponibilidade: apenas em perfis compativeis
+
+Exemplo:
+
+```text
+1.9 km
+raw = 19 = 0x00000013
+Resposta: 06 41 A6 00 00 00 13
 ```
 
-### PID 0x0F — Temperatura do Ar de Admissão (IAT)
+Observacoes:
 
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | Temp(°C) = A − 40 |
-| Fórmula inversa | A = temp + 40 |
-| Range | −40 a +215°C |
-| Default simulação | 30°C (A = 0x46) |
+- o simulador usa o `cluster/painel` como fonte principal do odometro
+- `BCM`, `ABS` e `ECM` sao espelhos sincronizados expostos na API local
+- `Mode 04` nunca zera o odometro total
 
-```
-Exemplo: 30°C
-A = 30 + 40 = 70 = 0x46
-Resposta: 03 41 0F 46
-```
+## Mode 03 - DTCs
 
-### PID 0x10 — Fluxo de Ar de Admissão (MAF)
+O simulador continua usando `dtc_count` e `dtcs[8]` como visao efetiva final.
 
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 2 |
-| Fórmula | MAF(g/s) = (A × 256 + B) / 100 |
-| Fórmula inversa | raw = MAF × 100; A = raw >> 8; B = raw & 0xFF |
-| Range | 0–655.35 g/s |
-| Default simulação | 3.0 g/s idle |
+Exemplo sem DTC:
 
-```
-Exemplo: 3.0 g/s
-raw = 300 = 0x012C
-A = 0x01, B = 0x2C
-Resposta: 04 41 10 01 2C
-```
-
-### PID 0x11 — Posição Absoluta do Acelerador (TPS)
-
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | TPS(%) = A × 100 / 255 |
-| Fórmula inversa | A = tps_percent × 255 / 100 |
-| Range | 0–100% |
-| Default simulação | 15% (A = 0x26) |
-
-```
-Exemplo: 15%
-A = 15 × 255 / 100 = 38 = 0x26
-Resposta: 03 41 11 26
-```
-
-### PID 0x2F — Nível de Combustível
-
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | Nível(%) = A × 100 / 255 |
-| Fórmula inversa | A = nivel_percent × 255 / 100 |
-| Range | 0–100% |
-| Default simulação | 75% |
-
-```
-Exemplo: 75%
-A = 75 × 255 / 100 = 191 = 0xBF
-Resposta: 03 41 2F BF
-```
-
-### PID 0x42 — Tensão do Módulo de Controle (Bateria)
-
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 2 |
-| Fórmula | V = (A × 256 + B) / 1000 |
-| Fórmula inversa | raw = V × 1000; A = raw >> 8; B = raw & 0xFF |
-| Range | 0–65.535 V |
-| Default simulação | 14.2 V (motor em marcha lenta, alternador ativo) |
-
-```
-Exemplo: 14.2 V
-raw = 14200 = 0x3778
-A = 0x37, B = 0x78
-Resposta: 04 41 42 37 78
-
-Valores típicos:
-  Motor desligado : 12.5 V
-  Marcha lenta    : 14.0–14.4 V
-  Carga alta      : 13.5–14.0 V
-  Alerta baixo    : < 12.0 V
-  Alerta alto     : > 15.5 V
-```
-
-### PID 0x5C — Temperatura do Óleo do Motor
-
-| Campo | Valor |
-|-------|-------|
-| Bytes de resposta | 1 |
-| Fórmula | Temp(°C) = A − 40 |
-| Fórmula inversa | A = temp + 40 |
-| Range | −40 a +210°C |
-| Default simulação | 85°C (A = 0x7D) |
-
-```
-Exemplo: 90°C
-A = 90 + 40 = 130 = 0x82
-Resposta: 03 41 5C 82
-
-Valores típicos:
-  Motor frio   : 20–40°C
-  Aquecimento  : 40–80°C
-  Operação     : 80–110°C
-  Alerta       : > 110°C
-```
-
----
-
-## Modo 03 — Códigos de Falha (DTCs)
-
-### Formato DTC
-
-Cada DTC ocupa 2 bytes:
-
-```
-Byte 1:  Bits 7–6 = Categoria
-           00 = P (Powertrain)
-           01 = C (Chassis)
-           10 = B (Body)
-           11 = U (Network)
-         Bits 5–4 = Sub-tipo
-         Bits 3–0 = Dígito 1 (hexadecimal)
-Byte 2:  Dígitos 2 e 3 (hex)
-
-Exemplo DTC P0300 (falha de ignição aleatória):
-P = 00, sub = 03, código = 00
-Byte1 = 0000 0011 = 0x03
-Byte2 = 0x00
-Frame: 03 00
-
-DTC P0171 (mistura pobre banco 1):
-Byte1 = 0x01, Byte2 = 0x71
-Frame: 01 71
-```
-
-### Resposta Modo 03
-
-```
-Se não há DTCs:
+```text
 02 43 00
-── ── ──
-│  │  └── 0 DTCs
-│  └───── Modo 03 resposta (0x43)
-└──────── Tamanho: 2 bytes
+```
 
-Se há 2 DTCs (P0300 e P0171):
+Exemplo com `P0300` e `P0171`:
+
+```text
 06 43 02 03 00 01 71
-── ── ── ───── ─────
-│  │  │  └DTC2 └DTC1
-│  │  └── 2 DTCs
-│  └───── Modo 03 resposta
-└──────── 6 bytes de dados
 ```
 
-### DTCs Disponíveis para Simulação
+## Mode 04 - Limpar DTCs
 
-O simulador inclui um banco de **140 DTCs** com descrições em português, cobrindo todos os sistemas OBD-II:
+Ao receber `Mode 04`, o firmware:
 
-| Categoria | Qtd | Exemplos |
-|-----------|-----|----------|
-| P01xx — Sensores comb./ar | 39 | P0100 (MAF), P0130 (O2), P0171 (mistura pobre) |
-| P02xx — Injeção | 8 | P0201 (injetor cil. 1), P0230 (bomba) |
-| P03xx — Ignição/falhas | 21 | P0300 (misfire), P0335 (CKP), P0351 (bobina) |
-| P04xx — Emissões | 17 | P0420 (catalisador), P0440 (EVAP), P0401 (EGR) |
-| P05xx — Velocidade/elétrico | 15 | P0500 (VSS), P0505 (marcha lenta), P0562 (tensão) |
-| P06xx — ECU | 8 | P0600 (serial), P0606 (processador) |
-| P07xx — Transmissão | 13 | P0700 (falha geral), P0730 (relação incorreta) |
-| Bxxxx — Carroceria | 6 | B0001 (airbag), B1600 (transponder) |
-| Cxxxx — Chassi/ABS | 7 | C0031 (sensor roda), C0265 (relé ABS) |
-| Uxxxx — Rede | 6 | U0001 (CAN), U0100 (com. ECM perdida) |
+1. limpa DTCs ativos
+2. limpa o latch dos DTCs de cenario
+3. zera `distance_since_clear_km`
+4. preserva `odometer_total_km_x10`
 
-A codificação suporta os 4 prefixos OBD-II (P, C, B, U). Ver seção "Formato DTC" acima para o encoding de 2 bytes.
+Resposta positiva:
 
----
-
-## Modo 04 — Limpar DTCs
-
-```
-Requisição: 01 04
-Resposta:   01 44  (confirmação positiva, sem dados adicionais)
+```text
+01 44
 ```
 
-Ao receber Mode 04, o firmware deve:
-1. Limpar a lista de DTCs ativos
-2. Resetar contadores de falha
-3. Responder 0x44
+## Mode 09 - VIN
 
----
+O simulador continua respondendo `Mode 09 PID 02` com VIN multi-frame.
 
-## Modo 09 — Informações do Veículo (VIN)
+VIN padrao:
 
-### PID 0x02 — VIN (Vehicle Identification Number)
-
-O VIN tem 17 caracteres ASCII. Requer frame multi-parte (ISO-TP):
-
-```
-Requisição: 02 09 02
-Resposta (17 bytes = multi-frame):
-
-First Frame:
-CAN ID: 0x7E8
-10 14 49 02 01 31 47 31  (primeiro byte 01 = numero de mensagem)
-── ── ── ── ── ── ── ──
-│  │  │  │  │  └─────── Primeiros 3 chars do VIN
-│  │  │  │  └────────── Message count (sempre 0x01 para VIN)
-│  │  │  └────────────── PID 0x02
-│  │  └───────────────── Mode 09 resposta = 0x49
-│  └──────────────────── Total de 20 bytes (0x14)
-└─────────────────────── First Frame (0x1X)
-
-Flow Control (scanner → ECU):
-30 00 00
-
-Consecutive Frame 1:
-21 4A 34 47 38 35 42 34   (próximos 7 chars)
-
-Consecutive Frame 2:
-22 32 34 35 36 37 00 00   (últimos chars + padding)
-
-VIN completo: "1G1JG8524B245" (exemplo 13 chars visíveis — VIN real tem 17)
+```text
+YOUSIM00000000001
 ```
 
-### VIN Padrão do Simulador
+## Resumo Rapido
 
-```
-VIN: YOUSIM00000000001
-     ────────────────
-     Y=Y, O=O, U=U (fabricante fictício "YOU")
-     SIM = Tipo simulador
-     000000001 = número de série
-```
-
----
-
-## Resumo de Ranges e Defaults dos 16 Parâmetros
-
-| # | Parâmetro | PID | Mín | Máx | Default | Alerta |
-|---|-----------|-----|-----|-----|---------|--------|
-| 1 | RPM | 0x0C | 0 | 16000 | 800 | > 6000 |
-| 2 | Velocidade | 0x0D | 0 | 255 | 0 | — |
-| 3 | Temp. refrigerante | 0x05 | -40 | 215 | 90 | > 108°C |
-| 4 | Temp. ar admissão | 0x0F | -40 | 80 | 30 | — |
-| 5 | Fluxo MAF | 0x10 | 0.0 | 655.0 | 3.0 | — |
-| 6 | Pressão MAP | 0x0B | 0 | 255 | 35 | — |
-| 7 | Pos. acelerador | 0x11 | 0 | 100 | 15 | — |
-| 8 | Avanço ignição | 0x0E | -64 | 63.5 | 10 | — |
-| 9 | Carga motor | 0x04 | 0 | 100 | 25 | — |
-| 10 | Nível combustível | 0x2F | 0 | 100 | 75 | — |
-| 11 | Tensão bateria | 0x42 | 0.0 | 65.5 | 14.2 V | < 12 V ou > 15.5 V |
-| 12 | Temp. óleo | 0x5C | -40 | 210 | 85 | > 110°C |
-| 13 | STFT Banco 1 | 0x06 | -30 | +30 | 0.0% | \|val\| > 10% |
-| 14 | LTFT Banco 1 | 0x07 | -30 | +30 | 0.0% | \|val\| > 10% |
-| 15 | DTC ativo | — | 0 | 8 DTCs | nenhum | — |
-| 16 | VIN | — | — | — | YOUSIM…001 | — |
+| PID | Parametro | Unidade | Observacao |
+|---|---|---|---|
+| `0x04` | Carga do motor | `%` | generico |
+| `0x05` | Temp. motor | `C` | generico |
+| `0x06` | STFT | `%` | generico |
+| `0x07` | LTFT | `%` | generico |
+| `0x0B` | MAP | `kPa` | generico |
+| `0x0C` | RPM | `rpm` | generico |
+| `0x0D` | Velocidade | `km/h` | generico |
+| `0x0E` | Avanco de ignicao | `graus` | generico |
+| `0x0F` | Temp. admissao | `C` | generico |
+| `0x10` | MAF | `g/s` | generico |
+| `0x11` | TPS | `%` | generico |
+| `0x21` | Dist. com MIL | `km` | cresce so com DTC ativo |
+| `0x2F` | Combustivel | `%` | generico |
+| `0x31` | Dist. desde clear | `km` | zera em `Mode 04` |
+| `0x42` | Tensao | `V` | generico |
+| `0x5C` | Temp. oleo | `C` | generico |
+| `0xA6` | Odometria total | `0.1 km` | depende do perfil |
