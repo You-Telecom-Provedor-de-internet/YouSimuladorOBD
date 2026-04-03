@@ -110,6 +110,7 @@ O emulador ELM327 via Bluetooth SPP existe no codigo, mas esta desabilitado por 
 - [11 - Bluetooth SPP / ELM327](docs/11-bluetooth-elm327.md)
 - [12 - Auditoria do Firmware e Bancada](docs/12-auditoria-firmware-e-bancada.md)
 - [13 - Montagem K-Line com L9637D](docs/13-kline-l9637d-montagem.md)
+- [14 - Cenarios Diagnosticos Compostos](docs/14-diagnostic-scenarios.md)
 
 ## Estrutura do Projeto
 
@@ -145,10 +146,17 @@ Validado em hardware:
 - OTA online por manifest funcionando
 - persistencia de hostname/manifest/credenciais via NVS
 - checagem automatica de versao OTA funcionando
+- camada diagnostica com cenarios compostos, progressivos e correlacionados
+- endpoints `GET /api/scenarios`, `POST /api/scenario` e `GET /api/diagnostics`
+- payload rico para futura integracao com health engine e mecanico online
+- camada diagnostica validada por API/WebSocket na placa real
+- ativacao de cenario por WebSocket validada
+- requalificacao de DTC apos limpeza validada
 - troca de protocolo em runtime reinicializando CAN/K-Line corretamente
 - framing fisico corrigido para Mode 03 / Mode 04
 - transmissao CAN multi-frame para respostas longas como VIN
 - barramento CAN validado em bancada com `SN65HVD230 + ELM327 + Torque Pro`
+- leitura real de PIDs tambem validada com `OBDLink MX+ + Torque`
 - leitura de PIDs em tempo real validada nos 4 protocolos CAN
 - leitura de DTC (`Mode 03`) validada via Torque Pro
 - limpeza de DTC (`Mode 04`) validada via Torque Pro
@@ -156,6 +164,15 @@ Validado em hardware:
 - troca em runtime validada em `CAN 11b 500k`, `CAN 11b 250k`,
   `CAN 29b 500k` e `CAN 29b 250k`
 - Bluetooth desativado por padrao para manter estabilidade da rede
+
+Observacoes importantes desta tranche:
+
+- houve um travamento real por excesso no slot OTA durante a rodada diagnostica
+- o binario foi reduzido sem mexer na logica dos cenarios
+- a placa voltou a subir normalmente e foi revalidada em bancada
+- build final gravada:
+  `flash = 1958921 / 1966080`
+  `firmware.bin = 1965504 bytes`
 
 ## Auditoria Recente
 

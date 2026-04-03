@@ -1,5 +1,6 @@
 #include "web_server.h"
 #include "config.h"
+#include "diagnostic_scenario_engine.h"
 #include "vehicle_profiles.h"
 #include "elm327_bt.h"
 #include <WiFi.h>
@@ -921,36 +922,75 @@ static void dtcValToStr(uint16_t val, char* buf, size_t buflen) {
     snprintf(buf, buflen, "%c%04X", PFX[(val >> 14) & 0x03], val & 0x3FFF);
 }
 
-static String stateToJson() {
-    JsonDocument doc;
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
-    doc["protocol"]         = protoName(s_state->active_protocol);
-    doc["protocol_id"]      = s_state->active_protocol;
-    doc["rpm"]              = s_state->rpm;
-    doc["speed"]            = s_state->speed_kmh;
-    doc["coolant_temp"]     = s_state->coolant_temp_c;
-    doc["intake_temp"]      = s_state->intake_temp_c;
-    doc["maf"]              = serialized(String(s_state->maf_gs, 1));
-    doc["map"]              = s_state->map_kpa;
-    doc["throttle"]         = s_state->throttle_pct;
-    doc["ignition_advance"] = serialized(String(s_state->ignition_adv, 1));
-    doc["engine_load"]      = s_state->engine_load_pct;
-    doc["fuel_level"]       = s_state->fuel_level_pct;
-    doc["battery_voltage"]  = serialized(String(s_state->battery_voltage, 1));
-    doc["oil_temp"]         = s_state->oil_temp_c;
-    doc["stft"]             = serialized(String(s_state->stft_pct, 1));
-    doc["ltft"]             = serialized(String(s_state->ltft_pct, 1));
-    auto dtcArr = doc.createNestedArray("dtcs");
-    for (uint8_t i = 0; i < s_state->dtc_count; i++) {
-        char buf[6];
-        dtcValToStr(s_state->dtcs[i], buf, sizeof(buf));
-        dtcArr.add(buf);
+static const char* driveContextSlug(uint8_t sim_mode) {
+    switch (sim_mode) {
+        case SIM_IDLE: return "idle";
+        case SIM_URBAN: return "urban";
+        case SIM_HIGHWAY: return "highway";
+        case SIM_WARMUP: return "warmup";
+        case SIM_FAULT: return "fault";
+        default: return "static";
     }
-    doc["vin"]        = s_state->vin;
-    doc["profile_id"] = s_state->profile_id;
-    doc["sim_mode"]   = (uint8_t)s_state->sim_mode;
-    doc["bt_connected"] = elm327_bt_connected();
+}
+
+static void appendDtcArray(JsonArray arr, const uint16_t* dtcs, uint8_t count) {
+    for (uint8_t i = 0; i < count; i++) {
+        char buf[6] = {};
+        dtcValToStr(dtcs[i], buf, sizeof(buf));
+        arr.add(buf);
+    }
+}
+
+static void appendPrimaryAlert(JsonDocument& doc, const SimulationState& snap) {
+    const DiagnosticAlert* primary = diagnostic_get_primary_alert(snap);
+    if (!primary) {
+        doc["primary_alert"] = nullptr;
+        return;
+    }
+
+    JsonObject obj = doc["primary_alert"].to<JsonObject>();
+    obj["type"] = primary->type;
+    obj["severity"] = primary->severity;
+    obj["system"] = primary->system;
+    obj["compartment"] = primary->compartment;
+    obj["fault_id"] = primary->fault_id;
+}
+
+static String stateToJson() {
+    SimulationState snap = {};
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    snap = *s_state;
     xSemaphoreGive(s_mutex);
+
+    JsonDocument doc;
+    doc["protocol"]         = protoName(snap.active_protocol);
+    doc["protocol_id"]      = snap.active_protocol;
+    doc["rpm"]              = snap.rpm;
+    doc["speed"]            = snap.speed_kmh;
+    doc["coolant_temp"]     = snap.coolant_temp_c;
+    doc["intake_temp"]      = snap.intake_temp_c;
+    doc["maf"]              = serialized(String(snap.maf_gs, 1));
+    doc["map"]              = snap.map_kpa;
+    doc["throttle"]         = snap.throttle_pct;
+    doc["ignition_advance"] = serialized(String(snap.ignition_adv, 1));
+    doc["engine_load"]      = snap.engine_load_pct;
+    doc["fuel_level"]       = snap.fuel_level_pct;
+    doc["battery_voltage"]  = serialized(String(snap.battery_voltage, 1));
+    doc["oil_temp"]         = snap.oil_temp_c;
+    doc["stft"]             = serialized(String(snap.stft_pct, 1));
+    doc["ltft"]             = serialized(String(snap.ltft_pct, 1));
+    appendDtcArray(doc.createNestedArray("dtcs"), snap.dtcs, snap.dtc_count);
+    doc["vin"]              = snap.vin;
+    doc["profile_id"]       = snap.profile_id;
+    doc["sim_mode"]         = static_cast<uint8_t>(snap.sim_mode);
+    doc["scenario_id"]      = snap.scenario_id;
+    doc["health_score"]     = snap.health_score;
+    doc["limp_mode"]        = snap.limp_mode != 0;
+    doc["active_faults_count"] = snap.active_fault_count;
+    doc["alert_count"]      = snap.alert_count;
+    appendPrimaryAlert(doc, snap);
+    doc["bt_connected"] = elm327_bt_connected();
+
     String out;
     serializeJson(doc, out);
     return out;
@@ -958,14 +998,271 @@ static String stateToJson() {
 
 // ── Handlers REST ─────────────────────────────────────────────
 
+static String scenariosToJson() {
+    JsonDocument doc;
+    JsonArray arr = doc.to<JsonArray>();
+    size_t count = 0;
+    const ScenarioDefinition* definitions = diagnostic_scenario_all(count);
+    for (size_t i = 1; i < count; i++) {
+        JsonObject obj = arr.add<JsonObject>();
+        obj["scenario_id"] = static_cast<uint8_t>(definitions[i].id);
+        obj["id"] = definitions[i].slug;
+        obj["label"] = definitions[i].label;
+        obj["summary"] = definitions[i].summary;
+        obj["default_mode"] = static_cast<uint8_t>(definitions[i].default_mode);
+    }
+    String out;
+    serializeJson(doc, out);
+    return out;
+}
+
+static void appendActiveFaults(JsonArray arr, const SimulationState& snap) {
+    for (uint8_t i = 0; i < snap.active_fault_count; i++) {
+        const ActiveFault& fault = snap.active_faults[i];
+        const FaultCatalogEntry* entry = fault_catalog_get(fault.fault_id);
+        JsonObject obj = arr.add<JsonObject>();
+        obj["id"] = entry->slug;
+        obj["label"] = entry->label;
+        if (fault.dtc != 0) {
+            char dtc_buf[6] = {};
+            dtcValToStr(fault.dtc, dtc_buf, sizeof(dtc_buf));
+            obj["dtc"] = dtc_buf;
+        } else {
+            obj["dtc"] = nullptr;
+        }
+        obj["severity"] = diagnostic_severity_slug(fault.severity);
+        obj["system"] = diagnostic_system_slug(fault.system);
+        obj["compartment"] = diagnostic_compartment_slug(fault.compartment);
+        obj["stage"] = fault_stage_slug(fault.stage);
+        obj["intensity_pct"] = fault.intensity_pct;
+        obj["root_cause"] = entry->is_root_cause != 0;
+    }
+}
+
+static void appendAlerts(JsonArray arr, const SimulationState& snap) {
+    for (uint8_t i = 0; i < snap.alert_count; i++) {
+        const DiagnosticAlert& alert = snap.alerts[i];
+        const FaultCatalogEntry* entry = fault_catalog_get(alert.fault_id);
+        JsonObject obj = arr.add<JsonObject>();
+        obj["type"] = diagnostic_alert_type_slug(alert.type);
+        obj["label"] = diagnostic_alert_type_label(alert.type);
+        obj["severity"] = diagnostic_severity_slug(alert.severity);
+        obj["system"] = diagnostic_system_slug(alert.system);
+        obj["compartment"] = diagnostic_compartment_slug(alert.compartment);
+        obj["fault_id"] = entry->slug;
+        obj["primary"] = (alert.flags & 0x01) != 0;
+    }
+}
+
+static void appendAnomalies(JsonArray arr, const SimulationState& snap) {
+    for (uint8_t i = 0; i < snap.active_fault_count; i++) {
+        const ActiveFault& fault = snap.active_faults[i];
+        JsonObject obj = arr.add<JsonObject>();
+        switch (fault.fault_id) {
+            case FAULT_ID_MISFIRE_MULTI:
+                obj["metric"] = "rpm_stability";
+                obj["severity"] = "warning";
+                obj["description"] = "Oscilacao de RPM incompatível com carga e TPS em trajeto urbano.";
+                break;
+            case FAULT_ID_MISFIRE_CYL_1:
+            case FAULT_ID_MISFIRE_CYL_4:
+                obj["metric"] = "combustion_balance";
+                obj["severity"] = "warning";
+                obj["description"] = "Falha derivada por cilindro mantendo torque irregular sob carga parcial.";
+                break;
+            case FAULT_ID_FAN_DEGRADED:
+            case FAULT_ID_COOLING_OVERTEMP:
+                obj["metric"] = "thermal_rise_low_speed";
+                obj["severity"] = fault.severity >= DIAG_SEV_HIGH ? "critical" : "warning";
+                obj["description"] = "Temperaturas sobem mais em baixa velocidade e aliviam com maior fluxo de ar.";
+                break;
+            case FAULT_ID_AIR_LEAK_IDLE:
+                obj["metric"] = "fuel_trim_positive";
+                obj["severity"] = "warning";
+                obj["description"] = "STFT/LTFT positivos com MAP elevado em marcha lenta.";
+                break;
+            case FAULT_ID_CATALYST_EFF_DROP:
+                obj["metric"] = "emissions_efficiency";
+                obj["severity"] = "warning";
+                obj["description"] = "Eficiencia de emissao degradada com pouca perda de dirigibilidade.";
+                break;
+            case FAULT_ID_VOLTAGE_UNSTABLE:
+                obj["metric"] = "supply_voltage";
+                obj["severity"] = "warning";
+                obj["description"] = "Tensao oscilando de forma plausivel para alternador ou bateria instavel.";
+                break;
+            case FAULT_ID_MODULE_SUPPLY_INSTABILITY:
+                obj["metric"] = "module_signal_jitter";
+                obj["severity"] = "warning";
+                obj["description"] = "Sensores secundarios mostram jitter por alimentacao eletrica instavel.";
+                break;
+            case FAULT_ID_ABS_WHEEL_SPEED_INCONSISTENT:
+                obj["metric"] = "wheel_speed_context";
+                obj["severity"] = "warning";
+                obj["description"] = "Inconsistencia interna de roda/ABS pronta para integracao futura.";
+                break;
+            default:
+                arr.remove(arr.size() - 1);
+                continue;
+        }
+    }
+}
+
+static String diagnosticsToJson() {
+    SimulationState snap = {};
+    DiagnosticFreezeFrame freeze_frame = {};
+    bool has_freeze_frame = false;
+
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    snap = *s_state;
+    has_freeze_frame = diagnostic_get_freeze_frame(freeze_frame);
+    xSemaphoreGive(s_mutex);
+
+    JsonDocument doc;
+    const DiagnosticScenarioId scenario_id = static_cast<DiagnosticScenarioId>(snap.scenario_id);
+    const uint8_t probable_root_id = diagnostic_get_probable_root_fault_id(snap);
+    const FaultCatalogEntry* probable_root = fault_catalog_get(probable_root_id);
+
+    doc["scenario_id"] = diagnostic_scenario_slug(scenario_id);
+    doc["drive_context"] = driveContextSlug(static_cast<uint8_t>(snap.sim_mode));
+    doc["health_score"] = snap.health_score;
+    doc["limp_mode"] = snap.limp_mode != 0;
+
+    JsonObject vehicle = doc["vehicle"].to<JsonObject>();
+    vehicle["vin"] = snap.vin;
+    vehicle["profile_id"] = snap.profile_id;
+    vehicle["protocol"] = protoName(snap.active_protocol);
+    vehicle["protocol_id"] = snap.active_protocol;
+
+    JsonObject sensors = doc["sensors"].to<JsonObject>();
+    sensors["rpm"] = snap.rpm;
+    sensors["speed"] = snap.speed_kmh;
+    sensors["coolant_temp"] = snap.coolant_temp_c;
+    sensors["intake_temp"] = snap.intake_temp_c;
+    sensors["maf"] = serialized(String(snap.maf_gs, 1));
+    sensors["map"] = snap.map_kpa;
+    sensors["throttle"] = snap.throttle_pct;
+    sensors["engine_load"] = snap.engine_load_pct;
+    sensors["battery_voltage"] = serialized(String(snap.battery_voltage, 1));
+    sensors["oil_temp"] = snap.oil_temp_c;
+    sensors["stft"] = serialized(String(snap.stft_pct, 1));
+    sensors["ltft"] = serialized(String(snap.ltft_pct, 1));
+
+    appendDtcArray(doc["dtcs"].to<JsonArray>(), snap.dtcs, snap.dtc_count);
+    appendActiveFaults(doc["active_faults"].to<JsonArray>(), snap);
+    appendAlerts(doc["alerts"].to<JsonArray>(), snap);
+    appendAnomalies(doc["anomalies"].to<JsonArray>(), snap);
+
+    if (probable_root_id != FAULT_ID_NONE) {
+        JsonObject root = doc["probable_root_cause"].to<JsonObject>();
+        root["id"] = probable_root->slug;
+        root["label"] = probable_root->label;
+        root["system"] = diagnostic_system_slug(probable_root->system);
+        root["compartment"] = diagnostic_compartment_slug(probable_root->compartment);
+    } else {
+        doc["probable_root_cause"] = nullptr;
+    }
+
+    JsonArray derived = doc["derived_faults"].to<JsonArray>();
+    for (uint8_t i = 0; i < snap.active_fault_count; i++) {
+        const FaultCatalogEntry* entry = fault_catalog_get(snap.active_faults[i].fault_id);
+        if (entry->fault_id != probable_root_id && entry->root_fault_id == probable_root_id) {
+            derived.add(entry->slug);
+        }
+    }
+
+    if (has_freeze_frame) {
+        JsonObject freeze = doc["freeze_frame"].to<JsonObject>();
+        freeze["fault_id"] = fault_catalog_get(freeze_frame.fault_id)->slug;
+        if (freeze_frame.dtc != 0) {
+            char dtc_buf[6] = {};
+            dtcValToStr(freeze_frame.dtc, dtc_buf, sizeof(dtc_buf));
+            freeze["dtc"] = dtc_buf;
+        }
+        freeze["health_score"] = freeze_frame.health_score;
+        JsonObject freeze_sensors = freeze["sensors"].to<JsonObject>();
+        freeze_sensors["rpm"] = freeze_frame.rpm;
+        freeze_sensors["speed"] = freeze_frame.speed_kmh;
+        freeze_sensors["throttle"] = freeze_frame.throttle_pct;
+        freeze_sensors["coolant_temp"] = freeze_frame.coolant_temp_c;
+        freeze_sensors["intake_temp"] = freeze_frame.intake_temp_c;
+        freeze_sensors["oil_temp"] = freeze_frame.oil_temp_c;
+        freeze_sensors["maf"] = serialized(String(freeze_frame.maf_gs, 1));
+        freeze_sensors["map"] = freeze_frame.map_kpa;
+        freeze_sensors["battery_voltage"] = serialized(String(freeze_frame.battery_voltage, 1));
+        freeze_sensors["stft"] = serialized(String(freeze_frame.stft_pct, 1));
+        freeze_sensors["ltft"] = serialized(String(freeze_frame.ltft_pct, 1));
+    } else {
+        doc["freeze_frame"] = nullptr;
+    }
+
+    JsonObject mode06 = doc["mode06_like"].to<JsonObject>();
+    JsonArray groups = mode06["failing_groups"].to<JsonArray>();
+    if (probable_root_id != FAULT_ID_NONE) {
+        JsonObject group = groups.add<JsonObject>();
+        String group_name = String(probable_root->slug) + "_monitor";
+        group["group"] = group_name;
+        group["context"] = driveContextSlug(static_cast<uint8_t>(snap.sim_mode));
+        JsonArray causes = group["causes"].to<JsonArray>();
+        JsonObject cause = causes.add<JsonObject>();
+        cause["percentage"] = 60 + (100 - snap.health_score) / 2;
+        cause["cause"] = probable_root->label;
+    }
+
+    String out;
+    serializeJson(doc, out);
+    return out;
+}
+
 static void handle_get_status(AsyncWebServerRequest* req) {
     req->send(200, "application/json", stateToJson());
+}
+
+static void handle_get_scenarios(AsyncWebServerRequest* req) {
+    req->send(200, "application/json", scenariosToJson());
+}
+
+static void handle_get_diagnostics(AsyncWebServerRequest* req) {
+    req->send(200, "application/json", diagnosticsToJson());
+}
+
+static void handle_post_scenario(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+    JsonDocument doc;
+    if (deserializeJson(doc, data, len)) {
+        req->send(400, "application/json", "{\"error\":\"json invalido\"}");
+        return;
+    }
+
+    const String scenario_slug = String(doc["id"] | "");
+    const DiagnosticScenarioId scenario_id = diagnostic_scenario_from_slug(scenario_slug.c_str());
+
+    if (!scenario_slug.isEmpty() && scenario_id == DIAG_SCENARIO_NONE) {
+        req->send(404, "application/json", "{\"error\":\"cenario nao encontrado\"}");
+        return;
+    }
+
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (scenario_id == DIAG_SCENARIO_NONE) {
+        diagnostic_engine_clear_scenario(*s_state, true);
+    } else {
+        diagnostic_engine_set_scenario(*s_state, scenario_id);
+    }
+    xSemaphoreGive(s_mutex);
+
+    JsonDocument resp;
+    resp["ok"] = true;
+    resp["scenario_id"] = static_cast<uint8_t>(scenario_id);
+    resp["id"] = diagnostic_scenario_slug(scenario_id);
+    String out;
+    serializeJson(resp, out);
+    req->send(200, "application/json", out);
 }
 
 static void handle_post_params(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
     JsonDocument doc;
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
     xSemaphoreTake(s_mutex, portMAX_DELAY);
+    diagnostic_engine_clear_scenario(*s_state, true);
     if (doc.containsKey("rpm"))              s_state->rpm              = doc["rpm"];
     if (doc.containsKey("speed"))            s_state->speed_kmh        = doc["speed"];
     if (doc.containsKey("coolant_temp"))     s_state->coolant_temp_c   = doc["coolant_temp"];
@@ -1017,15 +1314,14 @@ static void handle_add_dtc(AsyncWebServerRequest* req, uint8_t* data, size_t len
     if (strlen(code) < 5) { req->send(400); return; }
     uint16_t val = dtcStrToVal(code);
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (s_state->dtc_count < 8) s_state->dtcs[s_state->dtc_count++] = val;
+    diagnostic_add_manual_dtc(*s_state, val);
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
 }
 
 static void handle_clear_dtcs(AsyncWebServerRequest* req) {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    s_state->dtc_count = 0;
-    memset(s_state->dtcs, 0, sizeof(s_state->dtcs));
+    diagnostic_engine_handle_mode04_clear(*s_state);
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
 }
@@ -1037,15 +1333,7 @@ static void handle_remove_dtc(AsyncWebServerRequest* req, uint8_t* data, size_t 
     if (strlen(code) < 5) { req->send(400); return; }
     uint16_t val = dtcStrToVal(code);
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    for (uint8_t i = 0; i < s_state->dtc_count; i++) {
-        if (s_state->dtcs[i] == val) {
-            // shift para preencher o buraco
-            for (uint8_t j = i; j < s_state->dtc_count - 1; j++)
-                s_state->dtcs[j] = s_state->dtcs[j + 1];
-            s_state->dtc_count--;
-            break;
-        }
-    }
+    diagnostic_remove_manual_dtc(*s_state, val);
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
 }
@@ -1056,6 +1344,9 @@ static void handle_post_mode(AsyncWebServerRequest* req, uint8_t* data, size_t l
     uint8_t m = doc["mode"] | 0;
     if (m >= SIM_MODE_COUNT) { req->send(400, "application/json", "{\"error\":\"invalid mode\"}"); return; }
     xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (m == SIM_FAULT) {
+        diagnostic_engine_clear_scenario(*s_state, true);
+    }
     s_state->sim_mode = (SimMode)m;
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
@@ -1066,6 +1357,7 @@ static void handle_post_preset(AsyncWebServerRequest* req, uint8_t* data, size_t
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
     const char* name = doc["preset"] | "idle";
     xSemaphoreTake(s_mutex, portMAX_DELAY);
+    diagnostic_engine_clear_scenario(*s_state, false);
     if      (!strcmp(name, "off"))           Preset::applyOff(*s_state);
     else if (!strcmp(name, "idle"))          Preset::applyIdle(*s_state);
     else if (!strcmp(name, "cruise"))        Preset::applyCruise(*s_state);
@@ -1368,6 +1660,7 @@ static void handle_post_profile(AsyncWebServerRequest* req, uint8_t* data, size_
     if (!p) { req->send(404, "application/json", "{\"error\":\"perfil nao encontrado\"}"); return; }
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     applyVehicleProfile(*s_state, *p);
+    diagnostic_engine_rebuild_effective_dtcs(*s_state);
     xSemaphoreGive(s_mutex);
     String resp = "{\"ok\":true,\"brand\":\"" + String(p->brand) +
                   "\",\"model\":\"" + String(p->model) + "\"}";
@@ -1385,6 +1678,7 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
 
         xSemaphoreTake(s_mutex, portMAX_DELAY);
         if (!strcmp(t, "set")) {
+            diagnostic_engine_clear_scenario(*s_state, true);
             const char* key = doc["key"] | "";
             float val = doc["value"] | 0.0f;
             if      (!strcmp(key, "rpm"))              s_state->rpm             = (uint16_t)val;
@@ -1406,6 +1700,7 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
             if (pid < PROTO_COUNT) s_state->active_protocol = pid;
         } else if (!strcmp(t, "preset")) {
             const char* name = doc["name"] | "idle";
+            diagnostic_engine_clear_scenario(*s_state, false);
             s_state->profile_id[0] = '\0';  // preset limpa perfil ativo
             if      (!strcmp(name, "off"))           Preset::applyOff(*s_state);
             else if (!strcmp(name, "idle"))          Preset::applyIdle(*s_state);
@@ -1416,10 +1711,26 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
         } else if (!strcmp(t, "profile")) {
             const char* pid = doc["id"] | "";
             const VehicleProfile* p = findProfile(pid);
-            if (p) applyVehicleProfile(*s_state, *p);
+            if (p) {
+                applyVehicleProfile(*s_state, *p);
+                diagnostic_engine_rebuild_effective_dtcs(*s_state);
+            }
         } else if (!strcmp(t, "mode")) {
             uint8_t m = doc["id"] | 0;
-            if (m < SIM_MODE_COUNT) s_state->sim_mode = (SimMode)m;
+            if (m < SIM_MODE_COUNT) {
+                if (m == SIM_FAULT) {
+                    diagnostic_engine_clear_scenario(*s_state, true);
+                }
+                s_state->sim_mode = (SimMode)m;
+            }
+        } else if (!strcmp(t, "scenario")) {
+            const String scenario_slug = String(doc["id"] | "");
+            const DiagnosticScenarioId scenario_id = diagnostic_scenario_from_slug(scenario_slug.c_str());
+            if (scenario_slug.isEmpty()) {
+                diagnostic_engine_clear_scenario(*s_state, true);
+            } else if (scenario_id != DIAG_SCENARIO_NONE) {
+                diagnostic_engine_set_scenario(*s_state, scenario_id);
+            }
         }
         xSemaphoreGive(s_mutex);
     }
@@ -1597,6 +1908,10 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
 
     // REST API
     protect(server.on("/api/status",   HTTP_GET,  handle_get_status));
+    protect(server.on("/api/scenarios", HTTP_GET, handle_get_scenarios));
+    protect(server.on("/api/diagnostics", HTTP_GET, handle_get_diagnostics));
+    protect(server.on("/api/scenario", HTTP_POST, [](AsyncWebServerRequest*){},
+        nullptr, handle_post_scenario));
     protect(server.on("/api/dtcs",     HTTP_GET,  handle_get_dtcs));
     protect(server.on("/api/dtcs/clear", HTTP_POST,
         [](AsyncWebServerRequest* r){ handle_clear_dtcs(r); }));

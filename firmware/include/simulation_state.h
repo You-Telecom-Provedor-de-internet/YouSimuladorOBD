@@ -1,107 +1,218 @@
 #pragma once
+
 #include <Arduino.h>
 #include <cstdint>
 #include <cstring>
+#include <type_traits>
+#include "alert_types.h"
 
-// ════════════════════════════════════════════════════════════
-//  Modo de simulação dinâmica
-// ════════════════════════════════════════════════════════════
 enum SimMode : uint8_t {
-    SIM_STATIC  = 0,  // manual — valores fixos controlados pelo utilizador
-    SIM_IDLE    = 1,  // marcha lenta — motor aquecido, parado, oscilações leves
-    SIM_URBAN   = 2,  // percurso urbano — stop & go, 0-60 km/h
-    SIM_HIGHWAY = 3,  // rodovia — cruzeiro 100-120 km/h
-    SIM_WARMUP  = 4,  // arranque a frio — temperatura sobe de 20 °C a 90 °C
-    SIM_FAULT   = 5,  // falha intermitente — DTC P0300 cíclico + RPM errático
+    SIM_STATIC = 0,
+    SIM_IDLE = 1,
+    SIM_URBAN = 2,
+    SIM_HIGHWAY = 3,
+    SIM_WARMUP = 4,
+    SIM_FAULT = 5,
 };
-constexpr uint8_t SIM_MODE_COUNT = 6;
 
-// ════════════════════════════════════════════════════════════
-//  Estado central de simulação — 16 parâmetros + DTCs + VIN
-//  Protegido por mutex FreeRTOS (g_sim_mutex)
-// ════════════════════════════════════════════════════════════
+constexpr uint8_t SIM_MODE_COUNT = 6;
+constexpr uint8_t SIM_MAX_DTCS = 8;
+constexpr uint8_t DIAG_MAX_ACTIVE_FAULTS = 6;
+constexpr uint8_t DIAG_MAX_ALERTS = 6;
 
 struct SimulationState {
-    // ── Parâmetros Mode 01 ────────────────────────────────────
-    uint16_t rpm             = 800;    // 0–16000 RPM
-    uint8_t  speed_kmh       = 0;      // 0–255 km/h
-    int16_t  coolant_temp_c  = 90;     // -40 a +215 °C
-    int16_t  intake_temp_c   = 30;     // -40 a +80 °C
-    float    maf_gs          = 3.0f;   // 0.0–655.35 g/s
-    uint8_t  map_kpa         = 35;     // 0–255 kPa
-    uint8_t  throttle_pct    = 15;     // 0–100 %
-    float    ignition_adv    = 10.0f;  // -64.0 a +63.5 °
-    uint8_t  engine_load_pct = 25;     // 0–100 %
-    uint8_t  fuel_level_pct  = 75;     // 0–100 %
-    float    battery_voltage = 14.2f;  // 0.0–65.535 V
-    int16_t  oil_temp_c      = 85;     // -40 a +210 °C
-    float    stft_pct        = 0.0f;   // -100 a +99.2 % (Short Term Fuel Trim)
-    float    ltft_pct        = 0.0f;   // -100 a +99.2 % (Long Term Fuel Trim)
+    uint16_t rpm = 800;
+    uint8_t  speed_kmh = 0;
+    int16_t  coolant_temp_c = 90;
+    int16_t  intake_temp_c = 30;
+    float    maf_gs = 3.0f;
+    uint8_t  map_kpa = 35;
+    uint8_t  throttle_pct = 15;
+    float    ignition_adv = 10.0f;
+    uint8_t  engine_load_pct = 25;
+    uint8_t  fuel_level_pct = 75;
+    float    battery_voltage = 14.2f;
+    int16_t  oil_temp_c = 85;
+    float    stft_pct = 0.0f;
+    float    ltft_pct = 0.0f;
 
-    // ── DTCs Mode 03 ──────────────────────────────────────────
-    uint8_t  dtc_count       = 0;
-    uint16_t dtcs[8]         = {};     // até 8 DTCs (2 bytes cada)
+    uint8_t  dtc_count = 0;
+    uint16_t dtcs[SIM_MAX_DTCS] = {};
 
-    // ── VIN Mode 09 PID 02 ────────────────────────────────────
-    char vin[18]             = "YOUSIM00000000001";
+    char vin[18] = "YOUSIM00000000001";
+    uint8_t active_protocol = 0;
+    char profile_id[24] = "";
+    SimMode sim_mode = SIM_STATIC;
 
-    // ── Protocolo ativo ───────────────────────────────────────
-    uint8_t  active_protocol = 0;
-
-    // ── Perfil de veículo ativo ───────────────────────────────
-    char profile_id[24]      = "";     // vazio = nenhum perfil aplicado
-
-    // ── Modo de simulação ─────────────────────────────────────
-    SimMode  sim_mode        = SIM_STATIC;
+    uint8_t scenario_id = 0;
+    uint8_t health_score = 100;
+    uint8_t limp_mode = 0;
+    uint8_t active_fault_count = 0;
+    uint8_t alert_count = 0;
+    uint8_t manual_dtc_count = 0;
+    uint16_t manual_dtcs[SIM_MAX_DTCS] = {};
+    ActiveFault active_faults[DIAG_MAX_ACTIVE_FAULTS] = {};
+    DiagnosticAlert alerts[DIAG_MAX_ALERTS] = {};
 };
 
-// ── Presets de cenário ────────────────────────────────────────
+inline void simulation_clear_effective_dtcs(SimulationState& s) {
+    s.dtc_count = 0;
+    memset(s.dtcs, 0, sizeof(s.dtcs));
+}
+
+inline void simulation_clear_manual_dtcs(SimulationState& s) {
+    s.manual_dtc_count = 0;
+    memset(s.manual_dtcs, 0, sizeof(s.manual_dtcs));
+}
+
+inline bool simulation_has_manual_dtc(const SimulationState& s, uint16_t dtc) {
+    for (uint8_t i = 0; i < s.manual_dtc_count; i++) {
+        if (s.manual_dtcs[i] == dtc) {
+            return true;
+        }
+    }
+    return false;
+}
+
+inline bool simulation_add_manual_dtc(SimulationState& s, uint16_t dtc) {
+    if (dtc == 0 || simulation_has_manual_dtc(s, dtc) || s.manual_dtc_count >= SIM_MAX_DTCS) {
+        return false;
+    }
+    s.manual_dtcs[s.manual_dtc_count++] = dtc;
+    return true;
+}
+
+inline bool simulation_remove_manual_dtc(SimulationState& s, uint16_t dtc) {
+    for (uint8_t i = 0; i < s.manual_dtc_count; i++) {
+        if (s.manual_dtcs[i] == dtc) {
+            for (uint8_t j = i; j + 1 < s.manual_dtc_count; j++) {
+                s.manual_dtcs[j] = s.manual_dtcs[j + 1];
+            }
+            s.manual_dtcs[s.manual_dtc_count - 1] = 0;
+            s.manual_dtc_count--;
+            return true;
+        }
+    }
+    return false;
+}
+
+inline void simulation_copy_manual_dtcs_to_effective(SimulationState& s) {
+    simulation_clear_effective_dtcs(s);
+    s.dtc_count = s.manual_dtc_count;
+    for (uint8_t i = 0; i < s.manual_dtc_count; i++) {
+        s.dtcs[i] = s.manual_dtcs[i];
+    }
+}
+
+inline void diagnostic_reset_fields(SimulationState& s) {
+    s.scenario_id = 0;
+    s.health_score = 100;
+    s.limp_mode = 0;
+    s.active_fault_count = 0;
+    s.alert_count = 0;
+    simulation_clear_manual_dtcs(s);
+    memset(s.active_faults, 0, sizeof(s.active_faults));
+    memset(s.alerts, 0, sizeof(s.alerts));
+}
+
+static_assert(std::is_trivially_copyable<SimulationState>::value, "SimulationState must stay trivially copyable");
+static_assert(sizeof(SimulationState) <= 216, "SimulationState exceeded diagnostic budget");
+
 namespace Preset {
     inline void applyOff(SimulationState& s) {
-        s.rpm = 0; s.speed_kmh = 0; s.coolant_temp_c = 20;
-        s.intake_temp_c = 20; s.maf_gs = 0; s.map_kpa = 100;
-        s.throttle_pct = 0; s.ignition_adv = 0;
-        s.engine_load_pct = 0; s.fuel_level_pct = 75;
-        s.battery_voltage = 12.5f; s.oil_temp_c = 20;
-        s.stft_pct = 0.0f; s.ltft_pct = 0.0f;
-        s.dtc_count = 0; s.sim_mode = SIM_STATIC;
+        s.rpm = 0;
+        s.speed_kmh = 0;
+        s.coolant_temp_c = 20;
+        s.intake_temp_c = 20;
+        s.maf_gs = 0.0f;
+        s.map_kpa = 100;
+        s.throttle_pct = 0;
+        s.ignition_adv = 0.0f;
+        s.engine_load_pct = 0;
+        s.fuel_level_pct = 75;
+        s.battery_voltage = 12.5f;
+        s.oil_temp_c = 20;
+        s.stft_pct = 0.0f;
+        s.ltft_pct = 0.0f;
+        diagnostic_reset_fields(s);
+        simulation_clear_effective_dtcs(s);
+        s.sim_mode = SIM_STATIC;
     }
+
     inline void applyIdle(SimulationState& s) {
-        s.rpm = 800; s.speed_kmh = 0; s.coolant_temp_c = 90;
-        s.intake_temp_c = 30; s.maf_gs = 3.0f; s.map_kpa = 35;
-        s.throttle_pct = 15; s.ignition_adv = 10.0f;
-        s.engine_load_pct = 20; s.fuel_level_pct = 75;
-        s.battery_voltage = 14.2f; s.oil_temp_c = 85;
-        s.stft_pct = 0.0f; s.ltft_pct = 0.0f;
-        s.dtc_count = 0; s.sim_mode = SIM_STATIC;
+        s.rpm = 800;
+        s.speed_kmh = 0;
+        s.coolant_temp_c = 90;
+        s.intake_temp_c = 30;
+        s.maf_gs = 3.0f;
+        s.map_kpa = 35;
+        s.throttle_pct = 15;
+        s.ignition_adv = 10.0f;
+        s.engine_load_pct = 20;
+        s.fuel_level_pct = 75;
+        s.battery_voltage = 14.2f;
+        s.oil_temp_c = 85;
+        s.stft_pct = 0.0f;
+        s.ltft_pct = 0.0f;
+        diagnostic_reset_fields(s);
+        simulation_clear_effective_dtcs(s);
+        s.sim_mode = SIM_STATIC;
     }
+
     inline void applyCruise(SimulationState& s) {
-        s.rpm = 2000; s.speed_kmh = 60; s.coolant_temp_c = 92;
-        s.intake_temp_c = 35; s.maf_gs = 12.0f; s.map_kpa = 55;
-        s.throttle_pct = 35; s.ignition_adv = 15.0f;
-        s.engine_load_pct = 45; s.fuel_level_pct = 60;
-        s.battery_voltage = 14.0f; s.oil_temp_c = 90;
-        s.stft_pct = -1.6f; s.ltft_pct = 0.0f;
-        s.dtc_count = 0; s.sim_mode = SIM_STATIC;
+        s.rpm = 2000;
+        s.speed_kmh = 60;
+        s.coolant_temp_c = 92;
+        s.intake_temp_c = 35;
+        s.maf_gs = 12.0f;
+        s.map_kpa = 55;
+        s.throttle_pct = 35;
+        s.ignition_adv = 15.0f;
+        s.engine_load_pct = 45;
+        s.fuel_level_pct = 60;
+        s.battery_voltage = 14.0f;
+        s.oil_temp_c = 90;
+        s.stft_pct = -1.6f;
+        s.ltft_pct = 0.0f;
+        diagnostic_reset_fields(s);
+        simulation_clear_effective_dtcs(s);
+        s.sim_mode = SIM_STATIC;
     }
+
     inline void applyFullThrottle(SimulationState& s) {
-        s.rpm = 5000; s.speed_kmh = 120; s.coolant_temp_c = 98;
-        s.intake_temp_c = 45; s.maf_gs = 55.0f; s.map_kpa = 95;
-        s.throttle_pct = 90; s.ignition_adv = 20.0f;
-        s.engine_load_pct = 85; s.fuel_level_pct = 50;
-        s.battery_voltage = 13.8f; s.oil_temp_c = 100;
-        s.stft_pct = 4.7f; s.ltft_pct = 1.6f;
-        s.dtc_count = 0; s.sim_mode = SIM_STATIC;
+        s.rpm = 5000;
+        s.speed_kmh = 120;
+        s.coolant_temp_c = 98;
+        s.intake_temp_c = 45;
+        s.maf_gs = 55.0f;
+        s.map_kpa = 95;
+        s.throttle_pct = 90;
+        s.ignition_adv = 20.0f;
+        s.engine_load_pct = 85;
+        s.fuel_level_pct = 50;
+        s.battery_voltage = 13.8f;
+        s.oil_temp_c = 100;
+        s.stft_pct = 4.7f;
+        s.ltft_pct = 1.6f;
+        diagnostic_reset_fields(s);
+        simulation_clear_effective_dtcs(s);
+        s.sim_mode = SIM_STATIC;
     }
+
     inline void applyOverheat(SimulationState& s) {
         applyIdle(s);
-        s.coolant_temp_c = 115; s.oil_temp_c = 118;
+        s.coolant_temp_c = 115;
+        s.oil_temp_c = 118;
         s.battery_voltage = 13.5f;
-        s.dtc_count = 1; s.dtcs[0] = 0x0300;
+        simulation_add_manual_dtc(s, 0x0217);
+        simulation_copy_manual_dtcs_to_effective(s);
     }
+
     inline void applyCatalystFail(SimulationState& s) {
         applyCruise(s);
-        s.stft_pct = 12.5f; s.ltft_pct = 10.2f;
-        s.dtc_count = 1; s.dtcs[0] = 0x0420;
+        s.stft_pct = 12.5f;
+        s.ltft_pct = 10.2f;
+        simulation_add_manual_dtc(s, 0x0420);
+        simulation_copy_manual_dtcs_to_effective(s);
     }
 }

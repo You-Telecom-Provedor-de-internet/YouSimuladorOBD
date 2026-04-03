@@ -1,5 +1,6 @@
 #include "elm327_bt.h"
 #include "config.h"
+#include "diagnostic_scenario_engine.h"
 #include "obd_types.h"
 #include "obd_dispatcher.h"
 #include <Arduino.h>
@@ -161,8 +162,7 @@ static void handle_obd_request(const String& hex) {
     OBDResponse resp = s_dispatcher.dispatch(req, *s_state);
     // Mode 04 — clear DTCs (mesmo tratamento do CAN protocol)
     if (req.mode == 0x04) {
-        s_state->dtc_count = 0;
-        memset(s_state->dtcs, 0, sizeof(s_state->dtcs));
+        diagnostic_engine_handle_mode04_clear(*s_state);
     }
     xSemaphoreGive(s_mutex);
 

@@ -1,5 +1,6 @@
 #include "dynamic_engine.h"
 #include "config.h"
+#include "diagnostic_scenario_engine.h"
 #include <Arduino.h>
 #include <esp_random.h>
 #include <cmath>
@@ -205,8 +206,8 @@ static void on_mode_enter(SimMode mode, SimulationState& s) {
             eng.ltft_f      = 3;      // LTFT ligeiramente positivo
             eng.bat_f       = 14.2f;
             eng.fuel_f      = s.fuel_level_pct;
-            // Limpa DTCs (cold start é normal)
-            s.dtc_count = 0;
+            // Cold start nao injeta DTCs legados por si so.
+            simulation_clear_effective_dtcs(s);
             break;
 
         case SIM_URBAN:
@@ -257,10 +258,11 @@ static void on_mode_enter(SimMode mode, SimulationState& s) {
             // DTCs imediatos: P0300 (random misfire) + P0301 (cyl 1) + P0304 (cyl 4)
             eng.fault_active   = true;
             eng.fault_toggle_ms= millis() + (uint32_t)frand(30000, 60000);
-            s.dtc_count = 3;
-            s.dtcs[0] = 0x0300;  // P0300 — Random/Multiple cylinder misfire
-            s.dtcs[1] = 0x0301;  // P0301 — Cylinder 1 misfire
-            s.dtcs[2] = 0x0304;  // P0304 — Cylinder 4 misfire
+            simulation_clear_manual_dtcs(s);
+            simulation_add_manual_dtc(s, 0x0300);  // P0300 — Random/Multiple cylinder misfire
+            simulation_add_manual_dtc(s, 0x0301);  // P0301 — Cylinder 1 misfire
+            simulation_add_manual_dtc(s, 0x0304);  // P0304 — Cylinder 4 misfire
+            simulation_copy_manual_dtcs_to_effective(s);
             break;
 
         default: break;
@@ -536,10 +538,11 @@ static void update_fault(SimulationState& s) {
             // Período de falha intensa: 15-30s
             eng.fault_toggle_ms = now + (uint32_t)frand(15000, 30000);
             // DTCs aparecem
-            s.dtc_count = 3;
-            s.dtcs[0] = 0x0300;  // P0300
-            s.dtcs[1] = 0x0301;  // P0301
-            s.dtcs[2] = 0x0304;  // P0304
+            simulation_clear_manual_dtcs(s);
+            simulation_add_manual_dtc(s, 0x0300);  // P0300
+            simulation_add_manual_dtc(s, 0x0301);  // P0301
+            simulation_add_manual_dtc(s, 0x0304);  // P0304
+            simulation_copy_manual_dtcs_to_effective(s);
         } else {
             // Período "melhor" mas não normal: 10-20s (DTCs permanecem!)
             eng.fault_toggle_ms = now + (uint32_t)frand(10000, 20000);
@@ -663,6 +666,8 @@ static void task_dynamic_engine(void*) {
             eng.prev_mode = SIM_STATIC;
         }
 
+        diagnostic_engine_step(*s_state, 0.1f);
+
         xSemaphoreGive(s_mutex);
     }
 }
@@ -672,6 +677,7 @@ static void task_dynamic_engine(void*) {
 void dynamic_init(SimulationState* state, SemaphoreHandle_t mutex) {
     s_state = state;
     s_mutex = mutex;
+    diagnostic_engine_init();
     xTaskCreatePinnedToCore(
         task_dynamic_engine, "dyn_engine",
         4096, nullptr, 1, nullptr, 1);

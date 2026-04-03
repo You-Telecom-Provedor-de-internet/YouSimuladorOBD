@@ -150,3 +150,28 @@ CANL
 
 - A flash esta muito no limite do slot OTA (`~98.5%` de uso). Novas features devem ser adicionadas com cuidado.
 - OTA remota esta funcional, mas ainda depende de operacao autenticada na rede local ou do uso da interface web do proprio equipamento.
+
+## Atualizacao de Bancada em 2026-04-03
+
+Rodada posterior de aceite da camada diagnostica:
+
+- a placa entrou em travamento por overflow momentaneo do slot OTA durante a evolucao dos cenarios
+- a causa foi um `firmware.bin` maior que o slot disponivel
+- a recuperacao foi feita por cabo em `COM3`, reduzindo apenas strings humanas
+- a logica dos cenarios foi preservada
+- a build final voltou a subir normalmente e respondeu em `192.168.1.7`
+
+Validacao adicional feita depois da recuperacao:
+
+- UI web e endpoints diagnosticos ativos
+- cenarios compostos exercitados na placa real por API
+- ativacao de cenario por WebSocket funcionando
+- leitura real de PIDs novamente no app Torque usando `OBDLink MX+`
+
+Build final estavel desta rodada:
+
+- `text = 1668492`
+- `data = 312712`
+- `bss = 36249`
+- `flash usada = 1958921 / 1966080`
+- `firmware.bin = 1965504 bytes`

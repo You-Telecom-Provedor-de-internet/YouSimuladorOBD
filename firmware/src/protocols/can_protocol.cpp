@@ -1,5 +1,6 @@
 #include "can_protocol.h"
 #include "config.h"
+#include "diagnostic_scenario_engine.h"
 #include <Arduino.h>
 #include <driver/twai.h>
 #include <cstring>
@@ -292,8 +293,7 @@ static void task_can(void*) {
         xSemaphoreTake(s_mutex, portMAX_DELAY);
         OBDResponse resp = s_dispatcher.dispatch(req, *s_state);
         if (req.mode == 0x04) {
-            s_state->dtc_count = 0;
-            memset(s_state->dtcs, 0, sizeof(s_state->dtcs));
+            diagnostic_engine_handle_mode04_clear(*s_state);
         }
         xSemaphoreGive(s_mutex);
 

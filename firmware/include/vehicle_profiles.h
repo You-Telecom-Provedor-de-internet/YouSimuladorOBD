@@ -44,7 +44,8 @@ inline void applyVehicleProfile(SimulationState& s, const VehicleProfile& p) {
     s.vin[17] = '\0';
     strncpy(s.profile_id, p.id, 23);
     s.profile_id[23] = '\0';
-    s.dtc_count = 0;
+    simulation_clear_manual_dtcs(s);
+    simulation_clear_effective_dtcs(s);
 }
 
 // ── Catálogo de veículos ──────────────────────────────────────

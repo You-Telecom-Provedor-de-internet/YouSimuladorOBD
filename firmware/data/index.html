@@ -108,6 +108,25 @@
   .badd:hover{background:var(--accent);color:#0f1117}
   .badd.ok{background:var(--green) !important;border-color:var(--green) !important;color:#0f1117 !important}
   .dtc-bank-card[data-full] .badd{opacity:.3;pointer-events:none}
+  .diagnostic-card{grid-column:1/-1}
+  .diag-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .diag-actions select{flex:1;min-width:250px;background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:6px;padding:8px 10px;font-size:.85rem;cursor:pointer}
+  .diag-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px}
+  .diag-box{background:#141823;border:1px solid #2a2d3a;border-radius:8px;padding:10px 12px}
+  .diag-box span{display:block;font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+  .diag-box strong{display:block;font-size:.95rem;color:var(--text)}
+  .diag-box strong.health-good{color:var(--green)}
+  .diag-box strong.health-warn{color:#ffd166}
+  .diag-box strong.health-bad{color:var(--red)}
+  .diag-box strong.limp-on{color:var(--red)}
+  .diag-faults{margin-top:12px;background:#141823;border:1px solid #2a2d3a;border-radius:8px;padding:12px}
+  .diag-faults h3{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+  .faults-list{display:flex;flex-direction:column;gap:8px}
+  .fault-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 10px;background:#1e2130;border:1px solid #2a2d3a;border-radius:6px}
+  .fault-row code{font-size:.78rem;background:#2a2d3a;padding:2px 6px;border-radius:4px}
+  .fault-row .fault-label{font-weight:600}
+  .fault-row .fault-meta{font-size:.78rem;color:var(--muted)}
+  .diag-empty{font-size:.82rem;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -297,6 +316,41 @@
     </div>
   </div>
 
+  <div class="card diagnostic-card">
+    <label>Camada Diagnostica</label>
+    <div class="diag-actions">
+      <select id="scenario-sel">
+        <option value="">-- Sem cenario diagnostico --</option>
+      </select>
+      <button onclick="applyScenario()">Ativar Cenario</button>
+      <button class="secondary" onclick="clearScenario()">Limpar Cenario</button>
+    </div>
+    <div class="diag-grid">
+      <div class="diag-box">
+        <span>Cenario Ativo</span>
+        <strong id="diag-scenario">Sem cenario</strong>
+      </div>
+      <div class="diag-box">
+        <span>Saude Local</span>
+        <strong id="diag-health" class="health-good">100</strong>
+      </div>
+      <div class="diag-box">
+        <span>Alerta Principal</span>
+        <strong id="diag-primary">Nenhum</strong>
+      </div>
+      <div class="diag-box">
+        <span>Limp Mode</span>
+        <strong id="diag-limp">Nao</strong>
+      </div>
+    </div>
+    <div class="diag-faults">
+      <h3>Falhas Ativas</h3>
+      <div class="faults-list" id="diag-faults">
+        <div class="diag-empty">Sem falhas ativas.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- Wi-Fi -->
   <details class="card wifi-card" id="wifi-panel">
     <summary>
@@ -373,6 +427,89 @@ function connect() {
 }
 
 const PROTO_IS_KLINE = [false,false,false,false,true,true,true];
+let SCENARIOS = {};
+let diagRefreshTimer = null;
+let diagFingerprint = '';
+
+function scenarioLabelById(id) {
+  return SCENARIOS[id]?.label || (id ? `Cenario #${id}` : 'Sem cenario');
+}
+
+function scheduleDiagnosticsRefresh(force = false) {
+  if (!force && diagRefreshTimer) return;
+  clearTimeout(diagRefreshTimer);
+  diagRefreshTimer = setTimeout(() => {
+    diagRefreshTimer = null;
+    loadDiagnostics();
+  }, force ? 50 : 350);
+}
+
+function setHealthClass(el, value) {
+  el.classList.remove('health-good', 'health-warn', 'health-bad');
+  if (value >= 70) el.classList.add('health-good');
+  else if (value >= 40) el.classList.add('health-warn');
+  else el.classList.add('health-bad');
+}
+
+function renderFaultsList(activeFaults) {
+  const host = document.getElementById('diag-faults');
+  if (!host) return;
+  host.innerHTML = '';
+  if (!activeFaults || !activeFaults.length) {
+    host.innerHTML = '<div class="diag-empty">Sem falhas ativas.</div>';
+    return;
+  }
+  activeFaults.forEach(fault => {
+    const row = document.createElement('div');
+    row.className = 'fault-row';
+    row.innerHTML =
+      `<code>${fault.dtc || 'INT'}</code>` +
+      `<span class="fault-label">${fault.label}</span>` +
+      `<span class="fault-meta">${fault.system} / ${fault.compartment}</span>` +
+      `<span class="fault-meta">${fault.stage}</span>` +
+      `<span class="fault-meta">${fault.intensity_pct}%</span>`;
+    host.appendChild(row);
+  });
+}
+
+function renderDiagnostics(diag) {
+  const scenarioEntry = Object.values(SCENARIOS).find(item => item.id === diag.scenario_id);
+  document.getElementById('diag-scenario').textContent = scenarioEntry?.label || diag.scenario_id || 'Sem cenario';
+  const healthEl = document.getElementById('diag-health');
+  healthEl.textContent = diag.health_score ?? 100;
+  setHealthClass(healthEl, Number(diag.health_score ?? 100));
+  document.getElementById('diag-primary').textContent =
+    diag.alerts && diag.alerts.length ? diag.alerts.find(a => a.primary)?.label || diag.alerts[0].label : 'Nenhum';
+  const limpEl = document.getElementById('diag-limp');
+  limpEl.textContent = diag.limp_mode ? 'Sim' : 'Nao';
+  limpEl.classList.toggle('limp-on', !!diag.limp_mode);
+  renderFaultsList(diag.active_faults || []);
+}
+
+function loadDiagnostics() {
+  fetch('/api/diagnostics')
+    .then(r => r.json())
+    .then(renderDiagnostics)
+    .catch(() => {});
+}
+
+function loadScenarios() {
+  fetch('/api/scenarios')
+    .then(r => r.json())
+    .then(items => {
+      const sel = document.getElementById('scenario-sel');
+      sel.innerHTML = '<option value="">-- Sem cenario diagnostico --</option>';
+      SCENARIOS = {};
+      items.forEach(item => {
+        SCENARIOS[item.scenario_id] = item;
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = item.label;
+        sel.appendChild(opt);
+      });
+    })
+    .catch(() => {});
+}
 
 function update(d) {
   if (d.protocol_id !== undefined) {
@@ -414,6 +551,37 @@ function update(d) {
     }
   }
   // ── Alertas visuais ───────────────────────────────────────────
+  if (d.scenario_id !== undefined) {
+    document.getElementById('diag-scenario').textContent = scenarioLabelById(Number(d.scenario_id));
+    const scenarioSel = document.getElementById('scenario-sel');
+    if (document.activeElement !== scenarioSel) {
+      scenarioSel.value = SCENARIOS[d.scenario_id]?.id || '';
+    }
+  }
+  if (d.health_score !== undefined) {
+    const healthEl = document.getElementById('diag-health');
+    healthEl.textContent = d.health_score;
+    setHealthClass(healthEl, Number(d.health_score));
+  }
+  if (d.limp_mode !== undefined) {
+    const limpEl = document.getElementById('diag-limp');
+    limpEl.textContent = d.limp_mode ? 'Sim' : 'Nao';
+    limpEl.classList.toggle('limp-on', !!d.limp_mode);
+  }
+  if (d.primary_alert !== undefined) {
+    document.getElementById('diag-primary').textContent = d.primary_alert ? 'Alerta ativo' : 'Nenhum';
+  }
+  const nextFingerprint = [
+    d.scenario_id ?? '',
+    d.health_score ?? '',
+    d.limp_mode ?? '',
+    d.active_faults_count ?? '',
+    d.alert_count ?? ''
+  ].join('|');
+  if (nextFingerprint !== diagFingerprint) {
+    diagFingerprint = nextFingerprint;
+    scheduleDiagnosticsRefresh();
+  }
   setWarn('v-cool', d.coolant_temp > 108 || d.coolant_temp < 0);
   setWarn('v-oil',  d.oil_temp     > 110 || d.oil_temp     < 0);
   setWarn('v-bat',  d.battery_voltage < 12.0 || d.battery_voltage > 15.5);
@@ -469,6 +637,25 @@ function preset(name) {
 function setMode(id) {
   if (ws && ws.readyState === 1)
     ws.send(JSON.stringify({type:'mode', id}));
+}
+
+function applyScenario() {
+  const id = document.getElementById('scenario-sel').value;
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({type:'scenario', id}));
+  } else {
+    fetch('/api/scenario', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})})
+      .then(() => scheduleDiagnosticsRefresh(true));
+  }
+}
+
+function clearScenario() {
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({type:'scenario', id:''}));
+  } else {
+    fetch('/api/scenario', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:''})})
+      .then(() => scheduleDiagnosticsRefresh(true));
+  }
 }
 
 function addDtc() {
@@ -912,7 +1099,9 @@ document.getElementById('dtc-bank-panel').addEventListener('toggle', function() 
   if (this.open && !this._loaded) { renderDtcBank(''); this._loaded = true; }
 });
 
+loadScenarios();
 connect();
+scheduleDiagnosticsRefresh(true);
 </script>
 </body>
 </html>
