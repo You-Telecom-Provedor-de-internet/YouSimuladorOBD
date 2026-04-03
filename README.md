@@ -109,6 +109,7 @@ O emulador ELM327 via Bluetooth SPP existe no codigo, mas esta desabilitado por 
 - [10 - Simulacao Dinamica](docs/10-dynamic-simulation.md)
 - [11 - Bluetooth SPP / ELM327](docs/11-bluetooth-elm327.md)
 - [12 - Auditoria do Firmware e Bancada](docs/12-auditoria-firmware-e-bancada.md)
+- [13 - Montagem K-Line com L9637D](docs/13-kline-l9637d-montagem.md)
 
 ## Estrutura do Projeto
 
