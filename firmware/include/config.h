@@ -131,7 +131,7 @@ constexpr uint8_t CFG_WIFI_AP_STA = 2;      // ambos simultâneos
 // ════════════════════════════════════════════════════════════
 //  VIN padrão
 // ════════════════════════════════════════════════════════════
-constexpr char DEFAULT_VIN[] = "YOUSIM00000000001";
+constexpr char DEFAULT_VIN[] = "9YSMULMS0T1234567";
 
 // ════════════════════════════════════════════════════════════
 //  UI / Botões

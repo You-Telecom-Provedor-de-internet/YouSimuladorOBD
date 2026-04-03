@@ -318,5 +318,5 @@ monitor_filters = esp32_exception_decoder
 #define OBD_CAN_RESP_ID_29B     0x18DAF110
 
 // === VIN ===
-#define DEFAULT_VIN         "YOUSIM00000000001"
+#define DEFAULT_VIN         "9YSMULMS0T1234567"
 ```

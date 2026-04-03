@@ -155,7 +155,7 @@ GET /api/status
   "stft": "0.0",
   "ltft": "0.0",
   "dtcs": [],
-  "vin": "YOUSIM00000000001",
+  "vin": "9YSMULMS0T1234567",
   "profile_id": "",
   "sim_mode": 0,
   "bt_connected": false

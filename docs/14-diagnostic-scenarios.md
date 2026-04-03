@@ -159,7 +159,7 @@ Exemplo de retorno de `GET /api/diagnostics`:
   "health_score": 41,
   "limp_mode": false,
   "vehicle": {
-    "vin": "YOUSIM00000000001",
+    "vin": "9YSMULMS0T1234567",
     "profile_id": "hb20_16_manual",
     "protocol": "CAN 11b 500k",
     "protocol_id": 0

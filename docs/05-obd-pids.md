@@ -230,7 +230,7 @@ O simulador continua respondendo `Mode 09 PID 02` com VIN multi-frame.
 VIN padrao:
 
 ```text
-YOUSIM00000000001
+9YSMULMS0T1234567
 ```
 
 ## Resumo Rapido

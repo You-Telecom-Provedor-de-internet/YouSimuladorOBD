@@ -47,7 +47,7 @@ struct SimulationState {
     uint8_t  dtc_count = 0;
     uint16_t dtcs[SIM_MAX_DTCS] = {};
 
-    char vin[18] = "YOUSIM00000000001";
+    char vin[18] = "9YSMULMS0T1234567";
     uint8_t active_protocol = 0;
     char profile_id[24] = "";
     SimMode sim_mode = SIM_STATIC;
