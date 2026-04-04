@@ -164,6 +164,8 @@ Validado em hardware:
 - leitura de DTC (`Mode 03`) validada via Torque Pro
 - limpeza de DTC (`Mode 04`) validada via Torque Pro
 - leitura de VIN (`Mode 09`) validada via Torque Pro
+- `Freeze Frame (Mode 02)` validado de ponta a ponta no app YouAutoCar
+- `Monitor Tests (Mode 06)` validado de ponta a ponta no app YouAutoCar
 - troca em runtime validada em `CAN 11b 500k`, `CAN 11b 250k`,
   `CAN 29b 500k` e `CAN 29b 250k`
 - Bluetooth desativado por padrao para manter estabilidade da rede
@@ -173,6 +175,8 @@ Observacoes importantes desta tranche:
 - houve um travamento real por excesso no slot OTA durante a rodada diagnostica
 - o firmware foi reduzido removendo upload OTA local e baixando o nivel de debug
 - a placa voltou a subir normalmente e foi revalidada em bancada
+- `Mode 02` e `Mode 06` passaram a responder em OBD classico, sem depender apenas do payload rico local
+- o app YouAutoCar passou a tratar `42 02 00 00` como ausencia de snapshot, em vez de erro bruto
 - build final gravada:
   `flash = 1917945 / 1966080`
   `firmware.bin = 1924528 bytes`

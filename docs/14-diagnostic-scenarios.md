@@ -148,6 +148,30 @@ Limpar:
 {"type":"scenario","id":""}
 ```
 
+## Reflexo em OBD Classico
+
+A camada diagnostica agora alimenta tambem o fluxo OBD classico, e nao apenas o payload rico local:
+
+- `Mode 02` usa o snapshot de `freeze_frame` capturado quando o primeiro DTC efetivo qualifica
+- `Mode 04` limpa o snapshot e permite recaptura quando a falha reaparece
+- `Mode 06` expoe monitores sinteticos coerentes com os cenarios ativos
+
+Monitores principais desta tranche:
+
+- `TID 01 / CID 01` catalyst
+- `TID 03 / CID 01` O2 sensor B1S1
+- `TID 21 / CID 01` O2 heater B1S1
+- `TID 41 / CID 01` misfire cyl 1
+- `TID 44 / CID 01` misfire cyl 4
+- `TID 81 / CID 01` fuel system bank 1
+
+Validacao de aceite feita em `2026-04-04`:
+
+- `Freeze Frame (Mode 02)` validado no app `YouAutoCar` com `OBDLink MX+`
+- estado vazio tratado como ausencia de snapshot, sem exibir `42 02 00 00` bruto
+- estado com snapshot renderizado com DTC associado e parametros parseados
+- `Monitor Tests (Mode 06)` renderizado no `Centro OBD` com monitores e status coerentes
+
 ## Payload Rico de Integracao Futura
 
 Exemplo de retorno de `GET /api/diagnostics`:

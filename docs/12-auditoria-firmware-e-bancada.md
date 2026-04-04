@@ -201,3 +201,31 @@ Estado operacional validado na placa:
 - `/api/ota/info` respondendo com `online_only = true`
 - `/api/status` e `/api/diagnostics` respondendo
 - UI principal mostrando `KM TOTAL DO VEICULO`
+
+## Atualizacao de Aceite em 2026-04-04
+
+Rodada final focada em `Freeze Frame (Mode 02)` e `Monitor Tests (Mode 06)` no fluxo real:
+
+- firmware novo gravado no ESP32 em `COM3`
+- placa operacional em `192.168.1.11`
+- app `YouAutoCar` debug instalado por `adb` no celular `SM S938B`
+- adaptador real usado: `OBDLink MX+`
+
+Correcoes validadas:
+
+- `Mode 02` deixou de responder `7F 02 11` como servico nao suportado
+- `Mode 02` vazio passou a ser tratado no app como `Sem dados de Freeze Frame`
+- `Mode 02` com snapshot passou a renderizar o frame parseado, com DTC associado e parametros contextualizados
+- `Mode 06` passou a renderizar monitores sinteticos em formato OBD classico, sem dados brutos vazando para a UI
+
+Comportamento observado no telefone:
+
+- primeiro, a tela `Centro OBD` mostrou corretamente o estado vazio de `Freeze Frame`, sem erro cru
+- em seguida, com snapshot valido, o app exibiu o card completo do `Freeze Frame` com contagem de parametros, grupos e DTC associado
+- o card `Monitor Tests (Mode 06)` apareceu carregado com testes e status `PASS`
+
+Conclusao desta rodada:
+
+- `Mode 02`: validado de ponta a ponta
+- `Mode 06`: validado de ponta a ponta
+- `Mode 03`, `Mode 04` e `Mode 09`: permanecem compativeis com a mesma trilha
