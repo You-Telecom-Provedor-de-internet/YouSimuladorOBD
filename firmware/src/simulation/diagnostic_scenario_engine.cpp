@@ -22,6 +22,9 @@ struct DiagnosticRuntime {
     uint32_t global_tick = 0;
     FaultRuntime faults[DIAG_SCENARIO_MAX_FAULTS] = {};
     DiagnosticFreezeFrame freeze_frame = {};
+    DiagnosticFreezeFrame freeze_frames[DIAG_FREEZE_FRAME_HISTORY] = {};
+    uint8_t freeze_frame_count = 0;
+    uint16_t freeze_frame_sequence = 0;
 };
 
 static DiagnosticRuntime s_diag_runtime;
@@ -489,29 +492,86 @@ static void apply_scenario_effects(DiagnosticScenarioId scenario_id, SimulationS
     }
 }
 
-static void capture_freeze_frame(const SimulationState& state, uint8_t fault_id, uint16_t dtc) {
-    if (s_diag_runtime.freeze_frame.valid) {
+static bool dtc_in_list(uint16_t dtc, const uint16_t* list, uint8_t count) {
+    for (uint8_t i = 0; i < count; i++) {
+        if (list[i] == dtc) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static uint8_t freeze_frame_fault_for_dtc(const SimulationState& state, uint16_t dtc) {
+    for (uint8_t i = 0; i < state.active_fault_count; i++) {
+        if (state.active_faults[i].dtc == dtc) {
+            return state.active_faults[i].fault_id;
+        }
+    }
+    return FAULT_ID_NONE;
+}
+
+static uint8_t freeze_frame_source_for_dtc(const SimulationState& state, uint16_t dtc, uint8_t fault_id) {
+    if (fault_id != FAULT_ID_NONE) {
+        return DIAG_FREEZE_SOURCE_SCENARIO;
+    }
+    if (dtc_in_list(dtc, state.manual_dtcs, state.manual_dtc_count)) {
+        return DIAG_FREEZE_SOURCE_MANUAL;
+    }
+    return DIAG_FREEZE_SOURCE_EFFECTIVE;
+}
+
+static DiagnosticFreezeFrame build_freeze_frame_snapshot(const SimulationState& state,
+                                                         uint8_t fault_id,
+                                                         uint16_t dtc,
+                                                         uint8_t source) {
+    DiagnosticFreezeFrame frame = {};
+    frame.valid = 1;
+    frame.fault_id = fault_id;
+    frame.scenario_id = state.scenario_id;
+    frame.source = source;
+    frame.health_score = state.health_score;
+    frame.speed_kmh = state.speed_kmh;
+    frame.throttle_pct = state.throttle_pct;
+    frame.engine_load_pct = state.engine_load_pct;
+    frame.fuel_level_pct = state.fuel_level_pct;
+    frame.dtc = dtc;
+    frame.sequence = ++s_diag_runtime.freeze_frame_sequence;
+    frame.rpm = state.rpm;
+    frame.coolant_temp_c = state.coolant_temp_c;
+    frame.intake_temp_c = state.intake_temp_c;
+    frame.oil_temp_c = state.oil_temp_c;
+    frame.maf_gs = state.maf_gs;
+    frame.map_kpa = state.map_kpa;
+    frame.ignition_adv = state.ignition_adv;
+    frame.battery_voltage = state.battery_voltage;
+    frame.stft_pct = state.stft_pct;
+    frame.ltft_pct = state.ltft_pct;
+    return frame;
+}
+
+static void append_freeze_frame_history(const DiagnosticFreezeFrame& frame) {
+    if (s_diag_runtime.freeze_frame_count < DIAG_FREEZE_FRAME_HISTORY) {
+        s_diag_runtime.freeze_frames[s_diag_runtime.freeze_frame_count++] = frame;
         return;
     }
 
-    s_diag_runtime.freeze_frame.valid = 1;
-    s_diag_runtime.freeze_frame.fault_id = fault_id;
-    s_diag_runtime.freeze_frame.health_score = state.health_score;
-    s_diag_runtime.freeze_frame.speed_kmh = state.speed_kmh;
-    s_diag_runtime.freeze_frame.throttle_pct = state.throttle_pct;
-    s_diag_runtime.freeze_frame.engine_load_pct = state.engine_load_pct;
-    s_diag_runtime.freeze_frame.fuel_level_pct = state.fuel_level_pct;
-    s_diag_runtime.freeze_frame.dtc = dtc;
-    s_diag_runtime.freeze_frame.rpm = state.rpm;
-    s_diag_runtime.freeze_frame.coolant_temp_c = state.coolant_temp_c;
-    s_diag_runtime.freeze_frame.intake_temp_c = state.intake_temp_c;
-    s_diag_runtime.freeze_frame.oil_temp_c = state.oil_temp_c;
-    s_diag_runtime.freeze_frame.maf_gs = state.maf_gs;
-    s_diag_runtime.freeze_frame.map_kpa = state.map_kpa;
-    s_diag_runtime.freeze_frame.ignition_adv = state.ignition_adv;
-    s_diag_runtime.freeze_frame.battery_voltage = state.battery_voltage;
-    s_diag_runtime.freeze_frame.stft_pct = state.stft_pct;
-    s_diag_runtime.freeze_frame.ltft_pct = state.ltft_pct;
+    memmove(&s_diag_runtime.freeze_frames[0],
+            &s_diag_runtime.freeze_frames[1],
+            sizeof(DiagnosticFreezeFrame) * (DIAG_FREEZE_FRAME_HISTORY - 1));
+    s_diag_runtime.freeze_frames[DIAG_FREEZE_FRAME_HISTORY - 1] = frame;
+}
+
+static void capture_freeze_frame_entry(const SimulationState& state,
+                                       uint8_t fault_id,
+                                       uint16_t dtc,
+                                       uint8_t source,
+                                       bool set_active_frame) {
+    const DiagnosticFreezeFrame frame = build_freeze_frame_snapshot(state, fault_id, dtc, source);
+    append_freeze_frame_history(frame);
+
+    if (set_active_frame && !s_diag_runtime.freeze_frame.valid) {
+        s_diag_runtime.freeze_frame = frame;
+    }
 }
 
 struct DtcCandidate {
@@ -521,14 +581,21 @@ struct DtcCandidate {
 };
 
 static void capture_effective_freeze_frame_if_needed(const SimulationState& state,
+                                                     const uint16_t* previous_dtcs,
                                                      uint8_t previous_dtc_count) {
-    if (s_diag_runtime.freeze_frame.valid || previous_dtc_count != 0 || state.dtc_count == 0) {
-        return;
-    }
+    bool active_assigned = s_diag_runtime.freeze_frame.valid;
 
-    const uint8_t probable_fault_id =
-        state.active_fault_count > 0 ? diagnostic_get_probable_root_fault_id(state) : FAULT_ID_NONE;
-    capture_freeze_frame(state, probable_fault_id, state.dtcs[0]);
+    for (uint8_t i = 0; i < state.dtc_count; i++) {
+        const uint16_t dtc = state.dtcs[i];
+        if (dtc == 0 || dtc_in_list(dtc, previous_dtcs, previous_dtc_count)) {
+            continue;
+        }
+
+        const uint8_t fault_id = freeze_frame_fault_for_dtc(state, dtc);
+        const uint8_t source = freeze_frame_source_for_dtc(state, dtc, fault_id);
+        capture_freeze_frame_entry(state, fault_id, dtc, source, !active_assigned);
+        active_assigned = true;
+    }
 }
 
 void diagnostic_engine_rebuild_effective_dtcs(SimulationState& state) {
@@ -536,6 +603,8 @@ void diagnostic_engine_rebuild_effective_dtcs(SimulationState& state) {
     uint8_t candidate_count = 0;
     uint8_t order = 0;
     const uint8_t previous_dtc_count = state.dtc_count;
+    uint16_t previous_dtcs[SIM_MAX_DTCS] = {};
+    memcpy(previous_dtcs, state.dtcs, sizeof(previous_dtcs));
 
     for (uint8_t i = 0; i < DIAG_SCENARIO_MAX_FAULTS && candidate_count < (SIM_MAX_DTCS + DIAG_MAX_ACTIVE_FAULTS); i++) {
         const FaultRuntime& runtime = s_diag_runtime.faults[i];
@@ -586,7 +655,7 @@ void diagnostic_engine_rebuild_effective_dtcs(SimulationState& state) {
         state.dtcs[state.dtc_count++] = candidates[i].dtc;
     }
 
-    capture_effective_freeze_frame_if_needed(state, previous_dtc_count);
+    capture_effective_freeze_frame_if_needed(state, previous_dtcs, previous_dtc_count);
 }
 
 bool diagnostic_add_manual_dtc(SimulationState& state, uint16_t dtc) {
@@ -622,6 +691,18 @@ bool diagnostic_get_freeze_frame(DiagnosticFreezeFrame& out_frame) {
     }
     out_frame = s_diag_runtime.freeze_frame;
     return true;
+}
+
+uint8_t diagnostic_get_freeze_frames(DiagnosticFreezeFrame* out_frames, uint8_t capacity) {
+    if (!out_frames || capacity == 0 || s_diag_runtime.freeze_frame_count == 0) {
+        return 0;
+    }
+
+    const uint8_t count = s_diag_runtime.freeze_frame_count < capacity
+        ? s_diag_runtime.freeze_frame_count
+        : capacity;
+    memcpy(out_frames, s_diag_runtime.freeze_frames, sizeof(DiagnosticFreezeFrame) * count);
+    return count;
 }
 
 static void clear_overlay_preserve_manual(SimulationState& state) {
@@ -660,26 +741,15 @@ void diagnostic_engine_step(SimulationState& state, float) {
     }
 
     reset_active_faults(state);
-    uint8_t freeze_fault_id = FAULT_ID_NONE;
-    uint16_t freeze_dtc = 0;
 
     for (uint8_t i = 0; i < definition->fault_count && i < DIAG_SCENARIO_MAX_FAULTS; i++) {
         FaultRuntime& runtime = s_diag_runtime.faults[i];
         update_runtime(runtime, definition->faults[i], scenario_id, state);
         push_active_fault(state, runtime);
-        if (runtime.newly_latched && freeze_fault_id == FAULT_ID_NONE) {
-            const FaultCatalogEntry* entry = fault_catalog_get(runtime.fault_id);
-            freeze_fault_id = entry->fault_id;
-            freeze_dtc = entry->dtc;
-        }
     }
 
     apply_scenario_effects(scenario_id, state);
     diagnostic_build_alerts_and_health(state);
-
-    if (freeze_fault_id != FAULT_ID_NONE) {
-        capture_freeze_frame(state, freeze_fault_id, freeze_dtc);
-    }
 
     diagnostic_engine_rebuild_effective_dtcs(state);
 }

@@ -156,6 +156,13 @@ A camada diagnostica agora alimenta tambem o fluxo OBD classico, e nao apenas o 
 - `Mode 04` limpa o snapshot e permite recaptura quando a falha reaparece
 - `Mode 06` expoe monitores sinteticos coerentes com os cenarios ativos
 
+Regra atual de armazenamento:
+
+- `freeze_frame` = snapshot ativo usado pelo `Mode 02` classico
+- `freeze_frames[]` = historico local dos snapshots capturados, separado por DTC e por origem
+- o protocolo OBD classico continua com apenas `1` frame ativo nesta tranche
+- o historico separado fica disponivel em `GET /api/diagnostics`
+
 Monitores principais desta tranche:
 
 - `TID 01 / CID 01` catalyst
@@ -170,6 +177,7 @@ Validacao de aceite feita em `2026-04-04`:
 - `Freeze Frame (Mode 02)` validado no app `YouAutoCar` com `OBDLink MX+`
 - estado vazio tratado como ausencia de snapshot, sem exibir `42 02 00 00` bruto
 - estado com snapshot renderizado com DTC associado e parametros parseados
+- decoder do app corrigido para reconstruir o DTC do `Mode 02` no formato OBD correto
 - `Monitor Tests (Mode 06)` renderizado no `Centro OBD` com monitores e status coerentes
 
 ## Payload Rico de Integracao Futura
@@ -258,6 +266,16 @@ Exemplo de retorno de `GET /api/diagnostics`:
       "ltft": 9.2
     }
   },
+  "freeze_frames": [
+    {
+      "active": true,
+      "fault_id": "misfire_multi",
+      "scenario_id": "urban_misfire_progressive",
+      "source": "scenario",
+      "sequence": 1,
+      "dtc": "P0300"
+    }
+  ],
   "mode06_like": {
     "failing_groups": [
       {
@@ -284,6 +302,7 @@ Pode consumir:
 - `dtcs`
 - `vehicle`
 - `freeze_frame`
+- `freeze_frames`
 - `mode06_like`
 - `drive_context`
 
@@ -306,6 +325,7 @@ Pode consumir:
 - `derived_faults`
 - `alerts`
 - `freeze_frame`
+- `freeze_frames`
 
 ### `ai-diagnostic-copilot`
 

@@ -878,6 +878,15 @@ static const char* driveContextSlug(uint8_t sim_mode) {
     }
 }
 
+static const char* freezeFrameSourceSlug(uint8_t source) {
+    switch (source) {
+        case DIAG_FREEZE_SOURCE_SCENARIO: return "scenario";
+        case DIAG_FREEZE_SOURCE_MANUAL: return "manual";
+        case DIAG_FREEZE_SOURCE_EFFECTIVE: return "effective";
+        default: return "none";
+    }
+}
+
 static const char* odometerSourceSlug(uint8_t source) {
     switch (source) {
         case ODOMETER_SOURCE_CLUSTER: return "cluster";
@@ -1067,11 +1076,14 @@ static void appendAnomalies(JsonArray arr, const SimulationState& snap) {
 static String diagnosticsToJson() {
     SimulationState snap = {};
     DiagnosticFreezeFrame freeze_frame = {};
+    DiagnosticFreezeFrame freeze_frames[DIAG_FREEZE_FRAME_HISTORY] = {};
     bool has_freeze_frame = false;
+    uint8_t freeze_frame_count = 0;
 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     snap = *s_state;
     has_freeze_frame = diagnostic_get_freeze_frame(freeze_frame);
+    freeze_frame_count = diagnostic_get_freeze_frames(freeze_frames, DIAG_FREEZE_FRAME_HISTORY);
     xSemaphoreGive(s_mutex);
 
     JsonDocument doc;
@@ -1143,6 +1155,9 @@ static String diagnosticsToJson() {
     if (has_freeze_frame) {
         JsonObject freeze = doc["freeze_frame"].to<JsonObject>();
         freeze["fault_id"] = fault_catalog_get(freeze_frame.fault_id)->slug;
+        freeze["scenario_id"] = diagnostic_scenario_slug(static_cast<DiagnosticScenarioId>(freeze_frame.scenario_id));
+        freeze["source"] = freezeFrameSourceSlug(freeze_frame.source);
+        freeze["sequence"] = freeze_frame.sequence;
         if (freeze_frame.dtc != 0) {
             char dtc_buf[6] = {};
             dtcValToStr(freeze_frame.dtc, dtc_buf, sizeof(dtc_buf));
@@ -1166,6 +1181,42 @@ static String diagnosticsToJson() {
         freeze_sensors["ltft"] = serialized(String(freeze_frame.ltft_pct, 1));
     } else {
         doc["freeze_frame"] = nullptr;
+    }
+
+    JsonArray freeze_history = doc["freeze_frames"].to<JsonArray>();
+    for (int i = static_cast<int>(freeze_frame_count) - 1; i >= 0; i--) {
+        const DiagnosticFreezeFrame& item = freeze_frames[i];
+        if (!item.valid) {
+            continue;
+        }
+
+        JsonObject freeze = freeze_history.add<JsonObject>();
+        freeze["active"] = has_freeze_frame && item.sequence == freeze_frame.sequence;
+        freeze["fault_id"] = fault_catalog_get(item.fault_id)->slug;
+        freeze["scenario_id"] = diagnostic_scenario_slug(static_cast<DiagnosticScenarioId>(item.scenario_id));
+        freeze["source"] = freezeFrameSourceSlug(item.source);
+        freeze["sequence"] = item.sequence;
+        if (item.dtc != 0) {
+            char dtc_buf[6] = {};
+            dtcValToStr(item.dtc, dtc_buf, sizeof(dtc_buf));
+            freeze["dtc"] = dtc_buf;
+        }
+        freeze["health_score"] = item.health_score;
+        JsonObject freeze_sensors = freeze["sensors"].to<JsonObject>();
+        freeze_sensors["rpm"] = item.rpm;
+        freeze_sensors["speed"] = item.speed_kmh;
+        freeze_sensors["throttle"] = item.throttle_pct;
+        freeze_sensors["engine_load"] = item.engine_load_pct;
+        freeze_sensors["fuel_level"] = item.fuel_level_pct;
+        freeze_sensors["coolant_temp"] = item.coolant_temp_c;
+        freeze_sensors["intake_temp"] = item.intake_temp_c;
+        freeze_sensors["oil_temp"] = item.oil_temp_c;
+        freeze_sensors["maf"] = serialized(String(item.maf_gs, 1));
+        freeze_sensors["map"] = item.map_kpa;
+        freeze_sensors["ignition_advance"] = serialized(String(item.ignition_adv, 1));
+        freeze_sensors["battery_voltage"] = serialized(String(item.battery_voltage, 1));
+        freeze_sensors["stft"] = serialized(String(item.stft_pct, 1));
+        freeze_sensors["ltft"] = serialized(String(item.ltft_pct, 1));
     }
 
     JsonObject mode06 = doc["mode06_like"].to<JsonObject>();

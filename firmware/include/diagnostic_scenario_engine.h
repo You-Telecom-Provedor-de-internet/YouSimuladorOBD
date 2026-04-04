@@ -3,15 +3,27 @@
 #include "diagnostic_scenarios.h"
 #include "fault_catalog.h"
 
+constexpr uint8_t DIAG_FREEZE_FRAME_HISTORY = 4;
+
+enum DiagnosticFreezeFrameSource : uint8_t {
+    DIAG_FREEZE_SOURCE_NONE = 0,
+    DIAG_FREEZE_SOURCE_SCENARIO = 1,
+    DIAG_FREEZE_SOURCE_MANUAL = 2,
+    DIAG_FREEZE_SOURCE_EFFECTIVE = 3,
+};
+
 struct DiagnosticFreezeFrame {
     uint8_t valid = 0;
     uint8_t fault_id = 0;
+    uint8_t scenario_id = 0;
+    uint8_t source = DIAG_FREEZE_SOURCE_NONE;
     uint8_t health_score = 100;
     uint8_t speed_kmh = 0;
     uint8_t throttle_pct = 0;
     uint8_t engine_load_pct = 0;
     uint8_t fuel_level_pct = 0;
     uint16_t dtc = 0;
+    uint16_t sequence = 0;
     uint16_t rpm = 0;
     int16_t coolant_temp_c = 0;
     int16_t intake_temp_c = 0;
@@ -38,5 +50,6 @@ bool diagnostic_remove_manual_dtc(SimulationState& state, uint16_t dtc);
 const DiagnosticAlert* diagnostic_get_primary_alert(const SimulationState& state);
 uint8_t diagnostic_get_probable_root_fault_id(const SimulationState& state);
 bool diagnostic_get_freeze_frame(DiagnosticFreezeFrame& out_frame);
+uint8_t diagnostic_get_freeze_frames(DiagnosticFreezeFrame* out_frames, uint8_t capacity);
 
 void diagnostic_build_alerts_and_health(SimulationState& state);

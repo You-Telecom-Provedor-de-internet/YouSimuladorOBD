@@ -217,6 +217,8 @@ Correcoes validadas:
 - `Mode 02` vazio passou a ser tratado no app como `Sem dados de Freeze Frame`
 - `Mode 02` com snapshot passou a renderizar o frame parseado, com DTC associado e parametros contextualizados
 - `Mode 06` passou a renderizar monitores sinteticos em formato OBD classico, sem dados brutos vazando para a UI
+- a API rica `/api/diagnostics` passou a expor `freeze_frames[]` com historico de snapshots, separado do `freeze_frame` ativo usado pelo `Mode 02`
+- o decoder do app passou a reconstruir o DTC do Freeze Frame no formato OBD correto, evitando exibicao incorreta como `P0257` quando o frame real era `P0101`
 
 Comportamento observado no telefone:
 
@@ -229,3 +231,4 @@ Conclusao desta rodada:
 - `Mode 02`: validado de ponta a ponta
 - `Mode 06`: validado de ponta a ponta
 - `Mode 03`, `Mode 04` e `Mode 09`: permanecem compativeis com a mesma trilha
+- `Mode 02` segue com `1` frame ativo por compatibilidade OBD classica; historico separado ficou disponivel apenas na API local
