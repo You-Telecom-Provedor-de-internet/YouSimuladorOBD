@@ -103,7 +103,7 @@ static uint8_t build_can_payload(const OBDResponse& resp, const OBDRequest& req,
         return len;
     }
 
-    const bool has_pid = (req.mode == 0x01 || req.mode == 0x09);
+    const bool has_pid = (req.mode == 0x01 || req.mode == 0x02 || req.mode == 0x09);
     if (has_pid) {
         if (capacity < 2 || resp.len == 0) {
             return 0;
@@ -173,7 +173,7 @@ static void blink_tx_led() {
 }
 
 static void send_response(const OBDResponse& resp, const OBDRequest& req, bool extended) {
-    uint8_t payload[32] = {};
+    uint8_t payload[80] = {};
     const uint8_t payload_len = build_can_payload(resp, req, payload, sizeof(payload));
     if (payload_len == 0) {
         return;

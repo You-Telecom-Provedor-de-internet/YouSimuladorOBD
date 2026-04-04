@@ -1153,11 +1153,14 @@ static String diagnosticsToJson() {
         freeze_sensors["rpm"] = freeze_frame.rpm;
         freeze_sensors["speed"] = freeze_frame.speed_kmh;
         freeze_sensors["throttle"] = freeze_frame.throttle_pct;
+        freeze_sensors["engine_load"] = freeze_frame.engine_load_pct;
+        freeze_sensors["fuel_level"] = freeze_frame.fuel_level_pct;
         freeze_sensors["coolant_temp"] = freeze_frame.coolant_temp_c;
         freeze_sensors["intake_temp"] = freeze_frame.intake_temp_c;
         freeze_sensors["oil_temp"] = freeze_frame.oil_temp_c;
         freeze_sensors["maf"] = serialized(String(freeze_frame.maf_gs, 1));
         freeze_sensors["map"] = freeze_frame.map_kpa;
+        freeze_sensors["ignition_advance"] = serialized(String(freeze_frame.ignition_adv, 1));
         freeze_sensors["battery_voltage"] = serialized(String(freeze_frame.battery_voltage, 1));
         freeze_sensors["stft"] = serialized(String(freeze_frame.stft_pct, 1));
         freeze_sensors["ltft"] = serialized(String(freeze_frame.ltft_pct, 1));

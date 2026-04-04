@@ -9,6 +9,8 @@ struct DiagnosticFreezeFrame {
     uint8_t health_score = 100;
     uint8_t speed_kmh = 0;
     uint8_t throttle_pct = 0;
+    uint8_t engine_load_pct = 0;
+    uint8_t fuel_level_pct = 0;
     uint16_t dtc = 0;
     uint16_t rpm = 0;
     int16_t coolant_temp_c = 0;
@@ -16,6 +18,7 @@ struct DiagnosticFreezeFrame {
     int16_t oil_temp_c = 0;
     float maf_gs = 0.0f;
     uint8_t map_kpa = 0;
+    float ignition_adv = 0.0f;
     float battery_voltage = 0.0f;
     float stft_pct = 0.0f;
     float ltft_pct = 0.0f;

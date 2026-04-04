@@ -16,7 +16,7 @@ struct OBDRequest {
 
 // Resposta OBD a enviar para o scanner
 struct OBDResponse {
-    uint8_t data[20];   // payload (sem header de protocolo)
+    uint8_t data[72];   // payload (sem header de protocolo)
     uint8_t len;
     bool    negative;   // true = resposta negativa (NRC)
     uint8_t nrc;        // Negative Response Code

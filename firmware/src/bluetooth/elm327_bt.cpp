@@ -187,19 +187,19 @@ static void handle_obd_request(const String& hex) {
     //   DD = dados
 
     // Monta payload: insere PID para Mode 01/09
-    uint8_t payload[16];
+    uint8_t payload[80];
     uint8_t plen = 0;
-    bool has_pid = (req.mode == 0x01 || req.mode == 0x09);
+    bool has_pid = (req.mode == 0x01 || req.mode == 0x02 || req.mode == 0x09);
 
     if (has_pid) {
         // [ModeByte][PID][dados do handler...]
         payload[plen++] = resp.data[0];        // mode byte (0x41, 0x49)
         payload[plen++] = req.pid;             // PID
-        for (uint8_t i = 1; i < resp.len && plen < 16; i++)
+        for (uint8_t i = 1; i < resp.len && plen < sizeof(payload); i++)
             payload[plen++] = resp.data[i];    // dados
     } else {
         // Mode 03/04: [ModeByte][dados...]
-        for (uint8_t i = 0; i < resp.len && plen < 16; i++)
+        for (uint8_t i = 0; i < resp.len && plen < sizeof(payload); i++)
             payload[plen++] = resp.data[i];
     }
 

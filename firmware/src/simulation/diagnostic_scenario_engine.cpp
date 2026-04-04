@@ -499,6 +499,8 @@ static void capture_freeze_frame(const SimulationState& state, uint8_t fault_id,
     s_diag_runtime.freeze_frame.health_score = state.health_score;
     s_diag_runtime.freeze_frame.speed_kmh = state.speed_kmh;
     s_diag_runtime.freeze_frame.throttle_pct = state.throttle_pct;
+    s_diag_runtime.freeze_frame.engine_load_pct = state.engine_load_pct;
+    s_diag_runtime.freeze_frame.fuel_level_pct = state.fuel_level_pct;
     s_diag_runtime.freeze_frame.dtc = dtc;
     s_diag_runtime.freeze_frame.rpm = state.rpm;
     s_diag_runtime.freeze_frame.coolant_temp_c = state.coolant_temp_c;
@@ -506,6 +508,7 @@ static void capture_freeze_frame(const SimulationState& state, uint8_t fault_id,
     s_diag_runtime.freeze_frame.oil_temp_c = state.oil_temp_c;
     s_diag_runtime.freeze_frame.maf_gs = state.maf_gs;
     s_diag_runtime.freeze_frame.map_kpa = state.map_kpa;
+    s_diag_runtime.freeze_frame.ignition_adv = state.ignition_adv;
     s_diag_runtime.freeze_frame.battery_voltage = state.battery_voltage;
     s_diag_runtime.freeze_frame.stft_pct = state.stft_pct;
     s_diag_runtime.freeze_frame.ltft_pct = state.ltft_pct;
@@ -517,10 +520,22 @@ struct DtcCandidate {
     uint8_t order = 0;
 };
 
+static void capture_effective_freeze_frame_if_needed(const SimulationState& state,
+                                                     uint8_t previous_dtc_count) {
+    if (s_diag_runtime.freeze_frame.valid || previous_dtc_count != 0 || state.dtc_count == 0) {
+        return;
+    }
+
+    const uint8_t probable_fault_id =
+        state.active_fault_count > 0 ? diagnostic_get_probable_root_fault_id(state) : FAULT_ID_NONE;
+    capture_freeze_frame(state, probable_fault_id, state.dtcs[0]);
+}
+
 void diagnostic_engine_rebuild_effective_dtcs(SimulationState& state) {
     DtcCandidate candidates[SIM_MAX_DTCS + DIAG_MAX_ACTIVE_FAULTS] = {};
     uint8_t candidate_count = 0;
     uint8_t order = 0;
+    const uint8_t previous_dtc_count = state.dtc_count;
 
     for (uint8_t i = 0; i < DIAG_SCENARIO_MAX_FAULTS && candidate_count < (SIM_MAX_DTCS + DIAG_MAX_ACTIVE_FAULTS); i++) {
         const FaultRuntime& runtime = s_diag_runtime.faults[i];
@@ -570,6 +585,8 @@ void diagnostic_engine_rebuild_effective_dtcs(SimulationState& state) {
     for (uint8_t i = 0; i < candidate_count && i < SIM_MAX_DTCS; i++) {
         state.dtcs[state.dtc_count++] = candidates[i].dtc;
     }
+
+    capture_effective_freeze_frame_if_needed(state, previous_dtc_count);
 }
 
 bool diagnostic_add_manual_dtc(SimulationState& state, uint16_t dtc) {

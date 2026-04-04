@@ -93,7 +93,7 @@ static uint8_t build_kline_payload(const OBDResponse& resp, const OBDRequest& re
         return len;
     }
 
-    const bool has_pid = (req.mode == 0x01 || req.mode == 0x09);
+    const bool has_pid = (req.mode == 0x01 || req.mode == 0x02 || req.mode == 0x09);
     if (has_pid) {
         if (capacity < 2 || resp.len == 0) {
             return 0;
@@ -113,13 +113,13 @@ static uint8_t build_kline_payload(const OBDResponse& resp, const OBDRequest& re
 }
 
 static void send_kline_response(const OBDResponse& resp, const OBDRequest& req) {
-    uint8_t payload[32] = {};
+    uint8_t payload[80] = {};
     const uint8_t payload_len = build_kline_payload(resp, req, payload, sizeof(payload));
     if (payload_len == 0) {
         return;
     }
 
-    uint8_t frame[40] = {};
+    uint8_t frame[96] = {};
     uint8_t len = 0;
     frame[len++] = 0x48;
     frame[len++] = 0x6B;

@@ -1,8 +1,10 @@
 #include "obd_dispatcher.h"
 #include <Arduino.h>
 #include <cstring>
+#include "mode02_handler.h"
 #include "mode01_handler.h"
 #include "mode03_handler.h"
+#include "mode06_handler.h"
 #include "mode09_handler.h"
 
 // ════════════════════════════════════════════════════════════
@@ -11,7 +13,9 @@
 // ════════════════════════════════════════════════════════════
 
 static Mode01Handler mode01;
+static Mode02Handler mode02;
 static Mode03Handler mode03;
+static Mode06Handler mode06;
 static Mode09Handler mode09;
 
 OBDResponse OBDDispatcher::dispatch(const OBDRequest& req, const SimulationState& state) {
@@ -21,6 +25,11 @@ OBDResponse OBDDispatcher::dispatch(const OBDRequest& req, const SimulationState
         case 0x01: {
             resp = mode01.handle(req, state);
             if (!resp.negative) prependModeByte(resp, 0x41);
+            break;
+        }
+        case 0x02: {
+            resp = mode02.handle(req, state);
+            if (!resp.negative) prependModeByte(resp, 0x42);
             break;
         }
         case 0x03: {
@@ -36,6 +45,10 @@ OBDResponse OBDDispatcher::dispatch(const OBDRequest& req, const SimulationState
         case 0x09: {
             resp = mode09.handle(req, state);
             if (!resp.negative) prependModeByte(resp, 0x49);
+            break;
+        }
+        case 0x06: {
+            resp = mode06.handle(req, state);
             break;
         }
         default:
