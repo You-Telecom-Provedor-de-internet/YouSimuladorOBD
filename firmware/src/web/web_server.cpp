@@ -15,6 +15,7 @@
 #include <Preferences.h>
 #include <Update.h>
 #include <esp_ota_ops.h>
+#include <esp_system.h>
 #include <cctype>
 #include <cstring>
 #include "esp_wifi.h"
@@ -91,6 +92,7 @@ static const char* current_auth_user();
 static const char* current_auth_password();
 static const char* current_api_auth_user();
 static const char* current_api_auth_password();
+static void generate_api_password(char* dst, size_t dst_size, size_t length = 20);
 
 static void persist_active_protocol(uint8_t protocol) {
     if (protocol >= PROTO_COUNT) {
@@ -341,6 +343,33 @@ static void save_device_settings() {
     prefs.putBool("ota_chk", s_device_settings.ota_auto_check);
     prefs.putUShort("ota_hrs", s_device_settings.ota_auto_check_hours);
     prefs.end();
+}
+
+static void generate_api_password(char* dst, size_t dst_size, size_t length) {
+    static constexpr char kAlphabet[] =
+        "ABCDEFGHJKLMNPQRSTUVWXYZ"
+        "abcdefghijkmnopqrstuvwxyz"
+        "23456789"
+        "_-";
+
+    if (dst_size == 0) {
+        return;
+    }
+
+    const size_t alphabet_len = sizeof(kAlphabet) - 1;
+    size_t max_len = dst_size - 1;
+    if (length < 12) {
+        length = 12;
+    }
+    if (length > max_len) {
+        length = max_len;
+    }
+
+    for (size_t i = 0; i < length; ++i) {
+        uint32_t r = esp_random();
+        dst[i] = kAlphabet[r % alphabet_len];
+    }
+    dst[length] = '\0';
 }
 
 static void ota_set_stage(const char* stage) {
@@ -975,6 +1004,26 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
     if (restart_required) {
         schedule_restart();
     }
+}
+
+static void handle_post_rotate_api_credentials(AsyncWebServerRequest* req) {
+    char generated_password[33] = {};
+    generate_api_password(generated_password, sizeof(generated_password), 24);
+
+    copy_text(s_device_settings.api_auth_password, sizeof(s_device_settings.api_auth_password), generated_password);
+    normalize_device_settings();
+    save_device_settings();
+
+    JsonDocument resp;
+    resp["ok"] = true;
+    resp["api_auth_user"] = current_api_auth_user();
+    resp["api_auth_password"] = current_api_auth_password();
+    resp["api_auth_default"] = using_default_api_auth();
+    resp["message"] = "Nova senha da API gerada e salva sem reboot.";
+
+    String out;
+    serializeJson(resp, out);
+    req->send(200, "application/json", out);
 }
 
 static void handle_head_page(AsyncWebServerRequest* req, const char* content_type) {
@@ -2344,6 +2393,8 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     server.on("/api/device/settings", HTTP_GET, protect_api_get(handle_get_device_settings));
     server.on("/api/device/settings", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
         nullptr, protect_api_body(handle_post_device_settings));
+    server.on("/api/device/rotate-api-auth", HTTP_POST,
+        protect_api_get([](AsyncWebServerRequest* r){ handle_post_rotate_api_credentials(r); }));
     server.on("/api/ota/info", HTTP_GET, protect_api_get(handle_get_ota_info));
     server.on("/api/ota/check", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
         nullptr, protect_api_body(handle_post_ota_check));

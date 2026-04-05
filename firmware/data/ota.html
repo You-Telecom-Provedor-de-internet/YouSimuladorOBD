@@ -37,6 +37,7 @@
   .status{margin-top:12px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#121722;font-size:.86rem;line-height:1.45;white-space:pre-wrap}
   .status.ok{border-color:var(--green);color:var(--green);background:#0b1c15}
   .status.err{border-color:var(--red);color:var(--red);background:#240d14}
+  .secret-box{font-family:Consolas,monospace;word-break:break-all}
   .foot{margin-top:18px;color:var(--muted);font-size:.82rem;line-height:1.55}
   code{font-family:Consolas,monospace}
   @media (max-width:760px){.info-list,.actions{grid-template-columns:1fr}}
@@ -100,7 +101,12 @@
     </div>
     <div class="status" id="cfg-security-status">Carregando politica de seguranca...</div>
     <div class="status" id="cfg-save-status">Aguardando leitura da configuracao do dispositivo.</div>
-    <button type="button" onclick="saveDeviceSettings()">Salvar configuracao e reiniciar</button>
+    <div class="actions">
+      <button type="button" onclick="saveDeviceSettings()">Salvar configuracao e reiniciar</button>
+      <button class="secondary" type="button" onclick="rotateApiCredentials()">Rotacionar senha da API</button>
+    </div>
+    <div class="status" id="cfg-rotate-status">Nenhuma rotacao executada nesta sessao.</div>
+    <div class="status secret-box" id="cfg-rotate-result">Usuario atual da API e a ultima senha gerada aparecerao aqui.</div>
   </section>
 
   <section class="card" style="margin-bottom:14px">
@@ -381,6 +387,37 @@ async function saveDeviceSettings() {
     setActionButtonsBusy(true);
   } catch (err) {
     setBoxStatus('cfg-save-status', `Nao foi possivel salvar a configuracao.\n${err.message}`, 'err');
+  }
+}
+
+async function rotateApiCredentials() {
+  const currentUser = (cfgApiAuthUser.value || '').trim();
+  if (!currentUser) {
+    setBoxStatus('cfg-rotate-status', 'Nao foi possivel determinar o usuario atual da API.', 'err');
+    return;
+  }
+
+  if (!confirm(`Gerar uma nova senha para o usuario da API "${currentUser}"? Atualize scripts e automacoes que usam essa conta depois.`)) {
+    return;
+  }
+
+  setBoxStatus('cfg-rotate-status', `Gerando nova senha para ${currentUser}...`);
+  setBoxStatus('cfg-rotate-result', 'Aguardando nova credencial...');
+
+  try {
+    const data = await apiJson('/api/device/rotate-api-auth', {
+      method: 'POST',
+      body: '{}'
+    });
+
+    cfgApiAuthUser.value = data.api_auth_user || currentUser;
+    cfgApiAuthPassword.value = '';
+    setBoxStatus('cfg-security-status', 'Credencial da API rotacionada com sucesso. Atualize qualquer automacao que use a senha anterior.', 'ok');
+    setBoxStatus('cfg-rotate-status', data.message || 'Nova senha da API gerada e salva.', 'ok');
+    setBoxStatus('cfg-rotate-result', `Usuario API: ${data.api_auth_user}\nNova senha API: ${data.api_auth_password}\n\nGuarde agora. Essa senha nao sera exibida novamente pelo dispositivo.`, 'ok');
+  } catch (err) {
+    setBoxStatus('cfg-rotate-status', `Falha ao rotacionar a senha da API.\n${err.message}`, 'err');
+    setBoxStatus('cfg-rotate-result', 'Nenhuma nova credencial foi gerada.', 'err');
   }
 }
 

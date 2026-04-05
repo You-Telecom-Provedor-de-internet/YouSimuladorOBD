@@ -150,6 +150,7 @@ Todas as rotas abaixo exigem autenticacao.
 - `POST /api/wifi/scan`
 - `POST /api/reboot`
 - `POST /api/device/settings`
+- `POST /api/device/rotate-api-auth`
 - `POST /api/ota/check`
 - `POST /api/ota/online`
 
@@ -296,6 +297,7 @@ Ela mostra:
 - uso do LittleFS
 - ultimo resultado de OTA
 - configuracao persistente de hostname, credenciais e manifest OTA
+- rotacao com um clique da senha dedicada da API, sem reboot
 - campo para `manifest.json`
 - checagem de versao online
 - botoes para baixar firmware ou filesystem diretamente da rede
@@ -427,6 +429,7 @@ Hoje o firmware armazena uma lista de redes conhecidas e tenta:
 - O `OTA_MANIFEST_URL` deste projeto deve apontar apenas para `updates/yousimuladorobd/`
 - A checagem automatica consulta o manifest, mas nao instala update sozinha
 - Para automacao via script, use autenticacao HTTP no cliente
+- Para rotacionar rapidamente a senha da API em campo, use o botao `Rotacionar senha da API` em `/ota.html`
 
 ## Validacao Atual
 
