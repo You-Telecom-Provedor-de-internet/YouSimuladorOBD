@@ -1,0 +1,44 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "7788d401-c664-42fe-bcd9-188fd673d854")
+	(paper "A4")
+	(title_block
+		(title "Power Input")
+		(date "2026-04-05")
+		(rev "A")
+		(company "You Telecom")
+		(comment 1 "J1 pin16 -> F1 -> buck +12V_PROT")
+		(comment 2 "J1 pin4/pin5 -> GND comum")
+	)
+	(lib_symbols)
+	(text "Captura a concluir neste bloco:\n- J1 OBD-II\n- F1 fusivel 1A\n- U1 buck 12V -> 5V\n- distribuicao +12V_PROT / +5V_SYS / +3V3_SYS" 
+		(exclude_from_sim no)
+		(at 18 22 0)
+		(effects
+			(font
+				(size 1.5 1.5)
+			)
+			(justify left)
+		)
+		(uuid "1799f3d3-8e7f-402b-a98d-f75a4031ac51")
+	)
+	(text "Fonte tecnica:\n- docs/15-diagrama-eletrico-pcb.md\n- hardware/pcb-handoff/netlist-rev-a.csv" 
+		(exclude_from_sim no)
+		(at 18 52 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "ad0fa81d-85f7-44c7-b7d3-0bf7e0f0b052")
+	)
+	(sheet_instances
+		(path "/"
+			(page "2")
+		)
+	)
+	(embedded_fonts no)
+)

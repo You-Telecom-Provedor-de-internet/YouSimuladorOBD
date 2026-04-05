@@ -1,0 +1,43 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "d9e9808d-4113-4d22-8cdb-9a0b08533772")
+	(paper "A4")
+	(title_block
+		(title "OBD Transceivers")
+		(date "2026-04-05")
+		(rev "A")
+		(company "You Telecom")
+		(comment 1 "CAN + K-Line frontend validated in bench")
+	)
+	(lib_symbols)
+	(text "Captura a concluir neste bloco:\n- U2 SN65HVD230\n- U3 L9637D\n- RK1 510R K -> VS\n- RLI1 10k LI -> VS\n- CK1 / CK2 100nF\n- RCAN1 120R opcional\n- J1 pins 6 / 7 / 14 / 16" 
+		(exclude_from_sim no)
+		(at 18 20 0)
+		(effects
+			(font
+				(size 1.4 1.4)
+			)
+			(justify left)
+		)
+		(uuid "cfe25557-e528-431b-82b0-0f54739781e0")
+	)
+	(text "Barramentos confirmados:\n- CAN\n- ISO 9141-2\n- KWP 5-baud\n- KWP Fast" 
+		(exclude_from_sim no)
+		(at 18 62 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "b41d45ce-5103-4eb9-a367-d4870d956b31")
+	)
+	(sheet_instances
+		(path "/"
+			(page "4")
+		)
+	)
+	(embedded_fonts no)
+)

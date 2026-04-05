@@ -17,6 +17,7 @@ Arquivos complementares:
 - [hardware/pcb-handoff/README.md](../hardware/pcb-handoff/README.md)
 - [hardware/pcb-handoff/netlist-rev-a.csv](../hardware/pcb-handoff/netlist-rev-a.csv)
 - [hardware/pcb-handoff/bom-rev-a.csv](../hardware/pcb-handoff/bom-rev-a.csv)
+- [hardware/kicad/revA/README.md](../hardware/kicad/revA/README.md)
 
 ## Diagrama eletrico funcional
 
@@ -181,11 +182,17 @@ O hardware de bancada usa modulo `LM2596`. Para PCB:
 | ISO 9141-2 | `YouAutoCar` | OK |
 | KWP Fast | `Torque Pro` | OK |
 
-## O que ainda nao esta em arquivo EDA nativo
+## Estado atual em EDA nativo
 
-Ainda falta converter este handoff para:
+Ja existe um bootstrap nativo em `KiCad` em:
 
-- `.kicad_sch`, ou
-- arquivo nativo de `EasyEDA`
+- `hardware/kicad/revA/YouSimuladorOBD_RevA.kicad_sch`
 
-Mas o conteudo tecnico necessario para o engenheiro ja esta fechado neste documento e nos CSVs do pacote `hardware/pcb-handoff/`.
+Esse bootstrap ainda nao e a captura completa final, mas ja organiza o projeto em folhas por bloco:
+
+- `Power_Input`
+- `ESP32_Core`
+- `OBD_Transceivers`
+- `UI_Local`
+
+Assim, o engenheiro nao precisa mais partir do zero no EDA.

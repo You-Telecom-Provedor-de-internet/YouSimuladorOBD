@@ -14,6 +14,15 @@ Este diretorio contem o material tecnico consolidado para o engenheiro capturar 
 O documento principal do handoff e:
 
 - `docs/15-diagrama-eletrico-pcb.md`
+- `docs/16-pacote-engenheiro-pcb.md`
+
+## Captura nativa iniciada
+
+O projeto tambem ja possui um bootstrap nativo no `KiCad`:
+
+- `hardware/kicad/revA/YouSimuladorOBD_RevA.kicad_sch`
+
+Esse conjunto nao substitui o handoff consolidado, mas acelera a continuacao da captura pelo engenheiro.
 
 ## Escopo
 

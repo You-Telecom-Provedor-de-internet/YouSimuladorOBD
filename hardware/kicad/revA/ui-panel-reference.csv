@@ -1,0 +1,12 @@
+Feature,Reference,X_mm,Y_mm,Width_mm,Height_mm,Diameter_mm,Notes
+Lid,Origin,0,0,132,97,,Origem no canto inferior esquerdo da tampa
+OLED_Window,DISP1,49,49,34,34,,Janela visivel quadrada SH1107 128x128
+OLED_Bezel,DISP1,45,41,42,42,,Rebaixo raso ao redor da janela
+Button_1,SW2_PREV,31,26,,,6.5,Furo do botao PREV
+Button_2,SW3_NEXT,45,26,,,6.5,Furo do botao NEXT
+Button_3,SW4_UP,59,26,,,6.5,Furo do botao UP
+Button_4,SW5_DOWN,73,26,,,6.5,Furo do botao DOWN
+Button_5,SW6_OK,87,26,,,6.5,Furo do botao OK
+Button_6,SW7_PROTO,101,26,,,6.5,Furo do botao PROTO
+Encoder_Shaft,ENC1,103,53,,,7.4,Furo do eixo do encoder KY-040
+Encoder_Clearance,ENC1,94.5,44.5,17,17,,Rebaixo circular para a area do knob

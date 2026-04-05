@@ -106,7 +106,9 @@ Senha: obd12345
 - [13 - Montagem K-Line com L9637D](docs/13-kline-l9637d-montagem.md)
 - [14 - Cenarios Diagnosticos](docs/14-diagnostic-scenarios.md)
 - [15 - Diagrama Eletrico e Handoff PCB](docs/15-diagrama-eletrico-pcb.md)
+- [16 - Pacote para o Engenheiro de PCB](docs/16-pacote-engenheiro-pcb.md)
 - [Hardware - Pacote para PCB](hardware/pcb-handoff/README.md)
+- [Hardware - KiCad RevA](hardware/kicad/revA/README.md)
 
 ## Build e gravacao
 
@@ -133,6 +135,6 @@ YouSimuladorOBD/
 
 ## Observacoes importantes
 
-- o pacote `hardware/pcb-handoff/` e o documento `docs/15-diagrama-eletrico-pcb.md` sao a referencia atual para o engenheiro de PCB
+- o pacote `hardware/pcb-handoff/`, o documento `docs/15-diagrama-eletrico-pcb.md` e a lista curta em `docs/16-pacote-engenheiro-pcb.md` sao a referencia atual para o engenheiro de PCB
 - os arquivos antigos em `hardware/schematic/` ficaram marcados como obsoletos
-- neste ambiente nao ha `KiCad`, `EasyEDA` ou `Altium` instalados; por isso o handoff foi entregue em `Markdown + Mermaid + CSV`
+- o projeto agora ja possui bootstrap nativo em `KiCad` em `hardware/kicad/revA/`

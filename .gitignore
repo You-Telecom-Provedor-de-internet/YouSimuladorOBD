@@ -32,3 +32,10 @@ secrets.h
 
 # Logs
 *.log
+
+# Bench captures / temporary validation assets
+*_capture.txt
+torque_serial*.txt
+phone_screen.*
+torque_*screen.png
+*.FCBak

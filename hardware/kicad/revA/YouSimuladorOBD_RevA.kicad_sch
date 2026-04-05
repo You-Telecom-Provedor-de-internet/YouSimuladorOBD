@@ -1,0 +1,225 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "6f431f7a-9432-4892-84fe-c3cb5cdbca01")
+	(paper "A3")
+	(title_block
+		(title "YouSimuladorOBD RevA")
+		(date "2026-04-05")
+		(rev "A")
+		(company "You Telecom")
+		(comment 1 "Bootstrap KiCad capture from validated bench handoff")
+		(comment 2 "Source: docs/15-diagrama-eletrico-pcb.md + hardware/pcb-handoff")
+		(comment 3 "Mechanical reference: hardware/kicad/revA/ui-panel-reference.csv")
+	)
+	(lib_symbols)
+	(text "Folha raiz do projeto.\nA captura detalhada deve ser continuada a partir dos blocos abaixo." 
+		(exclude_from_sim no)
+		(at 28 20 0)
+		(effects
+			(font
+				(size 1.8 1.8)
+			)
+			(justify left)
+		)
+		(uuid "6ef60344-65f6-4684-a129-b489afd2053c")
+	)
+	(text "Barramentos validados em bancada:\n- CAN\n- ISO 9141-2\n- KWP 5-baud\n- KWP Fast" 
+		(exclude_from_sim no)
+		(at 28 36 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "e0e41065-7b14-4524-8fd9-f7bcbfdb23ff")
+	)
+	(sheet
+		(at 24 72)
+		(size 54 24)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "bc85915a-2e4a-4511-b6eb-79840f70076d")
+		(property "Sheetname" "Power_Input"
+			(at 24 71.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.254)
+					(bold yes)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "power_input.kicad_sch"
+			(at 24 96.8 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "YouSimuladorOBD_RevA"
+				(path "/bc85915a-2e4a-4511-b6eb-79840f70076d"
+					(page "2")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 90 72)
+		(size 74 24)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "536f9593-b4d5-4baf-bf2c-f9bce4c8d59f")
+		(property "Sheetname" "ESP32_Core"
+			(at 90 71.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.254)
+					(bold yes)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "esp32_core.kicad_sch"
+			(at 90 96.8 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "YouSimuladorOBD_RevA"
+				(path "/536f9593-b4d5-4baf-bf2c-f9bce4c8d59f"
+					(page "3")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 178 72)
+		(size 82 24)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "51c27f85-cd29-4278-b36a-8be4f04888c0")
+		(property "Sheetname" "OBD_Transceivers"
+			(at 178 71.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.254)
+					(bold yes)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "obd_transceivers.kicad_sch"
+			(at 178 96.8 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "YouSimuladorOBD_RevA"
+				(path "/51c27f85-cd29-4278-b36a-8be4f04888c0"
+					(page "4")
+				)
+			)
+		)
+	)
+	(sheet
+		(at 58 116)
+		(size 120 28)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0.0000)
+		)
+		(uuid "d9138e87-8784-4cc7-9978-8c7674dcc12c")
+		(property "Sheetname" "UI_Local"
+			(at 58 115.2 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.254)
+					(bold yes)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "ui_local.kicad_sch"
+			(at 58 145.8 0)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "YouSimuladorOBD_RevA"
+				(path "/d9138e87-8784-4cc7-9978-8c7674dcc12c"
+					(page "5")
+				)
+			)
+		)
+	)
+	(sheet_instances
+		(path "/"
+			(page "1")
+		)
+	)
+	(embedded_fonts no)
+)

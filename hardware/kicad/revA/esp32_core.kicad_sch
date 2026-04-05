@@ -1,0 +1,43 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "10.0")
+	(uuid "c8287ad3-e6c7-46ef-b1ab-9eb5380d7027")
+	(paper "A4")
+	(title_block
+		(title "ESP32 Core")
+		(date "2026-04-05")
+		(rev "A")
+		(company "You Telecom")
+		(comment 1 "Keep validated GPIO map from firmware/docs")
+	)
+	(lib_symbols)
+	(text "Captura a concluir neste bloco:\n- MCU1 ESP32 DevKit ou ESP32-WROOM carrier\n- GPIO4/5 CAN\n- GPIO17/16 K-Line\n- GPIO21/22 OLED\n- GPIO12/13/15 encoder\n- GPIO32/33/25/26/27/14 botoes\n- GPIO34/35/36 DIP\n- GPIO19/18/23 LEDs" 
+		(exclude_from_sim no)
+		(at 18 20 0)
+		(effects
+			(font
+				(size 1.4 1.4)
+			)
+			(justify left)
+		)
+		(uuid "3889134a-e64b-41e0-8908-71eb0f4c5e13")
+	)
+	(text "Fonte tecnica:\n- docs/03-pinout.md\n- firmware/include/config.h\n- firmware/src/web/ui_init.cpp" 
+		(exclude_from_sim no)
+		(at 18 70 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "f71fbcb2-49d3-4702-a4e4-0d74f2e6a4a3")
+	)
+	(sheet_instances
+		(path "/"
+			(page "3")
+		)
+	)
+	(embedded_fonts no)
+)
