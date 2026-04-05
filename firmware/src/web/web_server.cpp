@@ -3,7 +3,6 @@
 #include "diagnostic_scenario_engine.h"
 #include "dynamic_engine.h"
 #include "vehicle_profiles.h"
-#include "elm327_bt.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
@@ -87,6 +86,16 @@ static const char* current_hostname();
 static const char* current_manifest_url();
 static const char* current_auth_user();
 static const char* current_auth_password();
+
+static void persist_active_protocol(uint8_t protocol) {
+    if (protocol >= PROTO_COUNT) {
+        return;
+    }
+    Preferences prefs;
+    prefs.begin("obd", false);
+    prefs.putUChar("proto", protocol);
+    prefs.end();
+}
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -745,6 +754,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
 
     DeviceSettings next = s_device_settings;
     bool changed = false;
+    bool restart_required = false;
 
     if (doc["hostname"].is<String>()) {
         String hostname = doc["hostname"].as<String>();
@@ -757,6 +767,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
         if (strcmp(next.hostname, hostname.c_str()) != 0) {
             copy_text(next.hostname, sizeof(next.hostname), hostname);
             changed = true;
+            restart_required = true;
         }
     }
 
@@ -783,6 +794,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
         if (strcmp(next.auth_user, auth_user.c_str()) != 0) {
             copy_text(next.auth_user, sizeof(next.auth_user), auth_user);
             changed = true;
+            restart_required = true;
         }
     }
 
@@ -797,6 +809,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
             if (strcmp(next.auth_password, auth_password.c_str()) != 0) {
                 copy_text(next.auth_password, sizeof(next.auth_password), auth_password);
                 changed = true;
+                restart_required = true;
             }
         }
     }
@@ -834,14 +847,16 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
     JsonDocument resp;
     resp["ok"] = true;
     resp["changed"] = true;
-    resp["restart_required"] = true;
+    resp["restart_required"] = restart_required;
     resp["hostname"] = String(current_hostname()) + ".local";
     resp["manifest_url"] = current_manifest_url();
     resp["auth_default"] = using_default_auth();
     String out;
     serializeJson(resp, out);
     req->send(200, "application/json", out);
-    schedule_restart();
+    if (restart_required) {
+        schedule_restart();
+    }
 }
 
 static void handle_head_page(AsyncWebServerRequest* req, const char* content_type) {
@@ -954,8 +969,6 @@ static String stateToJson() {
     doc["alert_count"]      = snap.alert_count;
     doc["odometer_total_km"] = static_cast<float>(snap.odometer_total_km_x10) / 10.0f;
     appendPrimaryAlert(doc, snap);
-    doc["bt_connected"] = elm327_bt_connected();
-
     String out;
     serializeJson(doc, out);
     return out;
@@ -1312,6 +1325,7 @@ static void handle_post_protocol(AsyncWebServerRequest* req, uint8_t* data, size
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     s_state->active_protocol = pid;
     xSemaphoreGive(s_mutex);
+    persist_active_protocol(pid);
     String resp = "{\"ok\":true,\"protocol\":\"" + String(protoName(pid)) + "\"}";
     req->send(200, "application/json", resp);
 }
@@ -1693,6 +1707,7 @@ static void handle_post_profile(AsyncWebServerRequest* req, uint8_t* data, size_
     dynamic_reset_odometer_service_counters(*s_state);
     diagnostic_engine_rebuild_effective_dtcs(*s_state);
     xSemaphoreGive(s_mutex);
+    persist_active_protocol(p->protocol);
     String resp = "{\"ok\":true,\"brand\":\"" + String(p->brand) +
                   "\",\"model\":\"" + String(p->model) + "\"}";
     req->send(200, "application/json", resp);
@@ -1733,6 +1748,7 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
                 if (s_state->profile_id[0] == '\0') {
                     s_state->pid_a6_supported = defaultPidA6SupportForProtocol(pid) ? 1 : 0;
                 }
+                persist_active_protocol(pid);
             }
         } else if (!strcmp(t, "preset")) {
             const char* name = doc["name"] | "idle";
@@ -1754,6 +1770,7 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
                 applyVehicleProfile(*s_state, *p);
                 dynamic_reset_odometer_service_counters(*s_state);
                 diagnostic_engine_rebuild_effective_dtcs(*s_state);
+                persist_active_protocol(p->protocol);
             }
         } else if (!strcmp(t, "mode")) {
             uint8_t m = doc["id"] | 0;

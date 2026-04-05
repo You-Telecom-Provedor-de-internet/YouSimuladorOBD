@@ -1,256 +1,180 @@
-# 02 — Hardware e Componentes
+# 02 - Hardware e Componentes
 
-## Bill of Materials (BOM)
+## Visao geral da plataforma
 
-### Componentes Principais
+O hardware validado do `YouSimuladorOBD` usa uma topologia simples e reproduzivel:
 
-| Qtd | Componente | Especificação | Função |
-|-----|-----------|---------------|--------|
-| 1 | ESP32 38-pin | ESP32-WROOM-32D / DevKitC | Microcontrolador principal |
-| 1 | Placa expansão ESP32 | 38-pin com bornes/terminais | Facilita conexão dos cabos sem solda |
-| 1 | SN65HVD230 | CAN Transceiver 3.3V | Interface física CAN bus |
-| 1 | Transistor NPN | 2N2222 / BC547 | Driver K-Line (interface 12V↔3.3V) |
-| 1 | OBD-II Conector | Fêmea 16 pinos + chicote | Ponto de conexão com scanner |
-| 1 | Display OLED | SH1107 128×128 I2C | Exibição de 16 parâmetros (2 páginas de 8) |
-| 1 | Encoder Rotativo | KY-040 | Ajuste de valores + botão (SW) |
-| 1 | Módulo 8 Push Buttons | V1.1 — 2×4, com jumpers | PREV / NEXT / UP / DOWN / SELECT / PROTOCOL + 2 reserva |
-| 3 | LED 3mm | Verde, Amarelo, Vermelho | Status CAN / K-Line / TX |
-| 1 | LED interno | GPIO2 (azul, já no ESP32) | Heartbeat do sistema |
-| 3 | DIP Switch | 3 posições | Seleção rápida de protocolo |
-| 1 | Regulador Step-Down | LM2596 3A (módulo buck) | 12V OBD → 5V ESP32 |
-| 5 | Placa fenolite | Dupla face ilhada 6×8cm | Montagem dos circuitos auxiliares |
-| 1 | Fonte de bancada | 12V 2,5A (DC) | Alimentação em desenvolvimento (substitui OBD pino 16) |
+- `ESP32 DevKit` 38 pinos como MCU principal
+- `SN65HVD230` para a camada fisica CAN
+- `L9637D` para a camada fisica K-Line
+- `LM2596` para converter `+12V` do OBD em `+5V`
+- `ESP32 3V3` alimentando a logica de `SN65HVD230`, `L9637D` e `OLED`
 
-### Componentes Passivos
+O objetivo desta revisao e documentar o hardware realmente validado em bancada, e nao a topologia antiga com transistor discreto de K-Line.
 
-| Qtd | Componente | Valor | Localização |
-|-----|-----------|-------|-------------|
-| 1 | Resistor | 120 Ω | Terminação CAN (CANH–CANL) |
-| 1 | Resistor | 510 Ω | Pull-up K-Line para 12V |
-| 1 | Resistor | 1 kΩ | Base transistor K-Line |
-| 4 | Resistor | 330 Ω | Limitador de corrente LEDs status |
-| 2 | Resistor | 10 kΩ | Pull-up encoder / divisor |
-| 1 | Diodo | 1N4148 | Proteção K-Line |
-| 4 | Capacitor | 100 nF | Desacoplamento VCC |
-| 2 | Capacitor | 10 µF | Filtro alimentação LM2596 |
-| 1 | Fusível | 1A | Proteção linha 12V OBD |
+## BOM validada
 
-> Kit utilizado: **120 resistores metal film 1/4W 1%** — cobre todos os valores acima com folga.
+### Componentes principais
 
----
+| RefDes | Qtd | Componente | Funcao |
+|---|---|---|---|
+| `U1` | 1 | `LM2596` modulo buck 12V -> 5V | alimentacao do sistema |
+| `U2` | 1 | `SN65HVD230` | transceiver CAN 3.3V |
+| `U3` | 1 | `L9637D` | transceiver K-Line |
+| `MCU1` | 1 | `ESP32 DevKit` 38 pinos | MCU principal |
+| `J1` | 1 | conector `OBD-II` femea 16 pinos | interface com scanner |
+| `DISP1` | 1 | `OLED SH1107 128x128` I2C | display local |
+| `ENC1` | 1 | `KY-040` | encoder rotativo |
+| `SW2-SW7` | 6 | botoes tacteis | interface local |
+| `SW1` | 1 | DIP switch 3 bits | selecao rapida de protocolo |
+| `D1-D3` | 3 | LEDs de status | CAN / K-Line / TX |
 
-## Distribuição nas Placas Fenolite (6×8cm)
+### Passivos e apoio
 
-| Placa | Conteúdo | Tamanho estimado |
-|-------|----------|-----------------|
-| **#1 — Fonte** | LM2596 + capacitores + fusível | ~3×4 cm |
-| **#2 — CAN** | SN65HVD230 + resistor 120Ω + conector | ~4×4 cm |
-| **#3 — K-Line** | Transistor NPN + resistores 510Ω/1kΩ + diodo | ~3×3 cm |
-| **#4 — Painel** | 6 botões + encoder KY-040 + cabeamento OLED | ~6×7 cm |
-| **#5 — Status** | LEDs (3×) + resistores 330Ω + DIP switch 3pos | ~3×4 cm |
+| RefDes | Qtd | Valor | Observacao |
+|---|---|---|---|
+| `RCAN1` | 1 | `120R` | terminacao CAN, preferencialmente por jumper ou DNP |
+| `RK1` | 1 | `510R` | pull-up da linha K para `VS`, usar `>= 0.5W` |
+| `RLI1` | 1 | `10k` | bias de `LI -> VS` no `L9637D` |
+| `RDIP1-RDIP3` | 3 | `10k` | pull-up externo do DIP para `3V3` |
+| `RLED1-RLED3` | 3 | `330R` | limitador dos LEDs |
+| `CK1` | 1 | `100nF` | `L9637D VCC -> GND` |
+| `CK2` | 1 | `100nF` | `L9637D VS -> GND` |
+| `CCAN1` | 1 | `100nF` | desacoplamento local do `SN65HVD230` |
+| `F1` | 1 | `1A` | fusivel da entrada `+12V` |
 
----
+## Alimentacao
 
-## Circuito Interface CAN (ISO 15765-4)
-
-### Transceiver SN65HVD230
-
-```
-ESP32              SN65HVD230              OBD-II Conector
-                  ┌───────────┐
-GPIO4 (TX) ──────►│ TXD   CANH├──────────── Pino 6 (CAN High)
-                  │           │     [120Ω]   (terminação opcional)
-GPIO5 (RX) ◄──────│ RXD   CANL├──────────── Pino 14 (CAN Low)
-                  │           │
-3.3V ─────────────│ VCC    GND├──────────── GND
-                  │           │
-GND ──────────────│ GND    RS ├── GND (modo alta velocidade)
-                  └───────────┘
-```
-
-### Notas CAN:
-- O SN65HVD230 opera em 3.3V — compatível direto com ESP32 (sem level shifter)
-- Pino RS: GND = modo rápido (até 1 Mbps) | resistor 10kΩ para 3.3V = modo silencioso
-- Resistor 120Ω: instalar se o simulador for o único nó ou ponta do barramento
-
-### Ligação rápida do módulo SN65HVD230 na bancada atual
-
-Breakout efetivamente usado na bancada desta rodada:
+### Caminho validado
 
 ```text
-3V3
-GND
-CTX
-CRX
-CANH
-CANL
+OBD pin 16 (+12V) -> F1 -> LM2596 IN+
+OBD pin 4/5 (GND) -> LM2596 IN-
+LM2596 OUT+ -> ESP32 VIN / 5V
+LM2596 OUT- -> GND
+ESP32 3V3 -> logica de U2, U3 e OLED
 ```
 
-Nesse modelo, a ligação prática fica:
+### Notas para PCB
 
-| Breakout SN65HVD230 | ESP32 / OBD | Observação |
+- manter `+12V`, `+5V` e `3V3` separados por nets claras
+- usar plano de GND unico e curto entre `OBD`, `LM2596`, `ESP32`, `SN65HVD230` e `L9637D`
+- o `RK1 = 510R` pode dissipar perto de `0.28W` quando a linha K fica baixa; na PCB use componente com folga termica
+
+## CAN - interface fisica
+
+### Topologia validada
+
+```text
+ESP32 GPIO4  -> SN65HVD230 TXD
+ESP32 GPIO5  <- SN65HVD230 RXD
+SN65HVD230 CANH -> OBD pin 6
+SN65HVD230 CANL -> OBD pin 14
+SN65HVD230 VCC  -> 3V3
+SN65HVD230 GND  -> GND
+SN65HVD230 RS   -> GND (modo rapido)
+```
+
+### Observacoes
+
+- o breakout de bancada aparentou possuir terminacao onboard; na PCB final a melhor pratica e usar `120R` selecionavel por jumper
+- para layout, manter o par `CANH/CANL` curto, paralelo e de preferencia roteado junto
+
+## K-Line - interface fisica
+
+### Topologia validada
+
+```text
+ESP32 GPIO17 -> L9637D pin 4 (TX)
+ESP32 GPIO16 <- L9637D pin 1 (RX)
+L9637D pin 3 (VCC) -> 3V3
+L9637D pin 5 (GND) -> GND
+L9637D pin 6 (K)   -> OBD pin 7
+L9637D pin 7 (VS)  -> OBD pin 16 (+12V)
+L9637D pin 8 (LI)  -> 10k -> pin 7 (VS)
+RK1 510R entre pin 6 (K) e pin 7 (VS)
+CK1 100nF entre pin 3 e pin 5
+CK2 100nF entre pin 7 e pin 5
+L9637D pin 2 (LO)  -> NC
+OBD pin 15 (L-Line) -> NC
+```
+
+### Medidas validadas em repouso
+
+- `L9637D pin 4 (TX) -> GND`: `~3.3V`
+- `L9637D pin 6 (K) -> GND`: `~12.23V`
+- `L9637D pin 1 (RX) -> GND`: `~3.317V`
+
+Essas tres medicoes sao a referencia rapida para depuracao.
+
+## Interface local
+
+### OLED
+
+- `GPIO21` -> `SDA`
+- `GPIO22` -> `SCL`
+- alimentacao em `3V3`
+
+### Botoes
+
+- `GPIO32`, `GPIO33`, `GPIO25`, `GPIO26`, `GPIO27`, `GPIO14`
+- modo `INPUT_PULLUP`
+- ligar cada botao entre o GPIO e o `GND`
+- nao precisa pull-up externo nos botoes
+
+### Encoder
+
+- `GPIO12` -> `CLK`
+- `GPIO13` -> `DT`
+- `GPIO15` -> `SW`
+
+### DIP
+
+- `GPIO34`, `GPIO35`, `GPIO36`
+- esses pinos sao somente entrada e nao possuem pull-up interno
+- usar `10k` de cada GPIO para `3V3`
+- chave fechada para `GND` = bit `LOW`
+
+### LEDs
+
+- `GPIO19` -> LED CAN
+- `GPIO18` -> LED K-Line
+- `GPIO23` -> LED TX
+- `330R` em serie por LED
+
+## Conector OBD-II usado
+
+| Pino | Sinal | Uso |
 |---|---|---|
-| `3V3` | `3V3` do ESP32 | Não alimente a lógica em 5V |
-| `GND` | `GND` comum | Mesmo GND do ESP32 e do OBD |
-| `CTX` | `GPIO4` | TWAI TX do ESP32 |
-| `CRX` | `GPIO5` | TWAI RX do ESP32 |
-| `CANH` | OBD pino `6` | Linha CAN High |
-| `CANL` | OBD pino `14` | Linha CAN Low |
+| `4` | chassis GND | GND comum |
+| `5` | signal GND | GND comum |
+| `6` | CANH | `SN65HVD230 CANH` |
+| `7` | K-Line | `L9637D K` |
+| `14` | CANL | `SN65HVD230 CANL` |
+| `15` | L-Line | nao usado |
+| `16` | +12V bateria | fonte do sistema e `L9637D VS` |
 
-Checklist de montagem:
+## Recomendacoes para a placa final
 
-- manter os fios `CANH` e `CANL` curtos e, se possível, trançados
-- este breakout usado em bancada aparenta trazer terminação onboard no próprio módulo, então não somar outra terminação sem necessidade
-- usar apenas uma terminação `120Ω` quando o simulador estiver na ponta do barramento de bancada
-- ligar primeiro só `3V3/GND/CTX/CRX`, validar o boot do ESP32 e depois conectar `CANH/CANL` ao chicote OBD
+### Obrigatorio para reproduzir a bancada validada
 
----
+- `SN65HVD230`
+- `L9637D`
+- `510R` entre `K` e `VS`
+- `10k` entre `LI` e `VS`
+- dois `100nF` no `L9637D`
+- `LM2596` ou buck equivalente para `12V -> 5V`
 
-## Circuito Interface K-Line (ISO 9141-2 / KWP2000)
+### Recomendado para a revisao de PCB
 
-### Circuito com Transistor Discreto (2N2222 / BC547)
+- `RCAN1 120R` por jumper ou `DNP`
+- TVS na entrada `+12V`
+- protecao contra inversao de polaridade na entrada
+- ponto de teste em `CANH`, `CANL`, `K`, `TX_K`, `RX_K`, `+12V`, `+5V`, `+3V3` e `GND`
 
-```
-                            +12V (OBD Pino 16)
-                                │
-                            [510Ω pull-up]
-                                │
-GPIO16 (RX) ◄──────────────────┤◄──────── K-Line (OBD Pino 7)
-                                │
-                           [Diodo 1N4148]
-                                │
-GPIO17 (TX) ──[1kΩ]──── Base ──┤
-                          Emissor ── GND
-                          Coletor ── K-Line (OBD Pino 7)
-```
+## Referencia principal para o engenheiro
 
-### Notas K-Line:
-- K-Line opera em 12V lógico HIGH — o transistor faz a conversão 3.3V ↔ 12V
-- Baud rate: 10.400 bps (ISO 9141-2) / até 10.400 bps (KWP 5-baud init)
-- L-Line (Pino 15): pode ser ligado ao K-Line ou deixado desconectado
+Para capturar o esquema de PCB, use junto:
 
----
-
-## Circuito OBD-II Conector — Pinagem Completa
-
-```
-OBD-II Fêmea (vista frontal do conector):
-
- ┌──────────────────────────────────┐
- │  1   2   3   4   5   6   7   8  │
- │    9  10  11  12  13  14  15  16 │
- └──────────────────────────────────┘
-```
-
-| Pino | Sinal | Uso no projeto |
-|------|-------|---------------|
-| 1 | Fabricante | Não usado |
-| 2 | SAE J1850 Bus+ | Não implementado |
-| 3 | Fabricante | Não usado |
-| **4** | **Chassis GND** | **→ GND do circuito** |
-| **5** | **Signal GND** | **→ GND do circuito** |
-| **6** | **CAN High** | **→ CANH do SN65HVD230** |
-| **7** | **K-Line** | **→ Circuito transistor K-Line** |
-| 8 | Fabricante | Não usado |
-| 9 | Fabricante | Não usado |
-| 10 | SAE J1850 Bus- | Não implementado |
-| 11 | Fabricante | Não usado |
-| 12 | Fabricante | Não usado |
-| 13 | Fabricante | Não usado |
-| **14** | **CAN Low** | **→ CANL do SN65HVD230** |
-| 15 | L-Line | Opcional — ligar ao K-Line ou deixar livre |
-| **16** | **+12V Bateria** | **→ Entrada LM2596 (fonte)** |
-
-> **Conector recebido:** Fêmea 16 pinos com chicote de fios coloridos.
-> Confirmar cores com multímetro antes de soldar (variam por fabricante).
-> Típico: Vermelho = Pino 16 (+12V) | Preto = Pino 4/5 (GND).
-
----
-
-## Alimentação do Sistema
-
-```
-OBD Pino 16 (+12V)
-        │
-    [Fusível 1A]      ⚠️ Ajustar LM2596 para 5.0V na saída
-        │                ANTES de conectar ao ESP32
-   ┌────▼──────────┐
-   │   LM2596      │
-   │  IN+   OUT+ ──┼──────── ESP32 VIN (5V)
-   │  IN-   OUT- ──┼──────── GND
-   └───────────────┘
-
-Distribuição de tensão:
-  5.0V → ESP32 VIN, L-Line driver
-  3.3V → SN65HVD230, OLED SH1107, KY-040 (gerado internamente pelo ESP32)
- 12.0V → K-Line pull-up (direto do OBD pino 16)
-```
-
-> **Durante desenvolvimento:** usar a **fonte 12V 2,5A** no lugar do conector OBD. Ligar o +12V da fonte na entrada do LM2596 e o GND em comum. A fonte substitui perfeitamente o pino 16 do OBD-II para testes em bancada — sem precisar do carro.
->
-> **Em operação com veículo:** o pino 16 do conector OBD-II fornece os 12V diretamente ao LM2596.
->
-> **Consumo estimado do sistema:**
-> | Componente | Corrente |
-> |-----------|----------|
-> | ESP32 (Wi-Fi ativo) | ~240 mA |
-> | OLED SH1107 | ~15 mA |
-> | LEDs (3×) | ~30 mA |
-> | SN65HVD230 | ~10 mA |
-> | K-Line pull-up 510Ω | ~24 mA (12V/510Ω) |
-> | **Total** | **~320 mA @ 5V** → ~160 mA @ 12V |
->
-> A fonte 2,5A oferece margem de 15× — mais que suficiente.
-
----
-
-## Interface de Usuário
-
-```
-     ┌────────────────────────────────────────┐
-     │  OLED SH1107 128×128 — 8 params/página │
-     │  CAN 11b 500k                          │
-     │  ─────────────────────────────────     │
-     │  ► RPM           2000                  │
-     │    Vel km/h        60                  │
-     │    T.Motor C       92                  │
-     │    T.Admis C       35                  │
-     │    MAF g/s       12.0                  │
-     │    MAP kPa         55                  │
-     │    TPS %           35                  │
-     │    Avanco gr     15.0                  │
-     │  ─────────────────────────────────     │
-     │  OK=edit  p.1/2                        │
-     └────────────────────────────────────────┘
-
-  [◄]  [►]  [▲]  [▼]  [OK]  [PROTO]    ENC: [◉]
-```
-
-### Botões — 6 no total
-
-| Botão | GPIO | Função |
-|-------|------|--------|
-| PREV (◄) | 32 | Parâmetro anterior |
-| NEXT (►) | 33 | Próximo parâmetro |
-| UP (▲) | 25 | Incrementa valor |
-| DOWN (▼) | 26 | Decrementa valor |
-| SELECT (OK) | 27 | Editar / Confirmar |
-| PROTOCOL | 14 | Cicla protocolo ativo |
-| Encoder SW | 15 | Igual ao SELECT |
-
----
-
-## Verificação de Recursos do ESP32
-
-| Recurso | Disponibilidade | Uso no Projeto |
-|---------|----------------|----------------|
-| TWAI (CAN) | Nativo (1×) | CAN ISO 15765-4 |
-| UART0 | Nativo | Debug / USB Serial |
-| UART1 | Nativo | K-Line TX/RX |
-| UART2 | Nativo | Reserva |
-| I2C | 2× (qualquer GPIO) | Display OLED SH1107 |
-| GPIO Input-only | 34, 35, 36, 39 | DIP Switch (3 pinos) |
-| GPIO Geral | 34 disponíveis | Botões, LEDs, Encoder |
-| Flash | 4 MB | Firmware + LittleFS (Web UI) |
-| RAM | 520 KB | Buffers e SimulationState |
-| Wi-Fi | 802.11 b/g/n | Web UI + API REST + WebSocket |
+- [15 - Diagrama Eletrico e Handoff PCB](15-diagrama-eletrico-pcb.md)
+- [Pacote de handoff CSV](../hardware/pcb-handoff/README.md)

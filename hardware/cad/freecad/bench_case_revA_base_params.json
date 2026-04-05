@@ -1,0 +1,29 @@
+{
+  "params": {
+    "project": "YouSimuladorOBD",
+    "name": "bench_case_revA_base",
+    "board_x": 120.0,
+    "board_y": 85.0,
+    "inner_clearance": 3.0,
+    "floor_thickness": 3.0,
+    "wall_thickness": 3.0,
+    "wall_height": 22.0,
+    "standoff_diameter": 10.0,
+    "standoff_hole_diameter": 3.2,
+    "standoff_height": 8.0,
+    "mount_inset": 8.0,
+    "obd_window_w": 34.0,
+    "obd_window_h": 16.0,
+    "obd_window_z": 6.0,
+    "usb_window_w": 14.0,
+    "usb_window_h": 8.0,
+    "usb_window_z": 10.0
+  },
+  "derived": {
+    "inner_x": 126.0,
+    "inner_y": 91.0,
+    "outer_x": 132.0,
+    "outer_y": 97.0,
+    "outer_z": 25.0
+  }
+}

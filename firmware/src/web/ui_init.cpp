@@ -15,6 +15,7 @@
 
 #define OLED_W        128
 #define OLED_H        128
+#define BOOT_SPLASH_MS 6000
 #define PARAM_COUNT    16   // total de parâmetros navegáveis
 #define VISIBLE_ROWS    8   // linhas visíveis por página
 #define ROW_SPACING    13   // px entre linhas de parâmetro
@@ -43,6 +44,33 @@ static const char* PARAM_NAMES[PARAM_COUNT] = {
     "Carga %",  "Comb. %",  "Bat. V",   "Oleo C",
     "STFT %",   "LTFT %",   "DTC",      "VIN"
 };
+
+static void render_boot_splash(const SimulationState& s) {
+    oled.clearDisplay();
+    oled.setTextColor(SH110X_WHITE);
+
+    oled.drawRoundRect(0, 0, OLED_W, OLED_H, 8, SH110X_WHITE);
+    oled.drawFastHLine(10, 34, OLED_W - 20, SH110X_WHITE);
+
+    oled.setTextSize(2);
+    oled.setCursor(22, 16);
+    oled.print("YOU OBD");
+
+    oled.setTextSize(1);
+    oled.setCursor(24, 46);
+    oled.print("ESP32 OBD-II SIM");
+
+    oled.setCursor(20, 62);
+    oled.printf("Proto: %s", protoName(s.active_protocol));
+
+    oled.setCursor(18, 78);
+    oled.print("Inicializando...");
+
+    oled.setCursor(18, 104);
+    oled.print("youobd2.local");
+
+    oled.display();
+}
 
 // ── Leitura do valor atual de cada parâmetro ─────────────────
 
@@ -160,6 +188,15 @@ static void task_ui(void*) {
     oled.setContrast(0xFF);
     oled.clearDisplay();
     oled.display();
+
+    SimulationState splash = {};
+    if (s_mutex != nullptr && s_state != nullptr) {
+        xSemaphoreTake(s_mutex, portMAX_DELAY);
+        splash = *s_state;
+        xSemaphoreGive(s_mutex);
+    }
+    render_boot_splash(splash);
+    vTaskDelay(pdMS_TO_TICKS(BOOT_SPLASH_MS));
 
     btn_prev.attach(PIN_BTN_PREV,     INPUT_PULLUP); btn_prev.interval(BTN_DEBOUNCE_MS);
     btn_next.attach(PIN_BTN_NEXT,     INPUT_PULLUP); btn_next.interval(BTN_DEBOUNCE_MS);

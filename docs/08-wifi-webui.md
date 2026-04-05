@@ -31,7 +31,6 @@ ESP32
 - Hostname, `manifest.json` padrao e credenciais web/OTA podem ser alterados na UI e ficam persistidos na NVS
 - O ESP32 pode checar o manifest OTA periodicamente sem atualizar sozinho
 - O upload OTA local por arquivo foi removido para reduzir o firmware
-- O Bluetooth SPP existe no codigo, mas esta desabilitado por padrao para priorizar estabilidade do Wi-Fi/Web
 - O OTA online deste repositorio e exclusivo do `YouSimuladorOBD`
 - O futuro `YouAutoTester` deve usar outro `manifest.json` e outro diretório no dominio
 
@@ -157,8 +156,7 @@ GET /api/status
   "dtcs": [],
   "vin": "9YSMULMS0T1234567",
   "profile_id": "",
-  "sim_mode": 0,
-  "bt_connected": false
+  "sim_mode": 0
 }
 ```
 

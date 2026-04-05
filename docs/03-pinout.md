@@ -1,163 +1,141 @@
-# 03 — Pinout ESP32 38 Pinos e Ligações
+# 03 - Pinout ESP32 e Ligacoes
 
-## Pinout do ESP32 DevKit (38 pinos)
+## ESP32 DevKit 38 pinos - mapa usado no projeto
 
-```
-                     ┌─────────────────┐
-              3.3V ──┤ 3V3         GND ├── GND
-               GND ──┤ GND         D23 ├── GPIO23  (MOSI / I2C_SDA)
-              EN  ──┤ EN          D22 ├── GPIO22  (I2C_SCL → OLED)
-           GPIO36 ──┤ VP          TX0 ├── GPIO1   (UART0 TX / USB Debug)
-           GPIO39 ──┤ VN          RX0 ├── GPIO3   (UART0 RX / USB Debug)
-           GPIO34 ──┤ D34          D21├── GPIO21  (I2C_SDA → OLED)
-           GPIO35 ──┤ D35         D19 ├── GPIO19  (MISO)
-           GPIO32 ──┤ D32         D18 ├── GPIO18  (SCK)
-           GPIO33 ──┤ D33          D5 ├── GPIO5
-           GPIO25 ──┤ D25         TX2 ├── GPIO17  (UART2 TX)
-           GPIO26 ──┤ D26         RX2 ├── GPIO16  (UART2 RX)
-           GPIO27 ──┤ D27         D4  ├── GPIO4
-           GPIO14 ──┤ D14          D2 ├── GPIO2
-           GPIO12 ──┤ D12         D15 ├── GPIO15
-           GPIO13 ──┤ D13         GND ├── GND
-               GND ──┤ GND        D13 ├── GPIO13  (duplicado na borda)
-               VIN ──┤ VIN         D12├── GPIO12  (duplicado na borda)
-                     └─────────────────┘
-                       (centro: antena)
-```
+### Comunicacao OBD
 
----
+| GPIO | Funcao | Destino |
+|---|---|---|
+| `GPIO4` | CAN TX | `SN65HVD230 TXD` |
+| `GPIO5` | CAN RX | `SN65HVD230 RXD` |
+| `GPIO17` | K-Line TX | `L9637D pin 4 (TX)` |
+| `GPIO16` | K-Line RX | `L9637D pin 1 (RX)` |
 
-## Alocação de Pinos — Projeto YouSimuladorOBD
+### OLED I2C
 
-### Comunicação OBD-II
+| GPIO | Funcao | Destino |
+|---|---|---|
+| `GPIO21` | I2C SDA | `OLED SDA` |
+| `GPIO22` | I2C SCL | `OLED SCL` |
 
-| GPIO | Pino Físico | Função | Destino |
-|------|------------|--------|---------|
-| GPIO4 | D4 | TWAI TX (CAN TX) | SN65HVD230 `TXD` / breakout `CTX` |
-| GPIO5 | D5 | TWAI RX (CAN RX) | SN65HVD230 `RXD` / breakout `CRX` |
-| GPIO17 | TX2 | K-Line TX | Transistor NPN (coletor) |
-| GPIO16 | RX2 | K-Line RX | K-Line via pull-up 510Ω → 12V |
+### Botoes
 
-> **TWAI = Two-Wire Automotive Interface** — módulo CAN nativo do ESP32.
-> Qualquer par de GPIOs pode ser usado para TWAI, pois o driver permite remapeamento.
+| GPIO | Funcao |
+|---|---|
+| `GPIO32` | `BTN_PREV` |
+| `GPIO33` | `BTN_NEXT` |
+| `GPIO25` | `BTN_UP` |
+| `GPIO26` | `BTN_DOWN` |
+| `GPIO27` | `BTN_SELECT` |
+| `GPIO14` | `BTN_PROTOCOL` |
 
-### Display OLED (I2C)
+Todos os botoes usam `INPUT_PULLUP` interno e devem ser ligados entre o GPIO e o `GND`.
 
-| GPIO | Pino Físico | Função | Destino |
-|------|------------|--------|---------|
-| GPIO21 | D21 | I2C SDA | OLED pino SDA |
-| GPIO22 | D22 | I2C SCL | OLED pino SCL |
+### Encoder
 
-### Interface de Usuário
+| GPIO | Funcao |
+|---|---|
+| `GPIO12` | encoder `A / CLK` |
+| `GPIO13` | encoder `B / DT` |
+| `GPIO15` | encoder `SW` |
 
-| GPIO | Pino Físico | Função |
-|------|------------|--------|
-| GPIO32 | D32 | Botão PREV (parâmetro anterior) |
-| GPIO33 | D33 | Botão NEXT (próximo parâmetro) |
-| GPIO25 | D25 | Botão UP (incrementar valor) |
-| GPIO26 | D26 | Botão DOWN (decrementar valor) |
-| GPIO27 | D27 | Botão SELECT |
-| GPIO14 | D14 | Botão PROTOCOL (trocar protocolo) |
-| GPIO12 | D12 | Encoder — Fase A (CLK) |
-| GPIO13 | D13 | Encoder — Fase B (DT) |
-| GPIO15 | D15 | Encoder — Botão (SW) |
+### DIP de protocolo
 
-### Seleção de Protocolo (DIP Switch)
+| GPIO | Bit | Observacao |
+|---|---|---|
+| `GPIO34` | bit 0 | somente entrada, usar `10k` externo para `3V3` |
+| `GPIO35` | bit 1 | somente entrada, usar `10k` externo para `3V3` |
+| `GPIO36` | bit 2 | somente entrada, usar `10k` externo para `3V3` |
 
-| GPIO | Pino Físico | Função |
-|------|------------|--------|
-| GPIO34 | D34 | DIP Switch Bit 0 (LSB) |
-| GPIO35 | D35 | DIP Switch Bit 1 |
-| GPIO36 | VP | DIP Switch Bit 2 (MSB) |
+Leitura:
 
-```
-Tabela DIP Switch → Protocolo:
-SW3 SW2 SW1 | Protocolo
- 0   0   0  | ISO 15765-4 CAN 11-bit 500k
- 0   0   1  | ISO 15765-4 CAN 11-bit 250k
- 0   1   0  | ISO 15765-4 CAN 29-bit 500k
- 0   1   1  | ISO 15765-4 CAN 29-bit 250k
- 1   0   0  | ISO 9141-2
- 1   0   1  | ISO 14230-4 KWP2000 5-baud
- 1   1   0  | ISO 14230-4 KWP2000 Fast Init
- 1   1   1  | (reservado)
-```
+- chave aberta -> `HIGH`
+- chave fechada para `GND` -> `LOW`
 
-> GPIOs 34, 35, 36, 39 são **somente entrada** no ESP32. Ideais para DIP switches.
+### LEDs
 
-### LEDs de Status
+| GPIO | LED | Cor sugerida |
+|---|---|---|
+| `GPIO19` | atividade CAN | verde |
+| `GPIO18` | atividade K-Line | amarelo |
+| `GPIO23` | TX / trafego | vermelho |
+| `GPIO2` | heartbeat interno | LED onboard |
 
-| GPIO | Pino Físico | Função | Cor |
-|------|------------|--------|-----|
-| GPIO2 | D2 | LED interno / Status geral | Azul (interno) |
-| GPIO19 | D19 | LED CAN ativo | Verde |
-| GPIO18 | D18 | LED K-Line ativo | Amarelo |
-| GPIO23 | D23 | LED comunicação/TX | Vermelho |
+## Tabela de protocolos por enum
 
-### Debug Serial (USB)
+| Valor | Protocolo |
+|---|---|
+| `0` | `CAN 11b 500k` |
+| `1` | `CAN 11b 250k` |
+| `2` | `CAN 29b 500k` |
+| `3` | `CAN 29b 250k` |
+| `4` | `ISO 9141-2` |
+| `5` | `KWP 5-baud` |
+| `6` | `KWP Fast` |
 
-| GPIO | Pino Físico | Função |
-|------|------------|--------|
-| GPIO1 | TX0 | UART0 TX → USB-Serial |
-| GPIO3 | RX0 | UART0 RX → USB-Serial |
+## Conector OBD-II
 
----
+| Pino OBD | Sinal | Ligacao no projeto |
+|---|---|---|
+| `4` | chassis GND | `GND comum` |
+| `5` | signal GND | `GND comum` |
+| `6` | CAN High | `SN65HVD230 CANH` |
+| `7` | K-Line | `L9637D pin 6 (K)` |
+| `14` | CAN Low | `SN65HVD230 CANL` |
+| `15` | L-Line | `NC` |
+| `16` | +12V bateria | `LM2596 IN+` e `L9637D pin 7 (VS)` |
 
-## Diagrama de Conexão Completo
+## Ligacoes completas por bloco
 
-```
-ESP32 DevKit 38-pin
-┌──────────────────────────────────────────────────────────────┐
-│                                                              │
-│  GPIO4  ──────────────────────► SN65HVD230 [TXD]           │
-│  GPIO5  ◄────────────────────── SN65HVD230 [RXD]           │
-│                                       │                      │
-│                              [CANH] ──┼── OBD Pino 6        │
-│                              [CANL] ──┼── OBD Pino 14       │
-│                                       │                      │
-│  GPIO17 ──[1kΩ]────────────────► NPN Base (K-Line TX)       │
-│  GPIO16 ◄────────────────────── K-Line via 510Ω pull-up     │
-│                                       │                      │
-│                         NPN Coletor ──┼── OBD Pino 7 (K)    │
-│                         510Ω pull-up ─┼── OBD Pino 16 (12V) │
-│                                                              │
-│  GPIO21 ──────── SDA ──► OLED SH1107 128×128                 │
-│  GPIO22 ──────── SCL ──► OLED SH1107 128×128                 │
-│                                                              │
-│  GPIO32 ──[10kΩ pull-up]──► BTN_PREV                       │
-│  GPIO33 ──[10kΩ pull-up]──► BTN_NEXT                       │
-│  GPIO25 ──[10kΩ pull-up]──► BTN_UP                         │
-│  GPIO26 ──[10kΩ pull-up]──► BTN_DOWN                       │
-│  GPIO27 ──[10kΩ pull-up]──► BTN_SELECT                     │
-│  GPIO14 ──[10kΩ pull-up]──► BTN_PROTOCOL                   │
-│                                                              │
-│  GPIO12 ──► ENCODER_A (CLK)                                 │
-│  GPIO13 ──► ENCODER_B (DT)                                  │
-│  GPIO15 ──► ENCODER_SW                                      │
-│                                                              │
-│  GPIO34 ──► DIP_SW[0]   (pull-down para GND quando OFF)    │
-│  GPIO35 ──► DIP_SW[1]                                       │
-│  GPIO36 ──► DIP_SW[2]                                       │
-│                                                              │
-│  GPIO19 ──[330Ω]──► LED Verde (CAN)                        │
-│  GPIO18 ──[330Ω]──► LED Amarelo (K-Line)                   │
-│  GPIO23 ──[330Ω]──► LED Vermelho (TX activity)             │
-│                                                              │
-│  3.3V / GND ── Alimentação de todos os ICs                 │
-│  VIN ── 5V via USB (desenvolvimento) ou regulador do 12V   │
-└──────────────────────────────────────────────────────────────┘
-```
+### CAN
 
----
+| Origem | Destino |
+|---|---|
+| `GPIO4` | `SN65HVD230 TXD` |
+| `GPIO5` | `SN65HVD230 RXD` |
+| `3V3` | `SN65HVD230 VCC` |
+| `GND` | `SN65HVD230 GND` |
+| `GND` | `SN65HVD230 RS` |
+| `OBD pin 6` | `SN65HVD230 CANH` |
+| `OBD pin 14` | `SN65HVD230 CANL` |
 
-## Restrições e Cuidados
+### K-Line
 
-| GPIO | Restrição |
-|------|-----------|
-| GPIO0 | Boot mode — não usar para I/O geral |
-| GPIO1, GPIO3 | UART0 — ocupados pelo USB/Serial |
-| GPIO6–11 | Flash SPI interno — **nunca usar** |
-| GPIO34–39 | Somente entrada — sem pull-up/down interno |
-| GPIO12 | Afeta boot se HIGH na energização — cuidado com pull-up externo |
+| Origem | Destino |
+|---|---|
+| `GPIO17` | `L9637D pin 4 (TX)` |
+| `GPIO16` | `L9637D pin 1 (RX)` |
+| `3V3` | `L9637D pin 3 (VCC)` |
+| `GND` | `L9637D pin 5 (GND)` |
+| `OBD pin 7` | `L9637D pin 6 (K)` |
+| `OBD pin 16` | `L9637D pin 7 (VS)` |
+| `RLI1 10k` | `L9637D pin 8 (LI)` -> `pin 7 (VS)` |
+| `RK1 510R` | `L9637D pin 6 (K)` -> `pin 7 (VS)` |
+| `CK1 100nF` | `L9637D pin 3` -> `pin 5` |
+| `CK2 100nF` | `L9637D pin 7` -> `pin 5` |
 
-> **Recomendação:** GPIOs 34–39 usados para DIP switches devem ter resistor **10kΩ de cada GPIO ao 3V3** (pull-up externo). Quando a chave estiver **aberta** → leitura HIGH (1). Quando **fechada para GND** → leitura LOW (0). O firmware interpreta LOW = bit ativo.
+## Restricoes importantes do ESP32
+
+| GPIO | Restricao |
+|---|---|
+| `GPIO0` | boot strap, evitar uso geral |
+| `GPIO1` / `GPIO3` | serial USB debug |
+| `GPIO6-11` | flash interna, nunca usar |
+| `GPIO34-39` | somente entrada, sem pull-up interno |
+| `GPIO12` | pino sensivel em boot, evitar pull-up externo incorreto |
+
+## Referencia rapida de diagnostico
+
+Quando a K-Line estiver montada corretamente e o protocolo ativo for K-Line:
+
+- `L9637D pin 4 (TX) -> GND`: `~3.3V` em repouso
+- `L9637D pin 6 (K) -> GND`: `~12V` em repouso
+- `L9637D pin 1 (RX) -> GND`: `~3.3V` em repouso
+
+Se a linha `K` estiver perto de `0V` em repouso, revisar:
+
+- `RK1 510R`
+- `VS +12V`
+- `GPIO17`
+- `GPIO16`
+- solda do `L9637D`

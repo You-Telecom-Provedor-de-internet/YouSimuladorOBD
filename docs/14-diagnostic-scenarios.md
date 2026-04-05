@@ -48,7 +48,7 @@ Helpers relevantes:
 
 ## Modelo de DTC
 
-O firmware continua expondo `dtc_count` e `dtcs[8]` como visao final efetiva para compatibilidade com CAN, K-Line, Bluetooth, UI e Torque/ELM.
+O firmware continua expondo `dtc_count` e `dtcs[8]` como visao final efetiva para compatibilidade com CAN, K-Line, UI e Torque/ELM.
 
 Regra:
 

@@ -87,8 +87,6 @@
   .saved-net .sn-status.on{background:#0a2a1a;color:var(--green)}
   .saved-net .sn-del{background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;padding:2px 8px;font-size:.72rem;cursor:pointer}
   .saved-net .sn-del:hover{background:var(--red);color:#fff}
-  #bt-badge{font-size:.72rem;padding:4px 9px;border-radius:12px;font-weight:600;letter-spacing:.04em;background:#1a1a2a;color:var(--muted);border:1px solid var(--muted);transition:all .3s}
-  #bt-badge.on{background:#1a1a3a;color:#5588ff;border-color:#5588ff}
   .dtc-bank-card{grid-column:1/-1}
   .dtc-bank-card summary{cursor:pointer;display:flex;justify-content:space-between;align-items:center;list-style:none;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;user-select:none}
   .dtc-bank-card summary::-webkit-details-marker{display:none}
@@ -150,7 +148,6 @@
     <option value="6">KWP Fast</option>
   </select>
   <span id="proto-badge">CAN</span>
-  <span id="bt-badge" title="Bluetooth ELM327">BT</span>
   <a id="ota-link" href="/ota.html">OTA</a>
   <div id="status-dot" title="WebSocket"></div>
 </header>
@@ -574,11 +571,6 @@ function update(d) {
   if (d.profile_id !== undefined) {
     const sel = document.getElementById('vehicle-sel');
     if (document.activeElement !== sel) sel.value = d.profile_id || '';
-  }
-  if (d.bt_connected !== undefined) {
-    const btb = document.getElementById('bt-badge');
-    btb.classList.toggle('on', d.bt_connected);
-    btb.title = d.bt_connected ? 'Bluetooth: conectado' : 'Bluetooth: aguardando';
   }
   if (d.sim_mode !== undefined) {
     for (let i = 0; i < 6; i++) {
