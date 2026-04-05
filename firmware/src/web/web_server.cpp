@@ -155,7 +155,43 @@ static auto protect_api_get(Handler handler) {
 template <typename Handler>
 static auto protect_api_body(Handler handler) {
     return [handler](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-        handler(request, data, len, index, total);
+        if (!authenticate_api_request(request)) {
+            if (index == 0) {
+                request->requestAuthentication("youobd-api", false);
+            }
+            return;
+        }
+
+        String* body = reinterpret_cast<String*>(request->_tempObject);
+        if (index == 0) {
+            if (body) {
+                delete body;
+                body = nullptr;
+            }
+            body = new String();
+            body->reserve(total > 0 ? total : len);
+            request->_tempObject = body;
+        }
+
+        if (!body) {
+            request->send(500, "application/json", "{\"error\":\"falha preparando buffer do corpo\"}");
+            return;
+        }
+
+        for (size_t i = 0; i < len; i++) {
+            body->concat(static_cast<char>(data[i]));
+        }
+
+        if (index + len < total) {
+            return;
+        }
+
+        const char* payload = body->c_str();
+        const size_t payload_len = body->length();
+        handler(request, reinterpret_cast<uint8_t*>(const_cast<char*>(payload)), payload_len, 0, payload_len);
+
+        delete body;
+        request->_tempObject = nullptr;
     };
 }
 

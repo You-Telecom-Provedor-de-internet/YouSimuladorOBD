@@ -4,6 +4,7 @@ import argparse
 import html
 import re
 import subprocess
+from datetime import datetime
 from pathlib import Path
 
 
@@ -182,6 +183,8 @@ def markdown_to_html(markdown_path: Path, html_path: Path) -> None:
     flush_paragraph()
     flush_list()
 
+    rendered_at = datetime.now().strftime("%d/%m/%Y %H:%M")
+
     html_text = f"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -191,7 +194,7 @@ def markdown_to_html(markdown_path: Path, html_path: Path) -> None:
   <style>
     @page {{
       size: A4;
-      margin: 16mm 14mm 18mm 14mm;
+      margin: 18mm 14mm 18mm 14mm;
     }}
     body {{
       font-family: "Segoe UI", Arial, sans-serif;
@@ -200,9 +203,90 @@ def markdown_to_html(markdown_path: Path, html_path: Path) -> None:
       font-size: 11.5pt;
       margin: 0;
       background: #fff;
+      counter-reset: page;
     }}
     main {{
       max-width: 100%;
+    }}
+    .cover {{
+      min-height: 250mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        radial-gradient(circle at top right, rgba(39, 193, 246, 0.22), transparent 34%),
+        linear-gradient(180deg, #0f172a 0%, #0b2942 60%, #0d5aa7 100%);
+      color: #f8fafc;
+      border-radius: 20px;
+      padding: 20mm 18mm;
+      box-sizing: border-box;
+      page-break-after: always;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }}
+    .cover-kicker {{
+      color: #67e8f9;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      font-size: 10pt;
+      text-transform: uppercase;
+    }}
+    .cover h1 {{
+      color: #ffffff;
+      border-bottom: none;
+      font-size: 28pt;
+      line-height: 1.15;
+      margin: 0.35em 0 0.25em;
+      padding-bottom: 0;
+    }}
+    .cover-subtitle {{
+      font-size: 13pt;
+      color: #dbeafe;
+      max-width: 135mm;
+    }}
+    .cover-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14mm;
+    }}
+    .cover-card {{
+      background: rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }}
+    .cover-card strong {{
+      display: block;
+      color: #67e8f9;
+      font-size: 9.5pt;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }}
+    .cover-footer {{
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-end;
+      color: #dbeafe;
+      font-size: 10pt;
+    }}
+    .cover-footer-right {{
+      text-align: right;
+    }}
+    .toc {{
+      background: #f8fbfe;
+      border: 1px solid #d7e8f3;
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin: 10px 0 18px;
+      page-break-inside: avoid;
+    }}
+    .toc h2 {{
+      margin-top: 0;
+    }}
+    .toc ul {{
+      margin-bottom: 0;
     }}
     h1, h2, h3 {{
       color: #0d5aa7;
@@ -279,13 +363,82 @@ def markdown_to_html(markdown_path: Path, html_path: Path) -> None:
       color: #475569;
       font-size: 10pt;
     }}
+    .page-footer {{
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 10mm;
+      font-size: 9pt;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #d7e8f3;
+      padding-top: 4px;
+      background: #fff;
+    }}
+    .page-footer .page-number::after {{
+      content: counter(page);
+    }}
   </style>
 </head>
 <body>
+  <section class="cover">
+    <div>
+      <div class="cover-kicker">YOU OBD Simulator</div>
+      <h1>Manual de Operacao com Imagens</h1>
+      <div class="cover-subtitle">
+        Guia de uso do simulador para bancada, OTA, API, plugin de laboratorio e validacao com apps Android reais.
+      </div>
+      <div class="cover-grid">
+        <div class="cover-card">
+          <strong>Escopo</strong>
+          Protocolos, perfis, modos, cenarios, DTCs, OTA, credenciais e fluxo com YOU OBD Lab.
+        </div>
+        <div class="cover-card">
+          <strong>Publico</strong>
+          Engenharia, QA, bancada, desenvolvimento Android e homologacao de scanner.
+        </div>
+      </div>
+    </div>
+    <div class="cover-footer">
+      <div>
+        <div><strong>Projeto:</strong> YouSimuladorOBD</div>
+        <div><strong>Documento:</strong> 19-manual-operacao</div>
+      </div>
+      <div class="cover-footer-right">
+        <div><strong>Renderizado em:</strong> {rendered_at}</div>
+        <div><strong>Uso:</strong> distribuicao interna e laboratorio</div>
+      </div>
+    </div>
+  </section>
   <main>
     <div class="meta">Versao renderizada para distribuicao interna do laboratorio YOU.</div>
+    <section class="toc">
+      <h2>Sumario</h2>
+      <ul>
+        <li>1. Objetivo</li>
+        <li>2. Acesso ao simulador</li>
+        <li>3. Painel principal</li>
+        <li>4. Logica de operacao</li>
+        <li>5. Perfis, modos e cenarios</li>
+        <li>6. Pagina OTA e configuracao de campo</li>
+        <li>7. Salvar configuracao e reiniciar</li>
+        <li>8. Rotacionar senha da API</li>
+        <li>9. Plugin YOU OBD Lab</li>
+        <li>10. Fluxo recomendado de bancada</li>
+        <li>11. OTA online</li>
+        <li>12. Troubleshooting rapido</li>
+        <li>13. Referencias cruzadas</li>
+      </ul>
+    </section>
     {''.join(body)}
   </main>
+  <div class="page-footer">
+    <span>YouSimuladorOBD • Manual operacional</span>
+    <span class="page-number"></span>
+  </div>
 </body>
 </html>
 """

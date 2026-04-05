@@ -7,7 +7,7 @@
   <style>
     @page {
       size: A4;
-      margin: 16mm 14mm 18mm 14mm;
+      margin: 18mm 14mm 18mm 14mm;
     }
     body {
       font-family: "Segoe UI", Arial, sans-serif;
@@ -16,9 +16,90 @@
       font-size: 11.5pt;
       margin: 0;
       background: #fff;
+      counter-reset: page;
     }
     main {
       max-width: 100%;
+    }
+    .cover {
+      min-height: 250mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background:
+        radial-gradient(circle at top right, rgba(39, 193, 246, 0.22), transparent 34%),
+        linear-gradient(180deg, #0f172a 0%, #0b2942 60%, #0d5aa7 100%);
+      color: #f8fafc;
+      border-radius: 20px;
+      padding: 20mm 18mm;
+      box-sizing: border-box;
+      page-break-after: always;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+    .cover-kicker {
+      color: #67e8f9;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      font-size: 10pt;
+      text-transform: uppercase;
+    }
+    .cover h1 {
+      color: #ffffff;
+      border-bottom: none;
+      font-size: 28pt;
+      line-height: 1.15;
+      margin: 0.35em 0 0.25em;
+      padding-bottom: 0;
+    }
+    .cover-subtitle {
+      font-size: 13pt;
+      color: #dbeafe;
+      max-width: 135mm;
+    }
+    .cover-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14mm;
+    }
+    .cover-card {
+      background: rgba(15, 23, 42, 0.35);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+    .cover-card strong {
+      display: block;
+      color: #67e8f9;
+      font-size: 9.5pt;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .cover-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-end;
+      color: #dbeafe;
+      font-size: 10pt;
+    }
+    .cover-footer-right {
+      text-align: right;
+    }
+    .toc {
+      background: #f8fbfe;
+      border: 1px solid #d7e8f3;
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin: 10px 0 18px;
+      page-break-inside: avoid;
+    }
+    .toc h2 {
+      margin-top: 0;
+    }
+    .toc ul {
+      margin-bottom: 0;
     }
     h1, h2, h3 {
       color: #0d5aa7;
@@ -95,11 +176,76 @@
       color: #475569;
       font-size: 10pt;
     }
+    .page-footer {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 10mm;
+      font-size: 9pt;
+      color: #64748b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #d7e8f3;
+      padding-top: 4px;
+      background: #fff;
+    }
+    .page-footer .page-number::after {
+      content: counter(page);
+    }
   </style>
 </head>
 <body>
+  <section class="cover">
+    <div>
+      <div class="cover-kicker">YOU OBD Simulator</div>
+      <h1>Manual de Operacao com Imagens</h1>
+      <div class="cover-subtitle">
+        Guia de uso do simulador para bancada, OTA, API, plugin de laboratorio e validacao com apps Android reais.
+      </div>
+      <div class="cover-grid">
+        <div class="cover-card">
+          <strong>Escopo</strong>
+          Protocolos, perfis, modos, cenarios, DTCs, OTA, credenciais e fluxo com YOU OBD Lab.
+        </div>
+        <div class="cover-card">
+          <strong>Publico</strong>
+          Engenharia, QA, bancada, desenvolvimento Android e homologacao de scanner.
+        </div>
+      </div>
+    </div>
+    <div class="cover-footer">
+      <div>
+        <div><strong>Projeto:</strong> YouSimuladorOBD</div>
+        <div><strong>Documento:</strong> 19-manual-operacao</div>
+      </div>
+      <div class="cover-footer-right">
+        <div><strong>Renderizado em:</strong> 05/04/2026 17:35</div>
+        <div><strong>Uso:</strong> distribuicao interna e laboratorio</div>
+      </div>
+    </div>
+  </section>
   <main>
     <div class="meta">Versao renderizada para distribuicao interna do laboratorio YOU.</div>
+    <section class="toc">
+      <h2>Sumario</h2>
+      <ul>
+        <li>1. Objetivo</li>
+        <li>2. Acesso ao simulador</li>
+        <li>3. Painel principal</li>
+        <li>4. Logica de operacao</li>
+        <li>5. Perfis, modos e cenarios</li>
+        <li>6. Pagina OTA e configuracao de campo</li>
+        <li>7. Salvar configuracao e reiniciar</li>
+        <li>8. Rotacionar senha da API</li>
+        <li>9. Plugin YOU OBD Lab</li>
+        <li>10. Fluxo recomendado de bancada</li>
+        <li>11. OTA online</li>
+        <li>12. Troubleshooting rapido</li>
+        <li>13. Referencias cruzadas</li>
+      </ul>
+    </section>
     <h1>19 - Manual de Operação com Imagens</h1><p>Manual prático para uso diário do <code>YouSimuladorOBD</code> em bancada, campo e desenvolvimento com o <code>YouAutoCarvAPP2</code>, <code>Torque Pro</code>, <code>OBDLink</code> e plugin <code>YOU OBD Lab</code>.</p><h2>1. Objetivo</h2><p>Este manual cobre:</p><ul><li>acesso ao painel web</li><li>troca de protocolo</li><li>uso de perfil, modo, cenário e DTC</li><li>OTA online</li><li>gestão de credenciais</li><li>rotação da senha da API</li><li>integração com o plugin local do Codex</li></ul><h2>2. Acesso ao simulador</h2><p>Acesse pelo hostname mDNS ou pelo IP:</p><pre><code class="language-text">http://youobd2.local/
 http://192.168.1.11/</code></pre><p>Página de administração OTA:</p><pre><code class="language-text">http://youobd2.local/ota.html
 http://192.168.1.11/ota.html</code></pre><p>Credenciais atuais do laboratório:</p><ul><li>Web/OTA: credencial personalizada de operação</li><li>API: credencial dedicada separada da Web</li></ul><p>Observação:</p><ul><li>a senha da API pode ser rotacionada sem reboot</li><li>a senha Web/OTA continua no fluxo de salvar configuração e reiniciar</li></ul><h2>3. Painel principal</h2><p>O painel principal concentra o controle de protocolo, sensores, perfil, modo, cenário e DTCs.</p><p>Observação:</p><ul><li>a captura abaixo é ilustrativa</li><li>valores e indicadores podem variar conforme o protocolo, perfil e estado atual do simulador</li></ul><figure class="manual-figure"><img src="file:///C:/www/YouSimuladorOBD/docs/img/manual/panel-page.png" alt="Painel principal do simulador"><figcaption>Painel principal do simulador</figcaption></figure><h3>O que existe na tela</h3><ul><li>seletor de protocolo no topo</li><li>badge do barramento ativo (<code>CAN</code> ou <code>K-Line</code>)</li><li>sliders de sensores principais</li><li>banco de DTCs e adição manual</li><li>seleção de perfil do veículo</li><li>bloco <code>Hierarquia Ativa</code></li><li>modos de simulação</li><li>camada diagnóstica</li><li>odômetro total e métricas de falha</li></ul><h2>4. Lógica de operação</h2><p>Use esta ordem para trabalhar de forma previsível:</p><ol><li>Escolha o protocolo.</li><li>Aplique o perfil do veículo.</li><li>Escolha o modo de simulação.</li><li>Ative o cenário diagnóstico, se necessário.</li><li>Injete DTCs manuais só quando o teste exigir.</li></ol><p>Regra prática:</p><ul><li><code>Perfil</code> define a base do carro.</li><li><code>Modo</code> define a dinâmica.</li><li><code>Camada diagnóstica</code> aplica o overlay de falha.</li><li><code>DTC manual</code> é injeção direta para teste.</li></ul><h2>5. Perfis, modos e cenários</h2><h3>Perfil do veículo</h3><p>Use para carregar baseline realista de:</p><ul><li>VIN</li><li>protocolo</li><li>comportamento básico</li><li>parâmetros coerentes por veículo</li></ul><h3>Modo de simulação</h3><p>Os modos mais comuns são:</p><ul><li><code>Manual</code></li><li><code>Marcha Lenta</code></li><li><code>Urbano</code></li><li><code>Rodovia</code></li><li><code>Aquecimento</code></li><li><code>Falha DTC</code></li></ul><h3>Camada diagnóstica</h3><p>Use para falhas compostas, por exemplo:</p><ul><li>superaquecimento</li><li>catalisador</li><li>misfire</li><li>anomalias de sensores</li></ul><h2>6. Página OTA e configuração de campo</h2><p>Na <code>/ota.html</code> ficam:</p><ul><li>informações do dispositivo</li><li>hostname</li><li>manifest OTA padrão</li><li>usuário Web/OTA</li><li>usuário API</li><li>nova senha Web/OTA</li><li>nova senha API</li><li>intervalo de checagem online</li></ul><p>Observação:</p><ul><li>a captura abaixo mostra a estrutura da página</li><li>mensagens de status podem variar conforme autenticação, rede e checagem OTA</li></ul><figure class="manual-figure"><img src="file:///C:/www/YouSimuladorOBD/docs/img/manual/ota-page.png" alt="Página OTA e Configuração de Campo"><figcaption>Página OTA e Configuração de Campo</figcaption></figure><h2>7. Salvar configuração e reiniciar</h2><p>Use <code>Salvar configuração e reiniciar</code> quando você alterar:</p><ul><li>hostname</li><li>manifest OTA</li><li>usuário Web/OTA</li><li>senha Web/OTA</li><li>usuário API</li><li>senha API manualmente</li><li>política de checagem OTA</li></ul><p>Esse fluxo:</p><ul><li>grava em NVS</li><li>agenda reboot</li><li>reaplica autenticação e mDNS</li></ul><h2>8. Rotacionar senha da API</h2><p>Agora existe um botão dedicado:</p><ul><li><code>Rotacionar senha da API</code></li></ul><p>Esse fluxo:</p><ul><li>gera uma senha nova forte</li><li>salva na NVS imediatamente</li><li>não reinicia o ESP32</li><li>mostra a nova senha uma única vez</li></ul><figure class="manual-figure"><img src="file:///C:/www/YouSimuladorOBD/docs/img/manual/api-rotation-flow.svg" alt="Fluxo de rotação da senha da API"><figcaption>Fluxo de rotação da senha da API</figcaption></figure><h3>Procedimento recomendado</h3><ol><li>Entre em <code>/ota.html</code>.</li><li>Vá em <code>Configuração de Campo</code>.</li><li>Clique em <code>Rotacionar senha da API</code>.</li><li>Copie a nova senha na hora.</li><li>Atualize scripts, plugin e automações.</li><li>Teste com <code>GET /api/status</code>.</li></ol><h2>9. Plugin YOU OBD Lab</h2><p>O plugin serve para:</p><ul><li>preparar cenários</li><li>consultar o oracle da API</li><li>abrir o app Android</li><li>coletar logcat</li><li>registrar screenshot</li><li>gerar <code>report.md</code> e <code>report.json</code></li></ul><figure class="manual-figure"><img src="file:///C:/www/YouSimuladorOBD/docs/img/manual/plugin-lab-flow.svg" alt="Fluxo do laboratório com o plugin"><figcaption>Fluxo do laboratório com o plugin</figcaption></figure><h3>Arquivo local de credenciais do plugin</h3><p>O plugin lê automaticamente:</p><pre><code class="language-text">C:\www\you-obd-lab-plugin\scripts\local-api-credentials.json</code></pre><p>Formato:</p><pre><code class="language-json">{
@@ -107,5 +253,9 @@ http://192.168.1.11/ota.html</code></pre><p>Credenciais atuais do laboratório:<
   &quot;password&quot;: &quot;sua-senha-forte&quot;
 }</code></pre><p>Esse arquivo:</p><ul><li>fica fora do Git</li><li>deve ser atualizado sempre que a senha da API for rotacionada</li></ul><h2>10. Fluxo recomendado de bancada</h2><h3>Para validar scanner ou app</h3><ol><li>Escolha o protocolo correto.</li><li>Aplique o perfil do veículo.</li><li>Defina o modo.</li><li>Ative o cenário, se necessário.</li><li>Conecte <code>OBDLink</code> ou <code>ELM327</code>.</li><li>Teste com <code>YouAutoCarvAPP2</code>, <code>Torque Pro</code> ou <code>OBDLink</code>.</li></ol><h3>Para validar com o plugin</h3><ol><li>Confirme a senha atual da API.</li><li>Atualize <code>local-api-credentials.json</code> se necessário.</li><li>Rode o runner de bancada.</li><li>Compare <code>API</code>, <code>OBD real</code> e <code>UI/logcat</code>.</li></ol><h2>11. OTA online</h2><p>Fluxo recomendado:</p><ol><li>Abra <code>/ota.html</code>.</li><li>Confirme o <code>manifest.json</code>.</li><li>Use <code>Verificar online</code>.</li><li>Se houver update, escolha:</li></ol><ul><li><code>Baixar firmware</code></li><li><code>Baixar filesystem</code></li></ul><ol><li>Aguarde a gravação.</li><li>O ESP32 reinicia automaticamente ao final do OTA.</li></ol><h2>12. Troubleshooting rápido</h2><h3>Não consigo entrar na web</h3><ul><li>confirme IP ou mDNS</li><li>confirme usuário e senha Web/OTA</li><li>se o hostname mudou, use o novo <code>.local</code></li></ul><h3>API retorna <code>401</code></h3><ul><li>confirme o usuário dedicado da API</li><li>teste em <code>/api/status</code></li><li>se a senha foi rotacionada, atualize o plugin e scripts</li></ul><h3>Plugin parou de validar</h3><ul><li>revise <code>local-api-credentials.json</code></li><li>teste <code>GET /api/status</code></li><li>execute o runner com <code>-SkipPhone -SkipAppLaunch</code> para smoke test rápido</li></ul><h3>OTA não baixa</h3><ul><li>valide a URL do <code>manifest.json</code></li><li>confirme que o ESP32 tem rede</li><li>use <code>Verificar online</code> antes do download</li></ul><h2>13. Referências cruzadas</h2><ul><li><a href="file:///C:/www/YouSimuladorOBD/docs/08-wifi-webui.md">08 - Wi-Fi, Web e OTA</a></li><li><a href="file:///C:/www/YouSimuladorOBD/docs/09-vehicle-profiles.md">09 - Perfis de Veículo</a></li><li><a href="file:///C:/www/YouSimuladorOBD/docs/10-dynamic-simulation.md">10 - Simulação Dinâmica</a></li><li><a href="file:///C:/www/YouSimuladorOBD/docs/14-diagnostic-scenarios.md">14 - Cenários Diagnósticos</a></li><li><a href="file:///C:/www/YouSimuladorOBD/docs/18-codex-plugin-you-obd-lab.md">18 - Plugin Codex YOU OBD Lab</a></li></ul>
   </main>
+  <div class="page-footer">
+    <span>YouSimuladorOBD • Manual operacional</span>
+    <span class="page-number"></span>
+  </div>
 </body>
 </html>
