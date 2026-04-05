@@ -307,6 +307,8 @@ Ela mostra:
 Manual guiado com imagens:
 
 - [19 - Manual de Operação com Imagens](19-manual-operacao.md)
+- [19 - Manual de Operação com Imagens (HTML)](19-manual-operacao.html)
+- [19 - Manual de Operação com Imagens (PDF)](19-manual-operacao.pdf)
 
 ### Fluxo online
 
