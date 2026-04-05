@@ -120,6 +120,7 @@ Senha: obd12345
 - [16 - Pacote para o Engenheiro de PCB](docs/16-pacote-engenheiro-pcb.md)
 - [17 - RevA Carrier para ESP32 DevKit](docs/17-revA-carrier-esp32-devkit.md)
 - [18 - Codex Plugin YOU OBD Lab](docs/18-codex-plugin-you-obd-lab.md)
+- [19 - Manual de Operação com Imagens](docs/19-manual-operacao.md)
 - [Hardware - Pacote para PCB](hardware/pcb-handoff/README.md)
 - [Hardware - KiCad RevA](hardware/kicad/revA/README.md)
 
@@ -152,3 +153,4 @@ YouSimuladorOBD/
 - os arquivos antigos em `hardware/schematic/` ficaram marcados como obsoletos
 - o projeto agora ja possui bootstrap nativo em `KiCad` em `hardware/kicad/revA/`
 - o laboratorio de validacao com Codex, simulador, app Android e celular real esta documentado em `docs/18-codex-plugin-you-obd-lab.md`
+- a operacao diaria do simulador, incluindo OTA e rotacao da senha da API, esta no manual com imagens em `docs/19-manual-operacao.md`

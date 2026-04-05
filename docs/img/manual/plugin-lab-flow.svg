@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620">
+  <defs>
+    <style>
+      .bg { fill:#0f1117; }
+      .card { fill:#1a1d27; stroke:#2a2d3a; stroke-width:2; rx:18; }
+      .text { fill:#e0e6f0; font-family:Segoe UI, Arial, sans-serif; }
+      .muted { fill:#8b93a7; font-family:Segoe UI, Arial, sans-serif; }
+      .accent { fill:#00d4ff; }
+      .ok { fill:#00ff88; }
+      .arrow { stroke:#00d4ff; stroke-width:4; fill:none; marker-end:url(#arrowHead2); }
+    </style>
+    <marker id="arrowHead2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#00d4ff"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1200" height="620"/>
+  <text x="60" y="70" class="text" font-size="34" font-weight="700">Fluxo de validação com o plugin YOU OBD Lab</text>
+  <text x="60" y="108" class="muted" font-size="20">Como o laboratório cruza API, OBD real e app Android no desenvolvimento do ecossistema YOU.</text>
+
+  <rect x="70" y="180" width="250" height="150" class="card"/>
+  <text x="100" y="225" class="accent" font-size="22" font-weight="700">Simulador ESP32</text>
+  <text x="100" y="260" class="text" font-size="18">Perfil</text>
+  <text x="100" y="288" class="text" font-size="18">Modo</text>
+  <text x="100" y="316" class="text" font-size="18">Cenário</text>
+
+  <rect x="470" y="180" width="250" height="150" class="card"/>
+  <text x="500" y="225" class="accent" font-size="22" font-weight="700">Plugin / Skill</text>
+  <text x="500" y="260" class="text" font-size="18">Consulta a API</text>
+  <text x="500" y="288" class="text" font-size="18">Coleta logcat</text>
+  <text x="500" y="316" class="text" font-size="18">Gera relatório</text>
+
+  <rect x="870" y="180" width="250" height="150" class="card"/>
+  <text x="900" y="225" class="accent" font-size="22" font-weight="700">App Android</text>
+  <text x="900" y="260" class="text" font-size="18">YouAutoCarvAPP2</text>
+  <text x="900" y="288" class="text" font-size="18">Torque</text>
+  <text x="900" y="316" class="text" font-size="18">OBDLink</text>
+
+  <path d="M320 255 H470" class="arrow"/>
+  <path d="M720 255 H870" class="arrow"/>
+
+  <rect x="180" y="400" width="320" height="140" class="card"/>
+  <text x="210" y="445" class="accent" font-size="22" font-weight="700">Oracle interno</text>
+  <text x="210" y="480" class="text" font-size="18">/api/status</text>
+  <text x="210" y="508" class="text" font-size="18">/api/diagnostics</text>
+  <text x="210" y="536" class="muted" font-size="16">Verdade do simulador</text>
+
+  <rect x="700" y="400" width="320" height="140" class="card"/>
+  <text x="730" y="445" class="accent" font-size="22" font-weight="700">Evidência de bancada</text>
+  <text x="730" y="480" class="text" font-size="18">OBD real + screenshot + logcat</text>
+  <text x="730" y="508" class="text" font-size="18">report.md + report.json</text>
+  <text x="730" y="536" class="ok" font-size="16" font-weight="700">Base para regressão</text>
+
+  <path d="M500 330 L500 400" class="arrow"/>
+  <path d="M700 470 H500" class="arrow"/>
+</svg>

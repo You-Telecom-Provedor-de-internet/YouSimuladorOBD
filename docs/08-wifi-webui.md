@@ -304,6 +304,10 @@ Ela mostra:
 - estado da checagem automatica do manifest
 - indicador de modo `online_only`
 
+Manual guiado com imagens:
+
+- [19 - Manual de Operação com Imagens](19-manual-operacao.md)
+
 ### Fluxo online
 
 1. Hospede um `manifest.json` e os arquivos `.bin` em um servidor HTTP/HTTPS acessivel pelo ESP32.
