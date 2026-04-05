@@ -36,6 +36,21 @@
   .profile-card{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   .profile-card label{white-space:nowrap;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
   .profile-card select{flex:1;min-width:200px;background:#2a2d3a;color:var(--text);border:1px solid #3a3d4a;border-radius:6px;padding:8px 10px;font-size:.85rem;cursor:pointer}
+  .profile-status{font-size:.78rem;padding:6px 10px;border-radius:999px;border:1px solid #3a3d4a;background:#2a2d3a;color:var(--muted);white-space:nowrap}
+  .profile-status.active{color:var(--green);border-color:rgba(0,255,136,.45);background:#0f241d}
+  .profile-status.warn{color:#ffd166;border-color:rgba(255,209,102,.45);background:#2b2414}
+  .profile-status.empty{color:var(--muted)}
+  .hierarchy-card{grid-column:1/-1}
+  .layer-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:8px}
+  .layer-pill{background:#141823;border:1px solid #2a2d3a;border-radius:10px;padding:12px}
+  .layer-pill.active{border-color:rgba(0,255,136,.45);background:#10231c}
+  .layer-pill.warn{border-color:rgba(255,209,102,.45);background:#2b2414}
+  .layer-pill .layer-title{display:block;font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .layer-pill strong{display:block;font-size:.96rem;color:var(--text);margin-bottom:4px}
+  .layer-pill small{display:block;font-size:.78rem;color:var(--muted);line-height:1.35}
+  .rule-note{margin-top:12px;padding:12px 14px;border-radius:9px;border:1px solid #2a2d3a;background:#141823;font-size:.84rem;color:var(--muted);line-height:1.45}
+  .rule-note.info{border-color:rgba(0,212,255,.4);color:#9ddfff;background:#13202a}
+  .rule-note.warn{border-color:rgba(255,209,102,.45);color:#ffd166;background:#2b2414}
   #vin-tag{font-size:.75rem;color:var(--muted);font-family:monospace;background:#2a2d3a;padding:5px 10px;border-radius:6px;border:1px solid #3a3d4a;white-space:nowrap}
   .mode-card{grid-column:1/-1}
   .modes{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
@@ -294,8 +309,36 @@
     <select id="vehicle-sel">
       <option value="">— Selecione um veículo —</option>
     </select>
-    <button onclick="applyProfile()">Aplicar Perfil</button>
+    <button id="apply-profile-btn" onclick="applyProfile()">Aplicar Perfil</button>
+    <span id="profile-active-tag" class="profile-status empty">Perfil ativo: nenhum</span>
     <span id="vin-tag">VIN: YOUSIM00000000001</span>
+  </div>
+
+  <div class="card hierarchy-card">
+    <label>Hierarquia Ativa</label>
+    <div class="layer-grid">
+      <div class="layer-pill" id="layer-profile-card">
+        <span class="layer-title">Perfil do VeÃ­culo</span>
+        <strong id="layer-profile-main">Nenhum perfil ativo</strong>
+        <small id="layer-profile-meta">Base manual/preset</small>
+      </div>
+      <div class="layer-pill" id="layer-mode-card">
+        <span class="layer-title">Modo de SimulaÃ§Ã£o</span>
+        <strong id="layer-mode-main">Manual</strong>
+        <small id="layer-mode-meta">Restaurado no boot</small>
+      </div>
+      <div class="layer-pill" id="layer-diag-card">
+        <span class="layer-title">Camada Diagnostica</span>
+        <strong id="layer-diag-main">Sem cenario</strong>
+        <small id="layer-diag-meta">Overlay desligado</small>
+      </div>
+      <div class="layer-pill" id="layer-dtc-card">
+        <span class="layer-title">DTCs Efetivos</span>
+        <strong id="layer-dtc-main">Nenhum DTC</strong>
+        <small id="layer-dtc-meta">Sem injecao manual nem cenario</small>
+      </div>
+    </div>
+    <div class="rule-note" id="layer-rule-note">Hierarquia estavel: perfil define a base, modo define a dinamica, cenario atua como overlay e DTC manual entra na mescla final.</div>
   </div>
 
   <!-- Presets -->
@@ -437,6 +480,8 @@
 <script>
 const WS_URL = `ws://${location.host}/ws`;
 let ws, reconnTimer;
+const PROFILE_MAP = {};
+let LAST_STATE = {};
 
 function connect() {
   ws = new WebSocket(WS_URL);
@@ -544,7 +589,118 @@ function loadScenarios() {
     .catch(() => {});
 }
 
+function profileSummary(profile) {
+  if (!profile) return '';
+  return `${profile.brand} ${profile.model} (${profile.year})`;
+}
+
+function setProfileStatus(text, tone = 'empty') {
+  const tag = document.getElementById('profile-active-tag');
+  if (!tag) return;
+  tag.textContent = text;
+  tag.className = 'profile-status ' + tone;
+}
+
+function refreshProfileStatus() {
+  const state = LAST_STATE || {};
+  const activeId = state.profile_id || '';
+  const activeProfile = activeId ? PROFILE_MAP[activeId] : null;
+
+  if (!activeId) {
+    setProfileStatus('Perfil ativo: nenhum (modo manual/preset)', 'empty');
+    return;
+  }
+
+  if (!activeProfile) {
+    setProfileStatus(`Perfil ativo: ${activeId} (salvo)`, 'active');
+    return;
+  }
+
+  const protocolMatches =
+    state.protocol_id === undefined ||
+    Number(activeProfile.protocol) === Number(state.protocol_id);
+
+  if (protocolMatches) {
+    setProfileStatus(`Perfil ativo: ${profileSummary(activeProfile)} • persistente`, 'active');
+  } else {
+    setProfileStatus(`Perfil base: ${profileSummary(activeProfile)} • protocolo alterado`, 'warn');
+  }
+}
+
+function setLayerCard(cardId, mainId, metaId, mainText, metaText, tone = '') {
+  const card = document.getElementById(cardId);
+  if (card) card.className = 'layer-pill' + (tone ? ` ${tone}` : '');
+  const main = document.getElementById(mainId);
+  const meta = document.getElementById(metaId);
+  if (main) main.textContent = mainText;
+  if (meta) meta.textContent = metaText;
+}
+
+function renderControlLayers(state) {
+  const layers = state.control_layers || {};
+  const precedence = state.precedence || {};
+  const profile = layers.profile || {};
+  const simMode = layers.simulation_mode || {};
+  const diag = layers.diagnostic_layer || {};
+  const dtcs = layers.dtcs || {};
+
+  const profileTone = profile.active ? (profile.protocol_linked === false ? 'warn' : 'active') : '';
+  setLayerCard(
+    'layer-profile-card',
+    'layer-profile-main',
+    'layer-profile-meta',
+    profile.label || 'Nenhum perfil ativo',
+    profile.active ? (profile.protocol_linked === false ? 'Perfil salvo, mas protocolo divergente' : 'Base persistente do veiculo') : 'Base manual/preset',
+    profileTone
+  );
+
+  const modeTone = simMode.source === 'scenario' ? 'warn' : (simMode.source ? 'active' : '');
+  setLayerCard(
+    'layer-mode-card',
+    'layer-mode-main',
+    'layer-mode-meta',
+    simMode.label || 'Manual',
+    simMode.source_label || 'Restaurado no boot',
+    modeTone
+  );
+
+  const diagTone = diag.active ? (diag.forced_mode ? 'warn' : 'active') : '';
+  setLayerCard(
+    'layer-diag-card',
+    'layer-diag-main',
+    'layer-diag-meta',
+    diag.active ? (diag.label || 'Cenario ativo') : 'Sem cenario',
+    diag.active ? (diag.forced_mode ? 'Overlay ativo e controlando o modo' : 'Overlay ativo sobre o estado atual') : 'Overlay desligado',
+    diagTone
+  );
+
+  const dtcTone = dtcs.effective_count > 0 ? 'active' : '';
+  setLayerCard(
+    'layer-dtc-card',
+    'layer-dtc-main',
+    'layer-dtc-meta',
+    dtcs.effective_count ? `${dtcs.effective_count} DTC(s) efetivo(s)` : 'Nenhum DTC',
+    dtcs.source_label || 'Sem injecao manual nem cenario',
+    dtcTone
+  );
+
+  const note = document.getElementById('layer-rule-note');
+  if (note) {
+    note.textContent = precedence.message || 'Hierarquia estavel: perfil define a base, modo define a dinamica, cenario atua como overlay e DTC manual entra na mescla final.';
+    note.className = 'rule-note ' + (precedence.notice_level === 'warn' ? 'warn' : 'info');
+  }
+}
+
+function loadStatus() {
+  fetch('/api/status')
+    .then(r => r.json())
+    .then(update)
+    .catch(() => {});
+}
+
 function update(d) {
+  LAST_STATE = Object.assign({}, LAST_STATE, d);
+  d = LAST_STATE;
   if (d.protocol_id !== undefined) {
     document.getElementById('proto-sel').value = d.protocol_id;
     const badge = document.getElementById('proto-badge');
@@ -572,6 +728,8 @@ function update(d) {
     const sel = document.getElementById('vehicle-sel');
     if (document.activeElement !== sel) sel.value = d.profile_id || '';
   }
+  refreshProfileStatus();
+  renderControlLayers(d);
   if (d.sim_mode !== undefined) {
     for (let i = 0; i < 6; i++) {
       const btn = document.getElementById('mode-btn-' + i);
@@ -709,8 +867,23 @@ function clearDtcs() {
 function applyProfile() {
   const id = document.getElementById('vehicle-sel').value;
   if (!id) return;
-  if (ws && ws.readyState === 1)
-    ws.send(JSON.stringify({type:'profile', id}));
+  const btn = document.getElementById('apply-profile-btn');
+  if (btn) btn.disabled = true;
+  setProfileStatus('Aplicando perfil e salvando no simulador...', 'warn');
+  fetch('/api/profile', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id})
+  })
+    .then(r => {
+      if (!r.ok) throw new Error('Falha ao aplicar perfil');
+      return r.json().catch(() => ({}));
+    })
+    .then(() => loadStatus())
+    .catch(() => setProfileStatus('Falha ao aplicar perfil selecionado', 'warn'))
+    .finally(() => {
+      if (btn) btn.disabled = false;
+    });
 }
 
 // ── Wi-Fi config ─────────────────────────────────────────────
@@ -904,11 +1077,13 @@ fetch('/api/profiles')
   .then(profiles => {
     const sel = document.getElementById('vehicle-sel');
     const brands = {};
+    Object.keys(PROFILE_MAP).forEach(key => delete PROFILE_MAP[key]);
     profiles.forEach(p => { if (!brands[p.brand]) brands[p.brand] = []; brands[p.brand].push(p); });
     Object.keys(brands).sort().forEach(brand => {
       const grp = document.createElement('optgroup');
       grp.label = brand;
       brands[brand].forEach(p => {
+        PROFILE_MAP[p.id] = p;
         const opt = document.createElement('option');
         opt.value = p.id;
         opt.textContent = p.model + ' (' + p.year + ')';
@@ -916,6 +1091,8 @@ fetch('/api/profiles')
       });
       sel.appendChild(grp);
     });
+    if (LAST_STATE.profile_id) sel.value = LAST_STATE.profile_id;
+    refreshProfileStatus();
   })
   .catch(() => {}); // ESP32 não disponível no preview local
 
@@ -1133,6 +1310,7 @@ document.getElementById('dtc-bank-panel').addEventListener('toggle', function() 
 });
 
 loadScenarios();
+loadStatus();
 connect();
 scheduleDiagnosticsRefresh(true);
 </script>

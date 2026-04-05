@@ -1,0 +1,18 @@
+Feature,Reference,X_mm,Y_mm,Width_mm,Height_mm,Pitch_mm,Notes
+Carrier_Outline,PCB,0,0,115,80,,Envelope inicial sugerido da carrier RevA
+DevKit_Keepout,MCU1,18,22,58,31,,Keepout nominal do modulo ESP32 DevKit 38p
+Header_Left,JMCU1,22,17,,,2.54,Header femea 1x19 lado esquerdo do DevKit
+Header_Right,JMCU2,47.4,17,,,2.54,Header femea 1x19 lado direito com espacamento nominal de 25.40 mm
+USB_Access,MCU1,9,28,11,13,,Area livre para acesso ao conector USB do DevKit
+Antenna_Keepout,MCU1,56,24,19,16,,Sem cobre nem componentes abaixo da antena do modulo
+OLED_Header,JDISP1,41,63,,,2.54,Header 1x4 do OLED alinhado ao frontal
+Encoder_Header,JENC1,86,54,,,2.54,Header 1x5 do KY-040 alinhado ao eixo do encoder
+Buttons_Row,SW2-SW7,24,17,78,12,,Faixa mecanica dos 6 botoes do frontal
+OBD_Zone,J1,90,8,23,20,,Zona recomendada do conector OBD ou chicote
+Buck_Zone,U1,83,55,28,22,,Zona do LM2596 ou footprint equivalente
+CAN_Zone,U2,12,55,18,12,,SN65HVD230, terminacao e protecao CAN
+KLine_Zone,U3,12,38,18,14,,L9637D, RK1, RLI1, CK1 e CK2
+Mounting_Hole_1,MH1,5,5,,,3.2,Furo M3
+Mounting_Hole_2,MH2,110,5,,,3.2,Furo M3
+Mounting_Hole_3,MH3,5,75,,,3.2,Furo M3
+Mounting_Hole_4,MH4,110,75,,,3.2,Furo M3

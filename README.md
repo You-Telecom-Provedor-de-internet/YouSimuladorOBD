@@ -49,6 +49,17 @@ Importante:
 - `KY-040`
 - 6 botoes + 3 bits de DIP + 3 LEDs de status
 
+## RevA PCB congelada
+
+A revisao `RevA` da placa foi congelada como:
+
+- `carrier para ESP32 DevKit 38 pinos`
+- `OLED SH1107` em modulo por header
+- `KY-040` em modulo por header
+- `LM2596` mantido como modulo ou footprint equivalente de baixo risco
+
+Ou seja, nesta revisao a PCB nao vai integrar `ESP32-WROOM` soldado diretamente. O objetivo e preservar o modulo validado em bancada, reduzir risco da primeira placa e acelerar a ida para layout.
+
 Topologia K-Line validada em bancada:
 
 - `GPIO17` -> `L9637D pin 4 (TX)`
@@ -107,6 +118,7 @@ Senha: obd12345
 - [14 - Cenarios Diagnosticos](docs/14-diagnostic-scenarios.md)
 - [15 - Diagrama Eletrico e Handoff PCB](docs/15-diagrama-eletrico-pcb.md)
 - [16 - Pacote para o Engenheiro de PCB](docs/16-pacote-engenheiro-pcb.md)
+- [17 - RevA Carrier para ESP32 DevKit](docs/17-revA-carrier-esp32-devkit.md)
 - [Hardware - Pacote para PCB](hardware/pcb-handoff/README.md)
 - [Hardware - KiCad RevA](hardware/kicad/revA/README.md)
 

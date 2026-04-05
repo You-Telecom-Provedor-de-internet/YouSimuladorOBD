@@ -1,5 +1,6 @@
 #include "diagnostic_scenario_engine.h"
 #include "dynamic_engine.h"
+#include "simulation_precedence.h"
 
 #include <Arduino.h>
 #include <cmath>
@@ -202,6 +203,10 @@ void diagnostic_engine_clear_scenario(SimulationState& state, bool preserve_manu
         restore_manual_dtcs(state, saved_manual_dtcs, saved_manual_count);
     }
 
+    if (simulation_precedence_snapshot().sim_mode_source == SIM_MODE_SOURCE_SCENARIO) {
+        simulation_precedence_set_mode_source(SIM_MODE_SOURCE_USER);
+    }
+
     simulation_copy_manual_dtcs_to_effective(state);
 }
 
@@ -223,6 +228,10 @@ void diagnostic_engine_set_scenario(SimulationState& state, DiagnosticScenarioId
     const ScenarioDefinition* definition = diagnostic_scenario_get(scenario_id);
     if (!diagnostic_scenario_allows_mode(scenario_id, state.sim_mode)) {
         state.sim_mode = definition->default_mode;
+        simulation_precedence_set_mode_source(SIM_MODE_SOURCE_SCENARIO);
+        simulation_precedence_set_notice(SIM_NOTICE_SCENARIO_FORCED_MODE);
+    } else {
+        simulation_precedence_set_notice(SIM_NOTICE_SCENARIO_APPLIED);
     }
 
     diagnostic_engine_rebuild_effective_dtcs(state);
@@ -712,6 +721,9 @@ static void clear_overlay_preserve_manual(SimulationState& state) {
 
     diagnostic_reset_fields(state);
     restore_manual_dtcs(state, saved_manual_dtcs, saved_manual_count);
+    if (simulation_precedence_snapshot().sim_mode_source == SIM_MODE_SOURCE_SCENARIO) {
+        simulation_precedence_set_mode_source(SIM_MODE_SOURCE_USER);
+    }
     simulation_copy_manual_dtcs_to_effective(state);
 }
 
@@ -738,6 +750,8 @@ void diagnostic_engine_step(SimulationState& state, float) {
 
     if (!diagnostic_scenario_allows_mode(scenario_id, state.sim_mode)) {
         state.sim_mode = definition->default_mode;
+        simulation_precedence_set_mode_source(SIM_MODE_SOURCE_SCENARIO);
+        simulation_precedence_set_notice(SIM_NOTICE_SCENARIO_FORCED_MODE);
     }
 
     reset_active_faults(state);

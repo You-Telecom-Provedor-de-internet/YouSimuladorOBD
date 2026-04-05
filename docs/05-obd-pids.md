@@ -88,6 +88,7 @@ Quando o perfil nao suporta odometro por OBD generico, esses ranges nao sao anun
 - Formula: `A`
 - Unidade: `kPa`
 - Default: `35 kPa`
+- Perfis turbo podem reportar acima de `100 kPa` absolutos, atÃ© cerca de `170 kPa`
 
 ### PID 0x0C - RPM
 

@@ -2,7 +2,9 @@ RefDes,Qty,Part,Value_or_Model,Package_or_Form,Notes
 J1,1,OBD-II connector,Female 16-pin,Harness or PCB connector,Main OBD interface
 F1,1,Fuse,1A,Automotive or radial,Protect +12V input
 U1,1,Buck regulator module,LM2596,Module or equivalent,12V to 5V
-MCU1,1,MCU board or module,ESP32 DevKit 38p,DevKit or ESP32-WROOM carrier,Keep same GPIO map
+MCU1,1,MCU board or module,ESP32 DevKit 38p,Pluggable module,RevA frozen as carrier board
+JMCU1,1,Female header,1x19 2.54mm,Through-hole,ESP32 DevKit left row
+JMCU2,1,Female header,1x19 2.54mm,Through-hole,ESP32 DevKit right row
 U2,1,CAN transceiver,SN65HVD230,SOIC-8,3.3V native CAN transceiver
 U3,1,K-Line transceiver,L9637D,SOIC-8,K-Line physical layer
 RK1,1,Resistor,510R,>=0.5W,Pull-up K to VS
@@ -12,9 +14,12 @@ CK2,1,Capacitor,100nF,X7R 50V,Place close to U3 VS-GND
 CCAN1,1,Capacitor,100nF,X7R 16V,Place close to U2 VCC-GND
 RCAN1,1,Resistor,120R,Optional / jumper,Selectable CAN termination
 DISP1,1,OLED display,SH1107 128x128,I2C module,3.3V
+JDISP1,1,Pin header,1x4 2.54mm,Through-hole,OLED module header for RevA carrier
 ENC1,1,Rotary encoder,KY-040,Module or encoder footprint,UI input
+JENC1,1,Pin header,1x5 2.54mm,Through-hole,KY-040 module header for RevA carrier
 SW1,1,DIP switch,3-position,Through-hole or SMD,Protocol bits
 RDIP1-RDIP3,3,Resistor,10k,1/4W or SMD,Pull-up for GPIO34/35/36
 SW2-SW7,6,Push button,Momentary,Through-hole or SMD,Connected to GND
 D1-D3,3,LED,Status LED,3mm or SMD,CAN / K-Line / TX
 RLED1-RLED3,3,Resistor,330R,1/4W or SMD,LED series resistor
+MH1-MH4,4,Mounting hole,M3,NPTH or plated mechanical,Board fixation

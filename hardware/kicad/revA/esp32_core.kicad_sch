@@ -12,7 +12,7 @@
 		(comment 1 "Keep validated GPIO map from firmware/docs")
 	)
 	(lib_symbols)
-	(text "Captura a concluir neste bloco:\n- MCU1 ESP32 DevKit ou ESP32-WROOM carrier\n- GPIO4/5 CAN\n- GPIO17/16 K-Line\n- GPIO21/22 OLED\n- GPIO12/13/15 encoder\n- GPIO32/33/25/26/27/14 botoes\n- GPIO34/35/36 DIP\n- GPIO19/18/23 LEDs" 
+	(text "Captura a concluir neste bloco:\n- MCU1 ESP32 DevKit 38p em carrier RevA\n- JMCU1/JMCU2 1x19 femea 2.54 mm\n- keepout da antena e acesso USB\n- GPIO4/5 CAN\n- GPIO17/16 K-Line\n- GPIO21/22 OLED\n- GPIO12/13/15 encoder\n- GPIO32/33/25/26/27/14 botoes\n- GPIO34/35/36 DIP\n- GPIO19/18/23 LEDs" 
 		(exclude_from_sim no)
 		(at 18 20 0)
 		(effects
@@ -23,7 +23,7 @@
 		)
 		(uuid "3889134a-e64b-41e0-8908-71eb0f4c5e13")
 	)
-	(text "Fonte tecnica:\n- docs/03-pinout.md\n- firmware/include/config.h\n- firmware/src/web/ui_init.cpp" 
+	(text "Fonte tecnica:\n- docs/03-pinout.md\n- docs/17-revA-carrier-esp32-devkit.md\n- firmware/include/config.h\n- firmware/src/web/ui_init.cpp" 
 		(exclude_from_sim no)
 		(at 18 70 0)
 		(effects

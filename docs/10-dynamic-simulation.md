@@ -7,6 +7,8 @@ O simulador opera em dois modelos:
 1. **STATIC (Manual)** — valores fixos, ajustados pelo usuario via botoes ou WebUI
 2. **Dinamico** — motor de fisica atualiza os 16 parametros a cada 100 ms, simulando comportamento real de um motor 1.6L 4 cilindros NA com cambio de 5 marchas
 
+Perfis turbo (`TSI`, `Turbo`, `THP`, `TDI`) agora adicionam spool/boost, MAP acima de 100 kPa, MAF mais alto e retardo de ignicao sob carga.
+
 O modo e selecionado via WebUI (painel "Modo de Simulacao") ou WebSocket.
 
 ```
@@ -35,6 +37,8 @@ Todos os valores foram calibrados a partir de dados reais de motores 4 cilindros
 | Aspiracao | Natural (NA) |
 | Cambio | 5 marchas manuais |
 | Relacao final | ~3.94 |
+
+Acima esta o motor base. Perfis turbo reaproveitam essa base e acrescentam camada de boost, aquecimento de admissao e retardo de ignicao conforme carga.
 
 ### Relacao RPM por km/h em cada marcha
 
@@ -224,6 +228,8 @@ MAF(g/s) = 1.8 + (RPM / 1000) × (Load% / 100) × 13.0
 ```
 MAP(kPa) = 27 + TPS% × 0.71
 ```
+
+Nos perfis turbo, a base acima recebe `boost_kPa` dinÃ¢mico e pode subir atÃ© aproximadamente `170 kPa` absolutos em carga alta.
 
 | TPS | MAP calculado | Real tipico |
 |-----|---------------|-------------|

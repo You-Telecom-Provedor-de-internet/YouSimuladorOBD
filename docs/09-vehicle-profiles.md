@@ -40,6 +40,8 @@ struct VehicleProfile {
 
 ## Catálogo de Perfis (22 veículos)
 
+Total atual da revisao: `23` perfis, incluindo o `peugeot_308_16thp`.
+
 ### Fiat
 
 | ID | Modelo | Ano | Protocolo | RPM | Coolant |
@@ -97,6 +99,12 @@ struct VehicleProfile {
 | `hyundai_hb20_10` | HB20 1.0 Sense | 2020-2024 | CAN 11b 500k | 750 | 90°C |
 | `hyundai_creta_16` | Creta 1.6 Pulse | 2017-2021 | CAN 11b 500k | 730 | 91°C |
 
+### Peugeot
+
+| ID | Modelo | Ano | Protocolo | RPM | Coolant |
+|----|--------|-----|-----------|-----|---------|
+| `peugeot_308_16thp` | 308 1.6 THP | 2013-2019 | CAN 11b 500k | 720 | 93 C |
+
 ### Renault
 
 | ID | Modelo | Ano | Protocolo | RPM | Coolant |
@@ -115,11 +123,13 @@ GET /api/profiles
 Resposta:
 ```json
 [
-  {"id":"fiat_uno_10","brand":"Fiat","model":"Uno 1.0 Fire","year":"2004-2013","protocol":4},
-  {"id":"fiat_palio_14","brand":"Fiat","model":"Palio 1.4 Evo","year":"2013-2017","protocol":0},
+  {"id":"fiat_uno_10","brand":"Fiat","model":"Uno 1.0 Fire","year":"2004-2013","protocol":4,"turbo":false},
+  {"id":"fiat_palio_14","brand":"Fiat","model":"Palio 1.4 Evo","year":"2013-2017","protocol":0,"turbo":false},
   ...
 ]
 ```
+
+Perfis turbo agora saem explicitamente com `\"turbo\": true` na listagem da API, por exemplo nos modelos `TSI`, `Turbo`, `THP` e `TDI`.
 
 ### Aplicar um perfil
 ```

@@ -10,6 +10,7 @@ Esta revisao ainda nao e o esquematico completo final. Ela entrega:
 - separacao por blocos funcionais
 - pontos de entrada claros para o engenheiro continuar a captura
 - referencia mecanica do frontal de `OLED + KY-040 + 6 botoes`
+- arquitetura congelada da `RevA` como `carrier para ESP32 DevKit 38 pinos`
 
 ## Arquivos
 
@@ -25,6 +26,8 @@ Esta revisao ainda nao e o esquematico completo final. Ela entrega:
   - `OLED SH1107`, `KY-040`, botoes, DIP e LEDs
 - `ui-panel-reference.csv`
   - coordenadas base do painel frontal da tampa de teste
+- `esp32-devkit38-carrier-reference.csv`
+  - envelope, headers e keepouts do `ESP32 DevKit` na carrier
 - `erc-report.txt`
   - validacao inicial do bootstrap com `0` erros e `0` warnings
 
@@ -33,6 +36,7 @@ Esta revisao ainda nao e o esquematico completo final. Ela entrega:
 Os dados eletricos consolidados continuam sendo:
 
 - `docs/15-diagrama-eletrico-pcb.md`
+- `docs/17-revA-carrier-esp32-devkit.md`
 - `hardware/pcb-handoff/netlist-rev-a.csv`
 - `hardware/pcb-handoff/bom-rev-a.csv`
 

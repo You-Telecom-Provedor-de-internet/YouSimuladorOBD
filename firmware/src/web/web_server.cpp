@@ -2,6 +2,7 @@
 #include "config.h"
 #include "diagnostic_scenario_engine.h"
 #include "dynamic_engine.h"
+#include "simulation_precedence.h"
 #include "vehicle_profiles.h"
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -95,6 +96,21 @@ static void persist_active_protocol(uint8_t protocol) {
     prefs.begin("obd", false);
     prefs.putUChar("proto", protocol);
     prefs.end();
+}
+
+static void persist_active_profile(const char* profile_id) {
+    Preferences prefs;
+    prefs.begin("obd", false);
+    if (profile_id && profile_id[0]) {
+        prefs.putString("profile", profile_id);
+    } else {
+        prefs.remove("profile");
+    }
+    prefs.end();
+}
+
+static void clear_persisted_profile() {
+    persist_active_profile(nullptr);
 }
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -912,6 +928,226 @@ static const char* odometerSourceSlug(uint8_t source) {
     }
 }
 
+static const char* simModeLabel(uint8_t sim_mode) {
+    switch (sim_mode) {
+        case SIM_IDLE: return "Marcha lenta";
+        case SIM_URBAN: return "Urbano";
+        case SIM_HIGHWAY: return "Rodovia";
+        case SIM_WARMUP: return "Aquecimento";
+        case SIM_FAULT: return "Falha DTC";
+        default: return "Manual";
+    }
+}
+
+static const char* simModeSourceSlug(uint8_t source) {
+    switch (source) {
+        case SIM_MODE_SOURCE_USER: return "user";
+        case SIM_MODE_SOURCE_SCENARIO: return "scenario";
+        case SIM_MODE_SOURCE_PRESET: return "preset";
+        default: return "boot";
+    }
+}
+
+static const char* simModeSourceLabel(uint8_t source) {
+    switch (source) {
+        case SIM_MODE_SOURCE_USER: return "Escolha do usuario";
+        case SIM_MODE_SOURCE_SCENARIO: return "Forcado pela camada diagnostica";
+        case SIM_MODE_SOURCE_PRESET: return "Definido por preset";
+        default: return "Restaurado no boot";
+    }
+}
+
+static const char* precedenceNoticeSlug(uint8_t code) {
+    switch (code) {
+        case SIM_NOTICE_PROFILE_APPLIED: return "profile_applied";
+        case SIM_NOTICE_PROFILE_RESTORED: return "profile_restored";
+        case SIM_NOTICE_PROFILE_CLEARED_BY_PROTOCOL: return "profile_cleared_by_protocol";
+        case SIM_NOTICE_PROTOCOL_CHANGED: return "protocol_changed";
+        case SIM_NOTICE_PRESET_APPLIED: return "preset_applied";
+        case SIM_NOTICE_SCENARIO_APPLIED: return "scenario_applied";
+        case SIM_NOTICE_SCENARIO_FORCED_MODE: return "scenario_forced_mode";
+        case SIM_NOTICE_SCENARIO_CLEARED_BY_MODE: return "scenario_cleared_by_mode";
+        case SIM_NOTICE_SCENARIO_CLEARED_BY_MANUAL_EDIT: return "scenario_cleared_by_manual_edit";
+        case SIM_NOTICE_SCENARIO_CLEARED: return "scenario_cleared";
+        default: return "none";
+    }
+}
+
+static const char* precedenceNoticeLevel(uint8_t code) {
+    switch (code) {
+        case SIM_NOTICE_PROFILE_CLEARED_BY_PROTOCOL:
+        case SIM_NOTICE_PRESET_APPLIED:
+        case SIM_NOTICE_SCENARIO_FORCED_MODE:
+        case SIM_NOTICE_SCENARIO_CLEARED_BY_MODE:
+        case SIM_NOTICE_SCENARIO_CLEARED_BY_MANUAL_EDIT:
+            return "warn";
+        case SIM_NOTICE_NONE:
+            return "neutral";
+        default:
+            return "info";
+    }
+}
+
+static bool hasActiveScenario(const SimulationState& snap) {
+    return static_cast<DiagnosticScenarioId>(snap.scenario_id) != DIAG_SCENARIO_NONE;
+}
+
+static const char* effectiveDtcSourceSlug(const SimulationState& snap) {
+    const bool manual = snap.manual_dtc_count > 0;
+    const bool scenario = hasActiveScenario(snap) && snap.dtc_count > snap.manual_dtc_count;
+    if (manual && scenario) return "mixed";
+    if (scenario) return "scenario";
+    if (manual) return "manual";
+    return "none";
+}
+
+static const char* effectiveDtcSourceLabel(const SimulationState& snap) {
+    const char* slug = effectiveDtcSourceSlug(snap);
+    if (strcmp(slug, "mixed") == 0) return "Mescla de cenario e injecao manual";
+    if (strcmp(slug, "scenario") == 0) return "Derivados da camada diagnostica";
+    if (strcmp(slug, "manual") == 0) return "Injetados manualmente";
+    return "Sem DTCs efetivos";
+}
+
+static String profileSummaryText(const VehicleProfile* profile, const SimulationState& snap) {
+    if (profile) {
+        return String(profile->brand) + " " + profile->model + " (" + profile->year + ")";
+    }
+    if (snap.profile_id[0]) {
+        return String(snap.profile_id) + " (nao catalogado)";
+    }
+    return "Nenhum perfil ativo";
+}
+
+static String precedenceNoticeMessage(const SimulationState& snap) {
+    switch (simulation_precedence_snapshot().notice_code) {
+        case SIM_NOTICE_PROFILE_APPLIED:
+            return "Perfil aplicado como base do veiculo; camada diagnostica e DTCs manuais foram limpos.";
+        case SIM_NOTICE_PROFILE_RESTORED:
+            return "Perfil persistido foi restaurado automaticamente no boot.";
+        case SIM_NOTICE_PROFILE_CLEARED_BY_PROTOCOL:
+            return "Protocolo alterado manualmente; o perfil ativo foi desassociado para evitar ambiguidade.";
+        case SIM_NOTICE_PROTOCOL_CHANGED:
+            return "Protocolo alterado manualmente sem mexer na camada diagnostica.";
+        case SIM_NOTICE_PRESET_APPLIED:
+            return "Preset rapido aplicado; perfil ativo e camada diagnostica foram limpos.";
+        case SIM_NOTICE_SCENARIO_APPLIED:
+            return "Camada diagnostica aplicada como overlay sobre o perfil e o modo atuais.";
+        case SIM_NOTICE_SCENARIO_FORCED_MODE:
+            return String("Cenario ativo forçou o modo para ") + simModeLabel(static_cast<uint8_t>(snap.sim_mode)) + ".";
+        case SIM_NOTICE_SCENARIO_CLEARED_BY_MODE:
+            return "O modo escolhido pelo usuario limpou o cenario ativo por incompatibilidade.";
+        case SIM_NOTICE_SCENARIO_CLEARED_BY_MANUAL_EDIT:
+            return "Edicao manual de sensores limpou o cenario ativo e preservou DTCs manuais.";
+        case SIM_NOTICE_SCENARIO_CLEARED:
+            return "Camada diagnostica limpa; perfil e DTCs manuais preservados.";
+        default:
+            return "Hierarquia estavel: perfil define a base, modo define a dinamica, cenario atua como overlay e DTC manual entra na mescla final.";
+    }
+}
+
+static void appendControlLayers(JsonDocument& doc, const SimulationState& snap, const VehicleProfile* profile) {
+    const SimulationPrecedenceState precedence = simulation_precedence_snapshot();
+    JsonObject layers = doc["control_layers"].to<JsonObject>();
+
+    JsonObject profile_layer = layers["profile"].to<JsonObject>();
+    const bool profile_bound = snap.profile_id[0] != '\0';
+    profile_layer["active"] = profile_bound;
+    profile_layer["id"] = profile_bound ? snap.profile_id : nullptr;
+    profile_layer["label"] = profileSummaryText(profile, snap);
+    profile_layer["persistent"] = profile_bound;
+    profile_layer["protocol_linked"] = profile && profile->protocol == snap.active_protocol;
+
+    JsonObject mode_layer = layers["simulation_mode"].to<JsonObject>();
+    mode_layer["id"] = static_cast<uint8_t>(snap.sim_mode);
+    mode_layer["slug"] = driveContextSlug(static_cast<uint8_t>(snap.sim_mode));
+    mode_layer["label"] = simModeLabel(static_cast<uint8_t>(snap.sim_mode));
+    mode_layer["source"] = simModeSourceSlug(precedence.sim_mode_source);
+    mode_layer["source_label"] = simModeSourceLabel(precedence.sim_mode_source);
+
+    JsonObject diag_layer = layers["diagnostic_layer"].to<JsonObject>();
+    diag_layer["active"] = hasActiveScenario(snap);
+    diag_layer["id"] = diagnostic_scenario_slug(static_cast<DiagnosticScenarioId>(snap.scenario_id));
+    diag_layer["label"] = diagnostic_scenario_label(static_cast<DiagnosticScenarioId>(snap.scenario_id));
+    diag_layer["forced_mode"] = hasActiveScenario(snap) && precedence.sim_mode_source == SIM_MODE_SOURCE_SCENARIO;
+
+    JsonObject dtc_layer = layers["dtcs"].to<JsonObject>();
+    dtc_layer["manual_count"] = snap.manual_dtc_count;
+    dtc_layer["effective_count"] = snap.dtc_count;
+    dtc_layer["source"] = effectiveDtcSourceSlug(snap);
+    dtc_layer["source_label"] = effectiveDtcSourceLabel(snap);
+
+    JsonObject precedence_obj = doc["precedence"].to<JsonObject>();
+    precedence_obj["notice_code"] = precedenceNoticeSlug(precedence.notice_code);
+    precedence_obj["notice_level"] = precedenceNoticeLevel(precedence.notice_code);
+    precedence_obj["message"] = precedenceNoticeMessage(snap);
+}
+
+static void clear_profile_binding(SimulationState& state) {
+    state.profile_id[0] = '\0';
+}
+
+static void clear_scenario_for_manual_edit(SimulationState& state) {
+    if (!hasActiveScenario(state)) {
+        return;
+    }
+    diagnostic_engine_clear_scenario(state, true);
+    simulation_precedence_set_notice(SIM_NOTICE_SCENARIO_CLEARED_BY_MANUAL_EDIT);
+}
+
+static void apply_manual_mode_selection(SimulationState& state, SimMode mode) {
+    const DiagnosticScenarioId active_scenario = static_cast<DiagnosticScenarioId>(state.scenario_id);
+    if (active_scenario != DIAG_SCENARIO_NONE &&
+        (mode == SIM_FAULT || !diagnostic_scenario_allows_mode(active_scenario, mode))) {
+        diagnostic_engine_clear_scenario(state, true);
+        simulation_precedence_set_notice(SIM_NOTICE_SCENARIO_CLEARED_BY_MODE);
+    }
+    state.sim_mode = mode;
+    simulation_precedence_set_mode_source(SIM_MODE_SOURCE_USER);
+}
+
+static void apply_profile_selection(SimulationState& state, const VehicleProfile& profile) {
+    diagnostic_engine_clear_scenario(state, false);
+    applyVehicleProfile(state, profile);
+    diagnostic_engine_rebuild_effective_dtcs(state);
+    if (simulation_precedence_snapshot().sim_mode_source == SIM_MODE_SOURCE_SCENARIO) {
+        simulation_precedence_set_mode_source(SIM_MODE_SOURCE_USER);
+    }
+    simulation_precedence_set_notice(SIM_NOTICE_PROFILE_APPLIED);
+}
+
+static bool apply_protocol_selection(SimulationState& state, uint8_t protocol) {
+    const bool profile_bound = state.profile_id[0] != '\0';
+    const VehicleProfile* profile = activeVehicleProfile(state);
+    state.active_protocol = protocol;
+    state.pid_a6_supported = defaultPidA6SupportForProtocol(protocol) ? 1 : 0;
+
+    const bool keep_profile = profile_bound && profile && profile->protocol == protocol;
+    if (!keep_profile && profile_bound) {
+        clear_profile_binding(state);
+        simulation_precedence_set_notice(SIM_NOTICE_PROFILE_CLEARED_BY_PROTOCOL);
+        return true;
+    }
+
+    simulation_precedence_set_notice(SIM_NOTICE_PROTOCOL_CHANGED);
+    return false;
+}
+
+static void apply_preset_selection(SimulationState& state, const char* name) {
+    diagnostic_engine_clear_scenario(state, false);
+    clear_profile_binding(state);
+    state.pid_a6_supported = defaultPidA6SupportForProtocol(state.active_protocol) ? 1 : 0;
+    state.odometer_source = ODOMETER_SOURCE_CLUSTER;
+    if      (!strcmp(name, "off"))           Preset::applyOff(state);
+    else if (!strcmp(name, "idle"))          Preset::applyIdle(state);
+    else if (!strcmp(name, "cruise"))        Preset::applyCruise(state);
+    else if (!strcmp(name, "fullthrottle"))  Preset::applyFullThrottle(state);
+    else if (!strcmp(name, "overheat"))      Preset::applyOverheat(state);
+    else if (!strcmp(name, "catalyst_fail")) Preset::applyCatalystFail(state);
+    simulation_precedence_set_mode_source(SIM_MODE_SOURCE_PRESET);
+    simulation_precedence_set_notice(SIM_NOTICE_PRESET_APPLIED);
+}
+
 static void appendDtcArray(JsonArray arr, const uint16_t* dtcs, uint8_t count) {
     for (uint8_t i = 0; i < count; i++) {
         char buf[6] = {};
@@ -940,6 +1176,7 @@ static String stateToJson() {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     snap = *s_state;
     xSemaphoreGive(s_mutex);
+    const VehicleProfile* profile = activeVehicleProfile(snap);
 
     JsonDocument doc;
     doc["protocol"]         = protoName(snap.active_protocol);
@@ -961,6 +1198,13 @@ static String stateToJson() {
     appendDtcArray(doc.createNestedArray("dtcs"), snap.dtcs, snap.dtc_count);
     doc["vin"]              = snap.vin;
     doc["profile_id"]       = snap.profile_id;
+    doc["profile_selected"] = profile != nullptr;
+    if (profile) {
+        doc["profile_brand"] = profile->brand;
+        doc["profile_model"] = profile->model;
+        doc["profile_year"] = profile->year;
+        doc["profile_turbo"] = vehicleProfileIsTurbo(*profile);
+    }
     doc["sim_mode"]         = static_cast<uint8_t>(snap.sim_mode);
     doc["scenario_id"]      = snap.scenario_id;
     doc["health_score"]     = snap.health_score;
@@ -969,6 +1213,7 @@ static String stateToJson() {
     doc["alert_count"]      = snap.alert_count;
     doc["odometer_total_km"] = static_cast<float>(snap.odometer_total_km_x10) / 10.0f;
     appendPrimaryAlert(doc, snap);
+    appendControlLayers(doc, snap, profile);
     String out;
     serializeJson(doc, out);
     return out;
@@ -1098,6 +1343,7 @@ static String diagnosticsToJson() {
     has_freeze_frame = diagnostic_get_freeze_frame(freeze_frame);
     freeze_frame_count = diagnostic_get_freeze_frames(freeze_frames, DIAG_FREEZE_FRAME_HISTORY);
     xSemaphoreGive(s_mutex);
+    const VehicleProfile* profile = activeVehicleProfile(snap);
 
     JsonDocument doc;
     const DiagnosticScenarioId scenario_id = static_cast<DiagnosticScenarioId>(snap.scenario_id);
@@ -1112,6 +1358,13 @@ static String diagnosticsToJson() {
     JsonObject vehicle = doc["vehicle"].to<JsonObject>();
     vehicle["vin"] = snap.vin;
     vehicle["profile_id"] = snap.profile_id;
+    vehicle["profile_selected"] = profile != nullptr;
+    if (profile) {
+        vehicle["profile_brand"] = profile->brand;
+        vehicle["profile_model"] = profile->model;
+        vehicle["profile_year"] = profile->year;
+        vehicle["profile_turbo"] = vehicleProfileIsTurbo(*profile);
+    }
     vehicle["protocol"] = protoName(snap.active_protocol);
     vehicle["protocol_id"] = snap.active_protocol;
     vehicle["odometer_current_km"] = static_cast<float>(snap.odometer_total_km_x10) / 10.0f;
@@ -1245,6 +1498,8 @@ static String diagnosticsToJson() {
         cause["cause"] = probable_root->label;
     }
 
+    appendControlLayers(doc, snap, profile);
+
     String out;
     serializeJson(doc, out);
     return out;
@@ -1280,6 +1535,7 @@ static void handle_post_scenario(AsyncWebServerRequest* req, uint8_t* data, size
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (scenario_id == DIAG_SCENARIO_NONE) {
         diagnostic_engine_clear_scenario(*s_state, true);
+        simulation_precedence_set_notice(SIM_NOTICE_SCENARIO_CLEARED);
     } else {
         diagnostic_engine_set_scenario(*s_state, scenario_id);
     }
@@ -1298,7 +1554,7 @@ static void handle_post_params(AsyncWebServerRequest* req, uint8_t* data, size_t
     JsonDocument doc;
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    diagnostic_engine_clear_scenario(*s_state, true);
+    clear_scenario_for_manual_edit(*s_state);
     if (doc.containsKey("rpm"))              s_state->rpm              = doc["rpm"];
     if (doc.containsKey("speed"))            s_state->speed_kmh        = doc["speed"];
     if (doc.containsKey("coolant_temp"))     s_state->coolant_temp_c   = doc["coolant_temp"];
@@ -1322,10 +1578,14 @@ static void handle_post_protocol(AsyncWebServerRequest* req, uint8_t* data, size
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
     uint8_t pid = doc["protocol"] | 0;
     if (pid >= PROTO_COUNT) { req->send(400, "application/json", "{\"error\":\"invalid protocol\"}"); return; }
+    bool clear_profile = false;
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    s_state->active_protocol = pid;
+    clear_profile = apply_protocol_selection(*s_state, pid);
     xSemaphoreGive(s_mutex);
     persist_active_protocol(pid);
+    if (clear_profile) {
+        clear_persisted_profile();
+    }
     String resp = "{\"ok\":true,\"protocol\":\"" + String(protoName(pid)) + "\"}";
     req->send(200, "application/json", resp);
 }
@@ -1381,10 +1641,7 @@ static void handle_post_mode(AsyncWebServerRequest* req, uint8_t* data, size_t l
     uint8_t m = doc["mode"] | 0;
     if (m >= SIM_MODE_COUNT) { req->send(400, "application/json", "{\"error\":\"invalid mode\"}"); return; }
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (m == SIM_FAULT) {
-        diagnostic_engine_clear_scenario(*s_state, true);
-    }
-    s_state->sim_mode = (SimMode)m;
+    apply_manual_mode_selection(*s_state, static_cast<SimMode>(m));
     xSemaphoreGive(s_mutex);
     req->send(200, "application/json", "{\"ok\":true}");
 }
@@ -1394,17 +1651,9 @@ static void handle_post_preset(AsyncWebServerRequest* req, uint8_t* data, size_t
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
     const char* name = doc["preset"] | "idle";
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    diagnostic_engine_clear_scenario(*s_state, false);
-    s_state->profile_id[0] = '\0';
-    s_state->pid_a6_supported = defaultPidA6SupportForProtocol(s_state->active_protocol) ? 1 : 0;
-    s_state->odometer_source = ODOMETER_SOURCE_CLUSTER;
-    if      (!strcmp(name, "off"))           Preset::applyOff(*s_state);
-    else if (!strcmp(name, "idle"))          Preset::applyIdle(*s_state);
-    else if (!strcmp(name, "cruise"))        Preset::applyCruise(*s_state);
-    else if (!strcmp(name, "fullthrottle"))  Preset::applyFullThrottle(*s_state);
-    else if (!strcmp(name, "overheat"))      Preset::applyOverheat(*s_state);
-    else if (!strcmp(name, "catalyst_fail")) Preset::applyCatalystFail(*s_state);
+    apply_preset_selection(*s_state, name);
     xSemaphoreGive(s_mutex);
+    clear_persisted_profile();
     req->send(200, "application/json", "{\"ok\":true}");
 }
 
@@ -1689,6 +1938,7 @@ static void handle_get_profiles(AsyncWebServerRequest* req) {
         obj["model"]    = VEHICLE_PROFILES[i].model;
         obj["year"]     = VEHICLE_PROFILES[i].year;
         obj["protocol"] = VEHICLE_PROFILES[i].protocol;
+        obj["turbo"]    = vehicleProfileIsTurbo(VEHICLE_PROFILES[i]);
         obj["pid_a6_supported"] = vehicleProfileSupportsPidA6(VEHICLE_PROFILES[i]);
     }
     String out; serializeJson(doc, out);
@@ -1703,11 +1953,11 @@ static void handle_post_profile(AsyncWebServerRequest* req, uint8_t* data, size_
     if (!p) { req->send(404, "application/json", "{\"error\":\"perfil nao encontrado\"}"); return; }
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     dynamic_persist_odometer_now();
-    applyVehicleProfile(*s_state, *p);
+    apply_profile_selection(*s_state, *p);
     dynamic_reset_odometer_service_counters(*s_state);
-    diagnostic_engine_rebuild_effective_dtcs(*s_state);
     xSemaphoreGive(s_mutex);
     persist_active_protocol(p->protocol);
+    persist_active_profile(p->id);
     String resp = "{\"ok\":true,\"brand\":\"" + String(p->brand) +
                   "\",\"model\":\"" + String(p->model) + "\"}";
     req->send(200, "application/json", resp);
@@ -1724,7 +1974,7 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
 
         xSemaphoreTake(s_mutex, portMAX_DELAY);
         if (!strcmp(t, "set")) {
-            diagnostic_engine_clear_scenario(*s_state, true);
+            clear_scenario_for_manual_edit(*s_state);
             const char* key = doc["key"] | "";
             float val = doc["value"] | 0.0f;
             if      (!strcmp(key, "rpm"))              s_state->rpm             = (uint16_t)val;
@@ -1744,47 +1994,37 @@ static void on_ws_event(AsyncWebSocket*, AsyncWebSocketClient* client,
         } else if (!strcmp(t, "protocol")) {
             uint8_t pid = doc["id"] | 0;
             if (pid < PROTO_COUNT) {
-                s_state->active_protocol = pid;
-                if (s_state->profile_id[0] == '\0') {
-                    s_state->pid_a6_supported = defaultPidA6SupportForProtocol(pid) ? 1 : 0;
-                }
+                const bool clear_profile = apply_protocol_selection(*s_state, pid);
                 persist_active_protocol(pid);
+                if (clear_profile) {
+                    clear_persisted_profile();
+                }
             }
         } else if (!strcmp(t, "preset")) {
             const char* name = doc["name"] | "idle";
-            diagnostic_engine_clear_scenario(*s_state, false);
-            s_state->profile_id[0] = '\0';  // preset limpa perfil ativo
-            s_state->pid_a6_supported = defaultPidA6SupportForProtocol(s_state->active_protocol) ? 1 : 0;
-            s_state->odometer_source = ODOMETER_SOURCE_CLUSTER;
-            if      (!strcmp(name, "off"))           Preset::applyOff(*s_state);
-            else if (!strcmp(name, "idle"))          Preset::applyIdle(*s_state);
-            else if (!strcmp(name, "cruise"))        Preset::applyCruise(*s_state);
-            else if (!strcmp(name, "fullthrottle"))  Preset::applyFullThrottle(*s_state);
-            else if (!strcmp(name, "overheat"))      Preset::applyOverheat(*s_state);
-            else if (!strcmp(name, "catalyst_fail")) Preset::applyCatalystFail(*s_state);
+            apply_preset_selection(*s_state, name);
+            clear_persisted_profile();
         } else if (!strcmp(t, "profile")) {
             const char* pid = doc["id"] | "";
             const VehicleProfile* p = findProfile(pid);
             if (p) {
                 dynamic_persist_odometer_now();
-                applyVehicleProfile(*s_state, *p);
+                apply_profile_selection(*s_state, *p);
                 dynamic_reset_odometer_service_counters(*s_state);
-                diagnostic_engine_rebuild_effective_dtcs(*s_state);
                 persist_active_protocol(p->protocol);
+                persist_active_profile(p->id);
             }
         } else if (!strcmp(t, "mode")) {
             uint8_t m = doc["id"] | 0;
             if (m < SIM_MODE_COUNT) {
-                if (m == SIM_FAULT) {
-                    diagnostic_engine_clear_scenario(*s_state, true);
-                }
-                s_state->sim_mode = (SimMode)m;
+                apply_manual_mode_selection(*s_state, static_cast<SimMode>(m));
             }
         } else if (!strcmp(t, "scenario")) {
             const String scenario_slug = String(doc["id"] | "");
             const DiagnosticScenarioId scenario_id = diagnostic_scenario_from_slug(scenario_slug.c_str());
             if (scenario_slug.isEmpty()) {
                 diagnostic_engine_clear_scenario(*s_state, true);
+                simulation_precedence_set_notice(SIM_NOTICE_SCENARIO_CLEARED);
             } else if (scenario_id != DIAG_SCENARIO_NONE) {
                 diagnostic_engine_set_scenario(*s_state, scenario_id);
             }

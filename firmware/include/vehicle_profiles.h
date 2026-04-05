@@ -38,6 +38,18 @@ inline bool vehicleProfileSupportsPidA6(const VehicleProfile& p) {
         : p.supports_pid_a6_odometer != 0;
 }
 
+inline bool vehicleProfileIsTurbo(const VehicleProfile& p) {
+    return std::strstr(p.model, "Turbo") != nullptr ||
+           std::strstr(p.model, "TSI") != nullptr ||
+           std::strstr(p.model, "THP") != nullptr ||
+           std::strstr(p.model, "TDI") != nullptr ||
+           std::strstr(p.id, "_10t") != nullptr ||
+           std::strstr(p.id, "_12t") != nullptr ||
+           std::strstr(p.id, "_15t") != nullptr ||
+           std::strstr(p.id, "_thp") != nullptr ||
+           std::strstr(p.id, "_tdi") != nullptr;
+}
+
 // Aplica perfil ao estado (em marcha lenta, sem DTCs)
 inline void applyVehicleProfile(SimulationState& s, const VehicleProfile& p) {
     s.active_protocol  = p.protocol;
@@ -194,6 +206,12 @@ static const VehicleProfile VEHICLE_PROFILES[] = {
       "9BHDA51JL0T123456" },
 
     // ── Renault ───────────────────────────────────────────────
+    { "peugeot_308_16thp",
+      "Peugeot", "308 1.6 THP", "2013-2019",
+      PROTO_CAN_11B_500K,
+      720, 0, 93, 31, 5.8f, 41, 15, 11.5f, 24, 70,
+      "8AD4C5FVAFG123456" },
+
     { "renault_kwid_10",
       "Renault", "Kwid 1.0 Zen", "2017-2024",
       PROTO_CAN_11B_500K,
@@ -216,4 +234,13 @@ inline const VehicleProfile* findProfile(const char* id) {
         if (!strcmp(VEHICLE_PROFILES[i].id, id)) return &VEHICLE_PROFILES[i];
     }
     return nullptr;
+}
+
+inline const VehicleProfile* activeVehicleProfile(const SimulationState& s) {
+    return s.profile_id[0] == '\0' ? nullptr : findProfile(s.profile_id);
+}
+
+inline bool activeVehicleProfileIsTurbo(const SimulationState& s) {
+    const VehicleProfile* profile = activeVehicleProfile(s);
+    return profile != nullptr && vehicleProfileIsTurbo(*profile);
 }

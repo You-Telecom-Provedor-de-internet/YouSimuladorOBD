@@ -6,11 +6,8 @@ Este documento e a referencia eletrica consolidada para o engenheiro capturar o 
 
 Importante:
 
-- neste ambiente nao ha `KiCad`, `EasyEDA` ou `Altium` instalados
-- por isso o handoff foi entregue em formato versionavel:
-  - `Markdown`
-  - `Mermaid`
-  - `CSV`
+- a `RevA` foi congelada como `carrier para ESP32 DevKit 38 pinos`
+- o objetivo deste handoff e transformar a bancada validada em uma primeira PCB de baixo risco
 
 Arquivos complementares:
 
@@ -26,7 +23,7 @@ flowchart LR
     J1["J1 OBD-II J1962"]
     F1["F1 Fuse 1A"]
     U1["U1 LM2596 module\n12V -> 5V"]
-    MCU["MCU1 ESP32 DevKit 38p\nor ESP32-WROOM carrier"]
+    MCU["MCU1 ESP32 DevKit 38p\npluggable on carrier RevA"]
     U2["U2 SN65HVD230"]
     U3["U3 L9637D"]
     RK1["RK1 510R >=0.5W"]
@@ -152,14 +149,19 @@ flowchart LR
 
 ## Observacoes para captura do esquema
 
-### Escolha de implementacao do MCU
+### Implementacao do MCU congelada na RevA
 
-O hardware de bancada usa `ESP32 DevKit`. Para a PCB, o engenheiro pode escolher:
+Para esta revisao, o MCU fica congelado como:
 
-1. placa carrier para o `DevKit` existente
-2. placa integrada com `ESP32-WROOM-32`
+- `ESP32 DevKit 38 pinos`
+- montado por `2 x headers femea 1x19`
+- com `USB` acessivel na borda
+- com keepout dedicado para a antena
 
-Se escolher a opcao 2, manter o mesmo mapa de GPIOs documentado em [03 - Pinout e Ligacoes](03-pinout.md).
+Referencia:
+
+- [17 - RevA Carrier para ESP32 DevKit](17-revA-carrier-esp32-devkit.md)
+- [hardware/kicad/revA/esp32-devkit38-carrier-reference.csv](../hardware/kicad/revA/esp32-devkit38-carrier-reference.csv)
 
 ### Escolha de implementacao da fonte
 

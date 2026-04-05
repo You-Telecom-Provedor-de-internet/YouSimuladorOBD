@@ -28,12 +28,23 @@ Esse conjunto nao substitui o handoff consolidado, mas acelera a continuacao da 
 
 Este pacote descreve a topologia eletrica validada em bancada:
 
-- `ESP32`
+- `ESP32 DevKit 38 pinos` em carrier RevA
 - `LM2596`
 - `SN65HVD230`
 - `L9637D`
 - `OLED`
 - botoes, encoder, DIP e LEDs
+
+## Decisao congelada da RevA
+
+A revisao `RevA` fica congelada como:
+
+- `carrier para ESP32 DevKit 38 pinos`
+- `OLED` via header
+- `KY-040` via header
+- `LM2596` por modulo ou footprint equivalente
+
+O pacote desta pasta e o bootstrap em `KiCad` devem ser interpretados nessa arquitetura.
 
 ## Observacao importante
 

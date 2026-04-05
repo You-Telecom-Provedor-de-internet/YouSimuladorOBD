@@ -12,6 +12,17 @@ O hardware validado do `YouSimuladorOBD` usa uma topologia simples e reproduzive
 
 O objetivo desta revisao e documentar o hardware realmente validado em bancada, e nao a topologia antiga com transistor discreto de K-Line.
 
+## Arquitetura congelada da PCB RevA
+
+Para a primeira placa, a arquitetura foi congelada como:
+
+- `carrier board` para `ESP32 DevKit` 38 pinos
+- `OLED SH1107` por header
+- `KY-040` por header
+- `LM2596` como modulo ou footprint equivalente de baixo risco
+
+Ou seja, a `RevA` nao vai integrar `ESP32-WROOM` diretamente na PCB. Essa decisao preserva o MCU ja validado em bancada e reduz risco da primeira fabricacao.
+
 ## BOM validada
 
 ### Componentes principais
@@ -22,9 +33,13 @@ O objetivo desta revisao e documentar o hardware realmente validado em bancada, 
 | `U2` | 1 | `SN65HVD230` | transceiver CAN 3.3V |
 | `U3` | 1 | `L9637D` | transceiver K-Line |
 | `MCU1` | 1 | `ESP32 DevKit` 38 pinos | MCU principal |
+| `JMCU1` | 1 | header femea `1x19 2.54 mm` | carrier do lado esquerdo do DevKit |
+| `JMCU2` | 1 | header femea `1x19 2.54 mm` | carrier do lado direito do DevKit |
 | `J1` | 1 | conector `OBD-II` femea 16 pinos | interface com scanner |
 | `DISP1` | 1 | `OLED SH1107 128x128` I2C | display local |
+| `JDISP1` | 1 | header `1x4 2.54 mm` | conexao do modulo OLED |
 | `ENC1` | 1 | `KY-040` | encoder rotativo |
+| `JENC1` | 1 | header `1x5 2.54 mm` | conexao do modulo encoder |
 | `SW2-SW7` | 6 | botoes tacteis | interface local |
 | `SW1` | 1 | DIP switch 3 bits | selecao rapida de protocolo |
 | `D1-D3` | 3 | LEDs de status | CAN / K-Line / TX |
@@ -60,6 +75,7 @@ ESP32 3V3 -> logica de U2, U3 e OLED
 - manter `+12V`, `+5V` e `3V3` separados por nets claras
 - usar plano de GND unico e curto entre `OBD`, `LM2596`, `ESP32`, `SN65HVD230` e `L9637D`
 - o `RK1 = 510R` pode dissipar perto de `0.28W` quando a linha K fica baixa; na PCB use componente com folga termica
+- manter a regiao da antena do `DevKit` sem cobre e sem componentes logo abaixo
 
 ## CAN - interface fisica
 
@@ -164,6 +180,9 @@ Essas tres medicoes sao a referencia rapida para depuracao.
 - `10k` entre `LI` e `VS`
 - dois `100nF` no `L9637D`
 - `LM2596` ou buck equivalente para `12V -> 5V`
+- `2 x headers 1x19` para o `ESP32 DevKit`
+- header do `OLED`
+- header do `KY-040`
 
 ### Recomendado para a revisao de PCB
 

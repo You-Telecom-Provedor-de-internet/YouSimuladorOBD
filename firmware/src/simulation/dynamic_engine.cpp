@@ -173,28 +173,55 @@ static float rpm_from_speed(float spd) {
 }
 
 // MAF g/s: calibrado — idle ~4 g/s, cruise 60 km/h ~12 g/s, WOT ~55 g/s
-static float calc_maf(float rpm, float load_pct) {
-    return 1.8f + (rpm / 1000.0f) * (load_pct / 100.0f) * 13.0f;
+static float calc_maf(float rpm, float load_pct, float boost_kpa = 0.0f) {
+    float base = 1.8f + (rpm / 1000.0f) * (load_pct / 100.0f) * 13.0f;
+    float boost_multiplier = 1.0f + boost_kpa / 115.0f;
+    float spool_bonus = boost_kpa * 0.08f;
+    return base * boost_multiplier + spool_bonus;
 }
 
 // MAP kPa: vácuo no idle (~30 kPa), sobe com TPS até ~98 kPa WOT
-static float calc_map(float tps_pct) {
-    return 27.0f + tps_pct * 0.71f;
+static float calc_map(float tps_pct, float boost_kpa = 0.0f) {
+    return 27.0f + tps_pct * 0.71f + boost_kpa;
 }
 
 // Avanço de ignição: depende de RPM e carga
 // Mais avanço em baixa carga e RPM médio, retarda sob carga alta
-static float calc_ignition(float rpm, float load_pct) {
+static float calc_ignition(float rpm, float load_pct, float boost_kpa = 0.0f) {
     float base = 10.0f + (rpm - 800.0f) / 400.0f;
     float load_retard = load_pct * 0.06f;
-    return constrain(base - load_retard, 5.0f, 32.0f);
+    float boost_retard = boost_kpa * 0.08f;
+    return constrain(base - load_retard - boost_retard, 2.0f, 32.0f);
 }
 
 // Temperatura de admissão: ambiente + calor do motor
-static float calc_intake(float coolant, float load_pct) {
+static float calc_intake(float coolant, float load_pct, float boost_kpa = 0.0f) {
     float heat_soak = (coolant - 20.0f) * 0.07f;
     float load_heat = load_pct * 0.06f;
-    return constrain(25.0f + heat_soak + load_heat, -40.0f, 80.0f);
+    float boost_heat = boost_kpa * 0.12f;
+    return constrain(25.0f + heat_soak + load_heat + boost_heat, -40.0f, 95.0f);
+}
+
+static float calc_turbo_boost_target(float rpm, float tps_pct, float load_pct, uint8_t phase) {
+    if (tps_pct < 8.0f || load_pct < 20.0f || rpm < 1100.0f) {
+        return 0.0f;
+    }
+
+    float throttle_factor = constrain((tps_pct - 8.0f) / 72.0f, 0.0f, 1.0f);
+    float load_factor = constrain((load_pct - 20.0f) / 60.0f, 0.0f, 1.0f);
+    float rpm_factor = constrain((rpm - 1200.0f) / 2200.0f, 0.0f, 1.0f);
+    float spool_window = 1.0f - 0.5f * constrain((rpm - 5200.0f) / 1800.0f, 0.0f, 1.0f);
+
+    float phase_bias = 0.0f;
+    if (phase == 1) {
+        phase_bias = 10.0f;
+    } else if (phase == 2) {
+        phase_bias = 3.0f;
+    }
+
+    float target = 65.0f * throttle_factor * (0.35f + 0.65f * load_factor) *
+                   (0.25f + 0.75f * rpm_factor) * spool_window + phase_bias;
+    return constrain(target, 0.0f, 68.0f);
 }
 
 // ── Estado interno do motor ───────────────────────────────────
@@ -223,6 +250,7 @@ static struct EngState {
     float fuel_f      = 75;
     float bat_f       = 14.1f;
     float time_s      = 0;
+    float boost_kpa   = 0;
 
     // Canais de ruído suave (sem flickering)
     Wander w_rpm, w_tps, w_load, w_stft, w_cool, w_oil, w_bat;
@@ -231,6 +259,18 @@ static struct EngState {
     bool     fault_active   = false;
     uint32_t fault_toggle_ms= 0;
 } eng;
+
+static void update_turbo_spool(const SimulationState& s) {
+    if (!activeVehicleProfileIsTurbo(s)) {
+        eng.boost_kpa = ema(eng.boost_kpa, 0.0f, 0.12f);
+        return;
+    }
+
+    float target = calc_turbo_boost_target(eng.actual_rpm, eng.actual_tps, eng.actual_load, eng.phase);
+    float alpha = target > eng.boost_kpa ? 0.18f : 0.08f;
+    eng.boost_kpa = ema(eng.boost_kpa, target, alpha);
+    eng.boost_kpa = constrain(eng.boost_kpa, 0.0f, 68.0f);
+}
 
 // ── Noise suave (chamado todo tick) ──────────────────────────
 
@@ -247,14 +287,17 @@ static void update_noise() {
 // ── Aplica estado do motor → SimulationState (output comum) ──
 
 static void write_state(SimulationState& s) {
+    update_turbo_spool(s);
+    float boost_kpa = activeVehicleProfileIsTurbo(s) ? eng.boost_kpa : 0.0f;
+
     s.rpm             = (uint16_t)constrain(eng.actual_rpm + eng.w_rpm.v, 0.0f, 16000.0f);
     s.speed_kmh       = (uint8_t) constrain(eng.actual_spd, 0.0f, 255.0f);
     s.throttle_pct    = (uint8_t) constrain(eng.actual_tps + eng.w_tps.v, 0.0f, 100.0f);
     s.engine_load_pct = (uint8_t) constrain(eng.actual_load + eng.w_load.v, 0.0f, 100.0f);
-    s.map_kpa         = (uint8_t) constrain(calc_map(eng.actual_tps), 20.0f, 105.0f);
-    s.maf_gs          = constrain(calc_maf(eng.actual_rpm, eng.actual_load), 0.0f, 655.0f);
-    s.ignition_adv    = calc_ignition(eng.actual_rpm, eng.actual_load);
-    s.intake_temp_c   = (int16_t) calc_intake(eng.coolant_f, eng.actual_load);
+    s.map_kpa         = (uint8_t) constrain(calc_map(eng.actual_tps, boost_kpa), 20.0f, 170.0f);
+    s.maf_gs          = constrain(calc_maf(eng.actual_rpm, eng.actual_load, boost_kpa), 0.0f, 655.0f);
+    s.ignition_adv    = calc_ignition(eng.actual_rpm, eng.actual_load, boost_kpa);
+    s.intake_temp_c   = (int16_t) calc_intake(eng.coolant_f, eng.actual_load, boost_kpa);
     s.coolant_temp_c  = (int16_t)(eng.coolant_f + eng.w_cool.v);
     s.oil_temp_c      = (int16_t)(eng.oil_f + eng.w_oil.v);
     s.battery_voltage = eng.bat_f + eng.w_bat.v;
@@ -276,6 +319,8 @@ static void update_warm_engine_temps() {
 
 static void on_mode_enter(SimMode mode, SimulationState& s) {
     eng.time_s = 0;
+    eng.boost_kpa = 0;
+    bool turbo = activeVehicleProfileIsTurbo(s);
 
     // Reset noise channels
     eng.w_rpm.v = eng.w_tps.v = eng.w_load.v = 0;
@@ -284,9 +329,9 @@ static void on_mode_enter(SimMode mode, SimulationState& s) {
     switch (mode) {
         case SIM_IDLE:
             eng.actual_spd  = 0;
-            eng.actual_rpm  = 800;
-            eng.actual_tps  = 3;
-            eng.actual_load = 18;
+            eng.actual_rpm  = turbo ? 720 : 800;
+            eng.actual_tps  = turbo ? 4 : 3;
+            eng.actual_load = turbo ? 22 : 18;
             eng.coolant_f   = 92;
             eng.oil_f       = 87;
             eng.stft_f      = 0;
@@ -297,9 +342,9 @@ static void on_mode_enter(SimMode mode, SimulationState& s) {
 
         case SIM_WARMUP:
             eng.actual_spd  = 0;
-            eng.actual_rpm  = 1100;   // fast idle (choke)
-            eng.actual_tps  = 8;
-            eng.actual_load = 25;
+            eng.actual_rpm  = turbo ? 1180 : 1100;   // fast idle (choke)
+            eng.actual_tps  = turbo ? 9 : 8;
+            eng.actual_load = turbo ? 28 : 25;
             eng.coolant_f   = 20;     // ambiente
             eng.oil_f       = 20;     // ambiente
             eng.stft_f      = 12;     // open loop: mistura rica
@@ -312,9 +357,9 @@ static void on_mode_enter(SimMode mode, SimulationState& s) {
 
         case SIM_URBAN:
             eng.actual_spd  = 0;
-            eng.actual_rpm  = 800;
-            eng.actual_tps  = 3;
-            eng.actual_load = 18;
+            eng.actual_rpm  = turbo ? 720 : 800;
+            eng.actual_tps  = turbo ? 4 : 3;
+            eng.actual_load = turbo ? 22 : 18;
             eng.coolant_f   = 92;
             eng.oil_f       = 87;
             eng.stft_f      = 0;
@@ -328,9 +373,9 @@ static void on_mode_enter(SimMode mode, SimulationState& s) {
         case SIM_HIGHWAY:
             eng.actual_spd  = 110;
             eng.actual_rpm  = 110 * RPM_PER_KMH[5];  // 5ª marcha
-            eng.actual_tps  = 22;
-            eng.actual_load = 38;
-            eng.coolant_f   = 93;
+            eng.actual_tps  = turbo ? 18 : 22;
+            eng.actual_load = turbo ? 30 : 38;
+            eng.coolant_f   = turbo ? 94 : 93;
             eng.oil_f       = 90;
             eng.stft_f      = -1.5f;  // ligeiramente lean em cruise
             eng.ltft_f      = 0;
@@ -375,13 +420,14 @@ static void on_mode_enter(SimMode mode, SimulationState& s) {
 
 static void update_idle(SimulationState& s) {
     eng.time_s += 0.1f;
+    bool turbo = activeVehicleProfileIsTurbo(s);
 
     // RPM: respiração suave do motor (senoide lenta + wander)
     float breath = 10.0f * sinf(eng.time_s * 0.4f);  // ±10 RPM, período ~16s
-    eng.actual_rpm = ema(eng.actual_rpm, 800.0f + breath, 0.08f);
+    eng.actual_rpm = ema(eng.actual_rpm, (turbo ? 720.0f : 800.0f) + breath, 0.08f);
 
-    eng.actual_tps  = ema(eng.actual_tps, 3.0f, 0.05f);
-    eng.actual_load = ema(eng.actual_load, 18.0f, 0.05f);
+    eng.actual_tps  = ema(eng.actual_tps, turbo ? 4.0f : 3.0f, 0.05f);
+    eng.actual_load = ema(eng.actual_load, turbo ? 22.0f : 18.0f, 0.05f);
 
     // Fuel trim: oscilação lenta do sensor O2 (normal em closed loop)
     eng.stft_f = ema(eng.stft_f, 0.5f * sinf(eng.time_s * 0.3f), 0.03f);
@@ -401,15 +447,16 @@ static void update_idle(SimulationState& s) {
 
 static void update_urban(SimulationState& s) {
     uint32_t now = millis();
+    bool turbo = activeVehicleProfileIsTurbo(s);
 
     switch (eng.phase) {
 
         case PH_STOPPED:
             // Parado no sinal — idle
             eng.actual_spd  = approach(eng.actual_spd, 0, 0.5f);
-            eng.actual_rpm  = ema(eng.actual_rpm, 800, 0.06f);
-            eng.actual_tps  = ema(eng.actual_tps, 3, 0.08f);
-            eng.actual_load = ema(eng.actual_load, 18, 0.06f);
+            eng.actual_rpm  = ema(eng.actual_rpm, turbo ? 720.0f : 800.0f, 0.06f);
+            eng.actual_tps  = ema(eng.actual_tps, turbo ? 4.0f : 3.0f, 0.08f);
+            eng.actual_load = ema(eng.actual_load, turbo ? 22.0f : 18.0f, 0.06f);
             if (now >= eng.phase_end_ms) {
                 eng.phase      = PH_ACCEL;
                 eng.target_spd = frand(30, 55);  // 30-55 km/h urbano
@@ -418,13 +465,19 @@ static void update_urban(SimulationState& s) {
 
         case PH_ACCEL: {
             // Aceleração: ~0.8 km/h por 100ms = 0-50 em ~6s (realista)
-            float accel_rate = frand(0.6f, 1.0f);
+            float accel_rate = turbo ? frand(0.8f, 1.2f) : frand(0.6f, 1.0f);
             eng.actual_spd = approach(eng.actual_spd, eng.target_spd, accel_rate);
             // TPS sobe durante aceleração (15-45% dependendo da intensidade)
-            float tps_target = 18.0f + (eng.target_spd / 60.0f) * 30.0f;
+            float tps_target = turbo
+                ? 24.0f + (eng.target_spd / 60.0f) * 34.0f
+                : 18.0f + (eng.target_spd / 60.0f) * 30.0f;
             eng.actual_tps  = ema(eng.actual_tps, tps_target, 0.12f);
             // Carga alta durante aceleração
-            eng.actual_load = ema(eng.actual_load, 45.0f + eng.actual_tps * 0.5f, 0.08f);
+            eng.actual_load = ema(
+                eng.actual_load,
+                turbo ? 52.0f + eng.actual_tps * 0.6f : 45.0f + eng.actual_tps * 0.5f,
+                0.08f
+            );
             // RPM segue marcha
             eng.actual_rpm  = ema(eng.actual_rpm, rpm_from_speed(eng.actual_spd), 0.10f);
             if (eng.actual_spd >= eng.target_spd - 1.0f) {
@@ -437,8 +490,16 @@ static void update_urban(SimulationState& s) {
         case PH_CRUISE:
             // Cruzeiro urbano: velocidade estável, baixo TPS
             eng.actual_spd  = ema(eng.actual_spd, eng.target_spd, 0.03f);
-            eng.actual_tps  = ema(eng.actual_tps, 12.0f + eng.target_spd * 0.15f, 0.06f);
-            eng.actual_load = ema(eng.actual_load, 28.0f + eng.target_spd * 0.3f, 0.04f);
+            eng.actual_tps  = ema(
+                eng.actual_tps,
+                turbo ? 10.0f + eng.target_spd * 0.12f : 12.0f + eng.target_spd * 0.15f,
+                0.06f
+            );
+            eng.actual_load = ema(
+                eng.actual_load,
+                turbo ? 24.0f + eng.target_spd * 0.25f : 28.0f + eng.target_spd * 0.3f,
+                0.04f
+            );
             eng.actual_rpm  = ema(eng.actual_rpm, rpm_from_speed(eng.actual_spd), 0.06f);
             if (now >= eng.phase_end_ms) {
                 eng.phase       = PH_BRAKE;
@@ -479,14 +540,15 @@ static void update_urban(SimulationState& s) {
 
 static void update_highway(SimulationState& s) {
     uint32_t now = millis();
+    bool turbo = activeVehicleProfileIsTurbo(s);
 
     switch (eng.phase) {
         case PH_CRUISE: {
             // Cruzeiro 5ª marcha ~110 km/h
             float target = 110.0f + 3.0f * sinf(eng.time_s * 0.08f); // micro-variação
             eng.actual_spd  = ema(eng.actual_spd, target, 0.04f);
-            eng.actual_tps  = ema(eng.actual_tps, 22, 0.05f);
-            eng.actual_load = ema(eng.actual_load, 38, 0.04f);
+            eng.actual_tps  = ema(eng.actual_tps, turbo ? 18.0f : 22.0f, 0.05f);
+            eng.actual_load = ema(eng.actual_load, turbo ? 30.0f : 38.0f, 0.04f);
             if (now >= eng.phase_end_ms) {
                 // Inicia ultrapassagem
                 eng.phase       = PH_ACCEL;
@@ -499,8 +561,8 @@ static void update_highway(SimulationState& s) {
         case PH_ACCEL:
             // Ultrapassagem: acelera para 130 km/h
             eng.actual_spd  = approach(eng.actual_spd, eng.target_spd, 0.6f);
-            eng.actual_tps  = ema(eng.actual_tps, 55, 0.10f);
-            eng.actual_load = ema(eng.actual_load, 65, 0.08f);
+            eng.actual_tps  = ema(eng.actual_tps, turbo ? 62.0f : 55.0f, 0.10f);
+            eng.actual_load = ema(eng.actual_load, turbo ? 78.0f : 65.0f, 0.08f);
             if (now >= eng.phase_end_ms) {
                 eng.phase       = PH_BRAKE;
                 eng.phase_end_ms= now + (uint32_t)frand(5000, 10000);
@@ -510,8 +572,8 @@ static void update_highway(SimulationState& s) {
         case PH_BRAKE:
             // Retorna ao cruzeiro suavemente
             eng.actual_spd  = approach(eng.actual_spd, 110, 0.4f);
-            eng.actual_tps  = ema(eng.actual_tps, 22, 0.06f);
-            eng.actual_load = ema(eng.actual_load, 38, 0.05f);
+            eng.actual_tps  = ema(eng.actual_tps, turbo ? 18.0f : 22.0f, 0.06f);
+            eng.actual_load = ema(eng.actual_load, turbo ? 30.0f : 38.0f, 0.05f);
             if (eng.actual_spd <= 112.0f) {
                 eng.phase       = PH_CRUISE;
                 eng.phase_end_ms= now + (uint32_t)frand(60000, 120000);
@@ -550,6 +612,7 @@ static void update_highway(SimulationState& s) {
 
 static void update_warmup(SimulationState& s) {
     eng.time_s += 0.1f;
+    bool turbo = activeVehicleProfileIsTurbo(s);
 
     // ── Coolant: curva de 4 fases ─────────────────────────────
     float coolant_rate;
@@ -599,6 +662,11 @@ static void update_warmup(SimulationState& s) {
 
     // ── Fuel trim: open loop rico → closed loop normal ────────
     // Open loop (~20s): STFT fixo +12%, depois diminui gradualmente
+    if (turbo) {
+        eng.actual_tps  = ema(eng.actual_tps, 9.0f - temp_factor * 5.0f, 0.03f);
+        eng.actual_load = ema(eng.actual_load, 28.0f - temp_factor * 6.0f, 0.03f);
+    }
+
     if (eng.time_s < 2.0f) {
         // Primeiros 20s: open loop, sem sensor O2
         eng.stft_f = 12.0f;
