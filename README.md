@@ -119,6 +119,7 @@ Senha: obd12345
 - [15 - Diagrama Eletrico e Handoff PCB](docs/15-diagrama-eletrico-pcb.md)
 - [16 - Pacote para o Engenheiro de PCB](docs/16-pacote-engenheiro-pcb.md)
 - [17 - RevA Carrier para ESP32 DevKit](docs/17-revA-carrier-esp32-devkit.md)
+- [18 - Codex Plugin YOU OBD Lab](docs/18-codex-plugin-you-obd-lab.md)
 - [Hardware - Pacote para PCB](hardware/pcb-handoff/README.md)
 - [Hardware - KiCad RevA](hardware/kicad/revA/README.md)
 
@@ -150,3 +151,4 @@ YouSimuladorOBD/
 - o pacote `hardware/pcb-handoff/`, o documento `docs/15-diagrama-eletrico-pcb.md` e a lista curta em `docs/16-pacote-engenheiro-pcb.md` sao a referencia atual para o engenheiro de PCB
 - os arquivos antigos em `hardware/schematic/` ficaram marcados como obsoletos
 - o projeto agora ja possui bootstrap nativo em `KiCad` em `hardware/kicad/revA/`
+- o laboratorio de validacao com Codex, simulador, app Android e celular real esta documentado em `docs/18-codex-plugin-you-obd-lab.md`
