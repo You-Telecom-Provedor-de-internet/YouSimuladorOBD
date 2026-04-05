@@ -153,9 +153,6 @@ static auto protect_api_get(Handler handler) {
 template <typename Handler>
 static auto protect_api_body(Handler handler) {
     return [handler](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
-        if (!authenticate_api_request(request)) {
-            return request->requestAuthentication("youobd-api", false);
-        }
         handler(request, data, len, index, total);
     };
 }
