@@ -82,6 +82,14 @@
         <input id="cfg-auth-password" type="password" maxlength="63" placeholder="deixe vazio para manter a atual">
       </div>
       <div>
+        <label for="cfg-api-auth-user">Usuario API</label>
+        <input id="cfg-api-auth-user" type="text" maxlength="24" placeholder="api" spellcheck="false">
+      </div>
+      <div>
+        <label for="cfg-api-auth-password">Nova Senha API</label>
+        <input id="cfg-api-auth-password" type="password" maxlength="63" placeholder="deixe vazio para manter a atual">
+      </div>
+      <div>
         <label for="cfg-auto-hours">Intervalo de Checagem Online</label>
         <input id="cfg-auto-hours" type="number" min="1" max="168" step="1" value="12">
       </div>
@@ -129,6 +137,8 @@ const cfgHostname = document.getElementById('cfg-hostname');
 const cfgManifestUrl = document.getElementById('cfg-manifest-url');
 const cfgAuthUser = document.getElementById('cfg-auth-user');
 const cfgAuthPassword = document.getElementById('cfg-auth-password');
+const cfgApiAuthUser = document.getElementById('cfg-api-auth-user');
+const cfgApiAuthPassword = document.getElementById('cfg-api-auth-password');
 const cfgAutoCheck = document.getElementById('cfg-auto-check');
 const cfgAutoHours = document.getElementById('cfg-auto-hours');
 let otaPollTimer = null;
@@ -267,6 +277,8 @@ async function loadDeviceSettings(silent = false) {
     cfgManifestUrl.value = data.manifest_url || '';
     cfgAuthUser.value = data.auth_user || '';
     cfgAuthPassword.value = '';
+    cfgApiAuthUser.value = data.api_auth_user || '';
+    cfgApiAuthPassword.value = '';
     cfgAutoCheck.checked = !!data.ota_auto_check;
     cfgAutoHours.value = data.ota_auto_check_hours || 12;
 
@@ -279,8 +291,10 @@ async function loadDeviceSettings(silent = false) {
 
     const hostnameHint = data.hostname_hint ? `${data.hostname_hint}.local` : '-';
     const currentHost = data.hostname ? `${data.hostname}.local` : '-';
-    if (data.auth_default) {
-      setBoxStatus('cfg-security-status', `Credenciais padrao ainda ativas.\nTroque usuario e senha antes de colocar o produto em campo.\nSugestao de hostname unico: ${hostnameHint}`, 'err');
+    const webDefault = !!data.auth_default;
+    const apiDefault = !!data.api_auth_default;
+    if (webDefault || apiDefault) {
+      setBoxStatus('cfg-security-status', `Seguranca carregada.\nWeb/OTA: ${webDefault ? 'padrao' : 'personalizada'}\nAPI: ${apiDefault ? 'padrao' : 'personalizada'}\nSugestao de hostname unico: ${hostnameHint}`, 'err');
     } else {
       setBoxStatus('cfg-security-status', `Credenciais personalizadas ativas.\nHostname atual: ${currentHost}\nSugestao de hostname unico por unidade: ${hostnameHint}`, 'ok');
     }
@@ -300,6 +314,8 @@ async function saveDeviceSettings() {
   const manifestUrl = cfgManifestUrl.value.trim();
   const authUser = cfgAuthUser.value.trim();
   const authPassword = cfgAuthPassword.value.trim();
+  const apiAuthUser = cfgApiAuthUser.value.trim();
+  const apiAuthPassword = cfgApiAuthPassword.value.trim();
   const autoCheckHours = Number(cfgAutoHours.value || 0);
 
   if (!/^[a-z0-9-]{1,31}$/.test(hostname) || hostname.startsWith('-') || hostname.endsWith('-')) {
@@ -310,12 +326,20 @@ async function saveDeviceSettings() {
     setBoxStatus('cfg-save-status', 'Usuario invalido. Use letras, numeros, ponto, underline ou hifen.', 'err');
     return;
   }
+  if (!/^[a-zA-Z0-9._-]{1,24}$/.test(apiAuthUser)) {
+    setBoxStatus('cfg-save-status', 'Usuario API invalido. Use letras, numeros, ponto, underline ou hifen.', 'err');
+    return;
+  }
   if (manifestUrl && !/^https?:\/\//i.test(manifestUrl)) {
     setBoxStatus('cfg-save-status', 'Manifest invalido. Use URL iniciando com http:// ou https://', 'err');
     return;
   }
   if (authPassword && (authPassword.length < 8 || authPassword.length > 63)) {
     setBoxStatus('cfg-save-status', 'A senha precisa ter entre 8 e 63 caracteres.', 'err');
+    return;
+  }
+  if (apiAuthPassword && (apiAuthPassword.length < 8 || apiAuthPassword.length > 63)) {
+    setBoxStatus('cfg-save-status', 'A senha da API precisa ter entre 8 e 63 caracteres.', 'err');
     return;
   }
   if (!Number.isInteger(autoCheckHours) || autoCheckHours < 1 || autoCheckHours > 168) {
@@ -332,6 +356,8 @@ async function saveDeviceSettings() {
         manifest_url: manifestUrl,
         auth_user: authUser,
         auth_password: authPassword,
+        api_auth_user: apiAuthUser,
+        api_auth_password: apiAuthPassword,
         ota_auto_check: cfgAutoCheck.checked,
         ota_auto_check_hours: autoCheckHours
       })
@@ -351,6 +377,7 @@ async function saveDeviceSettings() {
       ? 'As credenciais ainda estao no padrao. Troque a senha para uso em campo.'
       : 'Credenciais personalizadas salvas. Aguarde o reboot para usar o novo login.', data.auth_default ? 'err' : 'ok');
     cfgAuthPassword.value = '';
+    cfgApiAuthPassword.value = '';
     setActionButtonsBusy(true);
   } catch (err) {
     setBoxStatus('cfg-save-status', `Nao foi possivel salvar a configuracao.\n${err.message}`, 'err');

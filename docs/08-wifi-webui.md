@@ -71,6 +71,27 @@ Senha: obd12345
 
 Essas credenciais saem de `firmware/include/config.h` no primeiro boot, mas depois podem ser trocadas na pagina `/ota.html` e ficam gravadas na NVS. Para uso em campo, troque a senha padrao antes da entrega.
 
+### Credencial dedicada da API
+
+As rotas em `/api/*` tambem aceitam uma credencial propria voltada para script, plugin e automacao.
+
+Padrao de fabrica:
+
+```text
+Usuario API: api
+Senha API: obdapi2026
+```
+
+Comportamento atual:
+
+- a WebUI continua funcionando com a credencial `Web/OTA`
+- a API aceita:
+  - a credencial `Web/OTA`
+  - ou a credencial dedicada da `API`
+- em caso de desafio novo, a API responde em `Basic auth`, o que simplifica `curl`, PowerShell e o plugin `YOU OBD Lab`
+
+Esses campos tambem podem ser alterados em `/ota.html` e ficam persistidos na NVS.
+
 ## URLs Importantes
 
 Painel principal:

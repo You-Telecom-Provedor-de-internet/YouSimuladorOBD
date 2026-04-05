@@ -119,6 +119,8 @@ constexpr char OTA_MANIFEST_URL[] =
     "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json";
 constexpr char WEB_AUTH_USER[] = "admin";
 constexpr char WEB_AUTH_PASSWORD[] = "obd12345";
+constexpr char API_AUTH_USER[] = "api";
+constexpr char API_AUTH_PASSWORD[] = "obdapi2026";
 constexpr uint16_t WEB_PORT = 80;
 constexpr uint32_t WS_BROADCAST_MS = 500;
 constexpr uint32_t OTA_HTTP_TIMEOUT_MS = 15000;

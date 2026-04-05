@@ -75,6 +75,8 @@ struct DeviceSettings {
     char manifest_url[256] = "";
     char auth_user[32] = "";
     char auth_password[64] = "";
+    char api_auth_user[32] = "";
+    char api_auth_password[64] = "";
     bool ota_auto_check = true;
     uint16_t ota_auto_check_hours = OTA_AUTO_CHECK_HOURS_DEFAULT;
 };
@@ -87,6 +89,8 @@ static const char* current_hostname();
 static const char* current_manifest_url();
 static const char* current_auth_user();
 static const char* current_auth_password();
+static const char* current_api_auth_user();
+static const char* current_api_auth_password();
 
 static void persist_active_protocol(uint8_t protocol) {
     if (protocol >= PROTO_COUNT) {
@@ -121,6 +125,41 @@ static T& protect(T& handler) {
     return handler;
 }
 
+static bool authenticate_api_request(AsyncWebServerRequest* request) {
+    if (request->authenticate(current_api_auth_user(), current_api_auth_password())) {
+        return true;
+    }
+
+    if (strcmp(current_api_auth_user(), current_auth_user()) != 0
+        || strcmp(current_api_auth_password(), current_auth_password()) != 0) {
+        if (request->authenticate(current_auth_user(), current_auth_password())) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+template <typename Handler>
+static auto protect_api_get(Handler handler) {
+    return [handler](AsyncWebServerRequest* request) {
+        if (!authenticate_api_request(request)) {
+            return request->requestAuthentication("youobd-api", false);
+        }
+        handler(request);
+    };
+}
+
+template <typename Handler>
+static auto protect_api_body(Handler handler) {
+    return [handler](AsyncWebServerRequest* request, uint8_t* data, size_t len, size_t index, size_t total) {
+        if (!authenticate_api_request(request)) {
+            return request->requestAuthentication("youobd-api", false);
+        }
+        handler(request, data, len, index, total);
+    };
+}
+
 static void copy_text(char* dst, size_t dst_size, const char* src) {
     if (dst_size == 0) {
         return;
@@ -148,9 +187,22 @@ static const char* current_auth_password() {
     return s_device_settings.auth_password[0] ? s_device_settings.auth_password : WEB_AUTH_PASSWORD;
 }
 
+static const char* current_api_auth_user() {
+    return s_device_settings.api_auth_user[0] ? s_device_settings.api_auth_user : API_AUTH_USER;
+}
+
+static const char* current_api_auth_password() {
+    return s_device_settings.api_auth_password[0] ? s_device_settings.api_auth_password : API_AUTH_PASSWORD;
+}
+
 static bool using_default_auth() {
     return strcmp(current_auth_user(), WEB_AUTH_USER) == 0
         && strcmp(current_auth_password(), WEB_AUTH_PASSWORD) == 0;
+}
+
+static bool using_default_api_auth() {
+    return strcmp(current_api_auth_user(), API_AUTH_USER) == 0
+        && strcmp(current_api_auth_password(), API_AUTH_PASSWORD) == 0;
 }
 
 static void build_hostname_hint() {
@@ -206,6 +258,8 @@ static void apply_device_settings_defaults() {
     copy_text(s_device_settings.manifest_url, sizeof(s_device_settings.manifest_url), OTA_MANIFEST_URL);
     copy_text(s_device_settings.auth_user, sizeof(s_device_settings.auth_user), WEB_AUTH_USER);
     copy_text(s_device_settings.auth_password, sizeof(s_device_settings.auth_password), WEB_AUTH_PASSWORD);
+    copy_text(s_device_settings.api_auth_user, sizeof(s_device_settings.api_auth_user), API_AUTH_USER);
+    copy_text(s_device_settings.api_auth_password, sizeof(s_device_settings.api_auth_password), API_AUTH_PASSWORD);
     s_device_settings.ota_auto_check = true;
     s_device_settings.ota_auto_check_hours = OTA_AUTO_CHECK_HOURS_DEFAULT;
 }
@@ -240,6 +294,20 @@ static void normalize_device_settings() {
     }
     copy_text(s_device_settings.auth_password, sizeof(s_device_settings.auth_password), auth_password);
 
+    String api_auth_user = s_device_settings.api_auth_user;
+    api_auth_user.trim();
+    if (!is_valid_auth_user(api_auth_user)) {
+        api_auth_user = API_AUTH_USER;
+    }
+    copy_text(s_device_settings.api_auth_user, sizeof(s_device_settings.api_auth_user), api_auth_user);
+
+    String api_auth_password = s_device_settings.api_auth_password;
+    api_auth_password.trim();
+    if (!is_valid_auth_password(api_auth_password)) {
+        api_auth_password = API_AUTH_PASSWORD;
+    }
+    copy_text(s_device_settings.api_auth_password, sizeof(s_device_settings.api_auth_password), api_auth_password);
+
     if (s_device_settings.ota_auto_check_hours < OTA_AUTO_CHECK_HOURS_MIN
         || s_device_settings.ota_auto_check_hours > OTA_AUTO_CHECK_HOURS_MAX) {
         s_device_settings.ota_auto_check_hours = OTA_AUTO_CHECK_HOURS_DEFAULT;
@@ -255,6 +323,8 @@ static void load_device_settings() {
     copy_text(s_device_settings.manifest_url, sizeof(s_device_settings.manifest_url), prefs.getString("manifest", s_device_settings.manifest_url));
     copy_text(s_device_settings.auth_user, sizeof(s_device_settings.auth_user), prefs.getString("user", s_device_settings.auth_user));
     copy_text(s_device_settings.auth_password, sizeof(s_device_settings.auth_password), prefs.getString("pass", s_device_settings.auth_password));
+    copy_text(s_device_settings.api_auth_user, sizeof(s_device_settings.api_auth_user), prefs.getString("api_user", s_device_settings.api_auth_user));
+    copy_text(s_device_settings.api_auth_password, sizeof(s_device_settings.api_auth_password), prefs.getString("api_pass", s_device_settings.api_auth_password));
     s_device_settings.ota_auto_check = prefs.getBool("ota_chk", s_device_settings.ota_auto_check);
     s_device_settings.ota_auto_check_hours = prefs.getUShort("ota_hrs", s_device_settings.ota_auto_check_hours);
     prefs.end();
@@ -269,6 +339,8 @@ static void save_device_settings() {
     prefs.putString("manifest", current_manifest_url());
     prefs.putString("user", current_auth_user());
     prefs.putString("pass", current_auth_password());
+    prefs.putString("api_user", current_api_auth_user());
+    prefs.putString("api_pass", current_api_auth_password());
     prefs.putBool("ota_chk", s_device_settings.ota_auto_check);
     prefs.putUShort("ota_hrs", s_device_settings.ota_auto_check_hours);
     prefs.end();
@@ -754,6 +826,8 @@ static void handle_get_device_settings(AsyncWebServerRequest* req) {
     doc["manifest_url"] = current_manifest_url();
     doc["auth_user"] = current_auth_user();
     doc["auth_default"] = using_default_auth();
+    doc["api_auth_user"] = current_api_auth_user();
+    doc["api_auth_default"] = using_default_api_auth();
     doc["ota_auto_check"] = s_device_settings.ota_auto_check;
     doc["ota_auto_check_hours"] = s_device_settings.ota_auto_check_hours;
     String out;
@@ -830,6 +904,36 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
         }
     }
 
+    if (doc["api_auth_user"].is<String>()) {
+        String api_auth_user = doc["api_auth_user"].as<String>();
+        api_auth_user.trim();
+        if (!is_valid_auth_user(api_auth_user)) {
+            req->send(400, "application/json", "{\"ok\":false,\"error\":\"usuario api invalido\"}");
+            return;
+        }
+        if (strcmp(next.api_auth_user, api_auth_user.c_str()) != 0) {
+            copy_text(next.api_auth_user, sizeof(next.api_auth_user), api_auth_user);
+            changed = true;
+            restart_required = true;
+        }
+    }
+
+    if (doc["api_auth_password"].is<String>()) {
+        String api_auth_password = doc["api_auth_password"].as<String>();
+        api_auth_password.trim();
+        if (!api_auth_password.isEmpty()) {
+            if (!is_valid_auth_password(api_auth_password)) {
+                req->send(400, "application/json", "{\"ok\":false,\"error\":\"senha api deve ter entre 8 e 63 caracteres\"}");
+                return;
+            }
+            if (strcmp(next.api_auth_password, api_auth_password.c_str()) != 0) {
+                copy_text(next.api_auth_password, sizeof(next.api_auth_password), api_auth_password);
+                changed = true;
+                restart_required = true;
+            }
+        }
+    }
+
     if (!doc["ota_auto_check"].isNull()) {
         bool ota_auto_check = doc["ota_auto_check"] | next.ota_auto_check;
         if (next.ota_auto_check != ota_auto_check) {
@@ -867,6 +971,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
     resp["hostname"] = String(current_hostname()) + ".local";
     resp["manifest_url"] = current_manifest_url();
     resp["auth_default"] = using_default_auth();
+    resp["api_auth_default"] = using_default_api_auth();
     String out;
     serializeJson(resp, out);
     req->send(200, "application/json", out);
@@ -2204,49 +2309,49 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     server.addHandler(&ws);
 
     // REST API
-    protect(server.on("/api/status",   HTTP_GET,  handle_get_status));
-    protect(server.on("/api/scenarios", HTTP_GET, handle_get_scenarios));
-    protect(server.on("/api/diagnostics", HTTP_GET, handle_get_diagnostics));
-    protect(server.on("/api/scenario", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_scenario));
-    protect(server.on("/api/dtcs",     HTTP_GET,  handle_get_dtcs));
-    protect(server.on("/api/dtcs/clear", HTTP_POST,
-        [](AsyncWebServerRequest* r){ handle_clear_dtcs(r); }));
+    server.on("/api/status", HTTP_GET, protect_api_get(handle_get_status));
+    server.on("/api/scenarios", HTTP_GET, protect_api_get(handle_get_scenarios));
+    server.on("/api/diagnostics", HTTP_GET, protect_api_get(handle_get_diagnostics));
+    server.on("/api/scenario", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_scenario));
+    server.on("/api/dtcs", HTTP_GET, protect_api_get(handle_get_dtcs));
+    server.on("/api/dtcs/clear", HTTP_POST,
+        protect_api_get([](AsyncWebServerRequest* r){ handle_clear_dtcs(r); }));
 
-    protect(server.on("/api/params",   HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_params));
-    protect(server.on("/api/protocol", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_protocol));
-    protect(server.on("/api/dtcs/add", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_add_dtc));
-    protect(server.on("/api/dtcs/remove", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_remove_dtc));
-    protect(server.on("/api/preset",   HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_preset));
-    protect(server.on("/api/mode",     HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_mode));
-    protect(server.on("/api/profiles", HTTP_GET,  handle_get_profiles));
-    protect(server.on("/api/profile",  HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_profile));
+    server.on("/api/params", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_params));
+    server.on("/api/protocol", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_protocol));
+    server.on("/api/dtcs/add", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_add_dtc));
+    server.on("/api/dtcs/remove", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_remove_dtc));
+    server.on("/api/preset", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_preset));
+    server.on("/api/mode", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_mode));
+    server.on("/api/profiles", HTTP_GET, protect_api_get(handle_get_profiles));
+    server.on("/api/profile", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_profile));
     // ⚠️ Registrar /api/wifi/scan ANTES de /api/wifi para evitar prefix-match
-    protect(server.on("/api/wifi/scan", HTTP_POST,
-        [](AsyncWebServerRequest* r){ handle_post_wifi_scan(r); }));
-    protect(server.on("/api/wifi/scan", HTTP_GET,  handle_get_wifi_scan));
-    protect(server.on("/api/wifi",      HTTP_GET,  handle_get_wifi));
-    protect(server.on("/api/wifi/remove", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_wifi_remove));
-    protect(server.on("/api/wifi",      HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_wifi));
-    protect(server.on("/api/reboot",   HTTP_POST,
-        [](AsyncWebServerRequest* r){ handle_post_reboot(r); }));
-    protect(server.on("/api/device/settings", HTTP_GET, handle_get_device_settings));
-    protect(server.on("/api/device/settings", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_device_settings));
-    protect(server.on("/api/ota/info", HTTP_GET, handle_get_ota_info));
-    protect(server.on("/api/ota/check", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_ota_check));
-    protect(server.on("/api/ota/online", HTTP_POST, [](AsyncWebServerRequest*){},
-        nullptr, handle_post_ota_online));
+    server.on("/api/wifi/scan", HTTP_POST,
+        protect_api_get([](AsyncWebServerRequest* r){ handle_post_wifi_scan(r); }));
+    server.on("/api/wifi/scan", HTTP_GET, protect_api_get(handle_get_wifi_scan));
+    server.on("/api/wifi", HTTP_GET, protect_api_get(handle_get_wifi));
+    server.on("/api/wifi/remove", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_wifi_remove));
+    server.on("/api/wifi", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_wifi));
+    server.on("/api/reboot", HTTP_POST,
+        protect_api_get([](AsyncWebServerRequest* r){ handle_post_reboot(r); }));
+    server.on("/api/device/settings", HTTP_GET, protect_api_get(handle_get_device_settings));
+    server.on("/api/device/settings", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_device_settings));
+    server.on("/api/ota/info", HTTP_GET, protect_api_get(handle_get_ota_info));
+    server.on("/api/ota/check", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_ota_check));
+    server.on("/api/ota/online", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
+        nullptr, protect_api_body(handle_post_ota_online));
     server.on("/ping", HTTP_GET, [](AsyncWebServerRequest* req) {
         req->send(200, "text/plain", "pong");
     });
