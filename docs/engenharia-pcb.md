@@ -72,11 +72,28 @@ Use como baseline combinado:
 - modelo comercial exato do `ESP32 DevKit 38 pinos`
 - footprint final do modulo `OLED SH1107`
 - footprint final do modulo `KY-040`
-- escolha final da TVS de entrada
-- topologia final da protecao contra inversao de polaridade
-- estrategia final de ESD no conector OBD
+- validacao final da TVS de entrada `SMCJ24A` contra o ambiente real de surto do produto
+- escolha final dos MOSFETs externos do `LM74502-Q1`
+- estrategia final de ESD no conector OBD com `PESD2CAN24LT-Q` no CAN e `ESDLIN1524BJ` na `K-Line`
 - forma final do conector OBD na placa: borda, chicote ou solucao hibrida
 - orcamento de corrente se o buck deixar de ser modulo pronto
+
+## Fechamento recomendado de protecao para a RevA
+
+Como recomendacao de engenharia para a primeira PCB robusta, usar:
+
+- `F1 1A` na entrada `+12V_OBD`
+- `TVS1 = SMCJ24A` unidirecional entre `+12V_PROT` e `GND`
+- `D_ESD_CAN1 = PESD2CAN24LT-Q` para `CANH/CANL`
+- `D_ESD_K1 = ESDLIN1524BJ` para `K-Line`
+- `UREV1 = LM74502-Q1` com `QREV1/QREV2` externos para reversao de polaridade e chaveamento de entrada
+
+Classificacao dessas escolhas:
+
+- `F1 1A`: confirmado na documentacao/EDA existente
+- demais itens acima: `inferido / hipotese fortemente recomendada`
+
+Esses componentes entram como baseline proposto para a PCB final, mas nao devem ser descritos como "confirmados no codigo".
 
 ## Conflitos e divergencias que nao devem ser resolvidos silenciosamente
 

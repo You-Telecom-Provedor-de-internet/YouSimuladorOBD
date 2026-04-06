@@ -25,6 +25,7 @@ Guiar o layout de uma placa:
 - colocar a `TVS` fisicamente antes da distribuicao para buck e `L9637D VS`
 - manter o retorno da `TVS` ao `GND` com caminho curto e de baixa impedancia
 - evitar que o surto passe pela placa inteira antes de encontrar o clamp
+- usar `SMCJ24A` como referencia pratica de `TVS1` para a RevA
 
 Status:
 
@@ -36,6 +37,8 @@ Status:
 - prever protecao ESD nas linhas externas acessiveis do OBD, principalmente `CANH`, `CANL` e `K`
 - colocar a protecao o mais perto possivel do conector externo
 - manter caminho curto entre o dispositivo de protecao e o plano de `GND`
+- usar `PESD2CAN24LT-Q` como referencia para `CANH/CANL`
+- usar `ESDLIN1524BJ` como referencia para `K-Line`
 
 Status:
 
@@ -45,7 +48,8 @@ Status:
 
 - incluir protecao de polaridade reversa na entrada `+12V`
 - preferir topologia com baixa perda se o envelope termico permitir
-- decidir entre diodo simples e MOSFET ideal somente quando o part number final do buck e a corrente alvo estiverem fechados
+- usar `LM74502-Q1` com MOSFETs externos como referencia principal de baixo risco/perda para a PCB final
+- o fechamento dos MOSFETs ainda depende da corrente alvo e da dissipacao
 
 Status:
 
@@ -181,7 +185,18 @@ Para uma revisao posterior, considerar:
 - part number exato do `ESP32 DevKit`
 - modulo final do `OLED`
 - modulo final do `KY-040`
-- TVS exata
-- estrategia final de reversao de polaridade
+- validacao final da `SMCJ24A` no ambiente real do produto
+- escolha final dos MOSFETs do `LM74502-Q1`
 - forma final do conector OBD
 - corrente alvo do buck se deixar de ser modulo pronto
+
+## 17. Componentes de protecao sugeridos para compra/prototipo de PCB
+
+- `F1`: fusivel `1A`
+- `TVS1`: `SMCJ24A` unidirecional
+- `D_ESD_CAN1`: `PESD2CAN24LT-Q`
+- `D_ESD_K1`: `ESDLIN1524BJ`
+- `UREV1`: `LM74502-Q1`
+- `QREV1/QREV2`: `2 x MOSFET N` externos, a fechar pela corrente alvo
+
+Esses itens sao recomendacoes de engenharia para a `RevA` e devem ser tratados como baseline proposto, nao como itens confirmados pelo firmware.

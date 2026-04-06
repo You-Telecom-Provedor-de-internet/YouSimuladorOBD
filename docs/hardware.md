@@ -149,6 +149,23 @@ ESP32 DevKit 3V3
 | desacoplamento local do `L9637D` | confirmado | docs + `hardware/pcb-handoff` + KiCad bootstrap | `CK1` e `CK2` de `100nF` obrigatorios |
 | desacoplamento local do `SN65HVD230` | confirmado como baseline de handoff | `hardware/pcb-handoff/bom-rev-a.csv` | `CCAN1 100nF` |
 
+### Fechamento recomendado de protecao para a RevA
+
+Os itens abaixo nao estao confirmados no codigo. Eles sao recomendacoes de engenharia para transformar a `RevA` em uma PCB mais robusta e mais objetiva para compra e montagem.
+
+| Funcao | Componente recomendado | Classificacao | Observacao pratica |
+|---|---|---|---|
+| fusivel de entrada | `F1 1A` | confirmado na documentacao/EDA existente + recomendacao de fechamento | manter como primeira barreira da linha `+12V_OBD` |
+| TVS da entrada `+12V` | `SMCJ24A` unidirecional | inferido / hipotese fortemente recomendada | encapsulamento `DO-214AB`; fica antes do buck e do `VS` do `L9637D` |
+| ESD para `CANH/CANL` | `PESD2CAN24LT-Q` | inferido / hipotese fortemente recomendada | componente automotivo de 2 linhas; colocar junto de `J1` |
+| ESD/surge para `K-Line` | `ESDLIN1524BJ` | inferido / hipotese fortemente recomendada | otimizado para barramentos tipo `LIN/CXPI`; serve bem como referencia para a linha `K` |
+| reversao de polaridade / load disconnect | `LM74502-Q1` + `2 x MOSFET N` back-to-back | inferido / hipotese fortemente recomendada | solucao de baixa perda para uso automotivo; os MOSFETs ainda precisam ser fechados pela corrente alvo |
+
+Observacoes:
+
+- Para prototipo rapido de bancada, um diodo Schottky em serie pode funcionar como protecao simples de reversao, mas nao e a recomendacao principal para a PCB final por perda termica e queda de tensao.
+- As protecoes acima devem ser tratadas como adicao recomendada sobre o baseline atual de bancada/handoff, nao como itens ja comprovados pelo firmware.
+
 ## Componentes provaveis
 
 | RefDes | Componente provavel | Papel | Classificacao |
@@ -157,6 +174,10 @@ ESP32 DevKit 3V3
 | `U1` | modulo `LM2596` ou buck equivalente | `12V -> 5V` | confirmado na documentacao/EDA existente |
 | `U2` | `SN65HVD230` | transceiver CAN 3V3 | confirmado na documentacao/EDA existente |
 | `U3` | `L9637D` | transceiver K-Line | confirmado na documentacao/EDA existente |
+| `TVS1` | `SMCJ24A` | protecao de surto na entrada `+12V` | inferido / hipotese fortemente recomendada |
+| `D_ESD_CAN1` | `PESD2CAN24LT-Q` | protecao ESD de `CANH/CANL` | inferido / hipotese fortemente recomendada |
+| `D_ESD_K1` | `ESDLIN1524BJ` | protecao ESD/surge da `K-Line` | inferido / hipotese fortemente recomendada |
+| `UREV1` | `LM74502-Q1` + MOSFETs externos | protecao de reversao de polaridade e chaveamento de entrada | inferido / hipotese fortemente recomendada |
 | `J1` | conector `OBD-II` 16 pinos | interface automotiva externa | confirmado na documentacao/EDA existente |
 | `DISP1` | modulo `OLED SH1107 128x128` | interface local | confirmado na documentacao/EDA existente |
 | `ENC1` | `KY-040` | encoder da UI | confirmado na documentacao/EDA existente |
@@ -231,7 +252,8 @@ Estas dependencias nao dependem de preferencia de software; elas sao impostas pe
 ## Itens inferidos / hipotese
 
 - TVS exata de entrada, encapsulamento e potencia ainda nao estao congelados
-- topologia final da protecao contra inversao de polaridade ainda nao esta fechada
+- a familia escolhida para a TVS de entrada foi fechada como recomendacao em `SMCJ24A`, mas a validacao final contra o ambiente real do produto ainda precisa ser feita
+- a topologia recomendada para reversao foi fechada em `LM74502-Q1` com MOSFETs externos, mas os MOSFETs e os resistores de apoio ainda precisam ser definidos pela corrente alvo
 - o part number exato do `ESP32 DevKit 38 pinos` comercial ainda precisa ser confirmado antes de liberar footprint final
 - footprint final do `OLED SH1107` e do `KY-040` depende do modulo real escolhido para a RevA
 - o ponto exato de amarracao entre `signal GND` e `chassis GND` no layout final ainda nao esta descrito em detalhe
