@@ -152,7 +152,11 @@ Correcao:
 
 - `ISO 9141-2`: validado
 - `KWP Fast`: validado
-- `KWP 5-baud`: stack implementado e pronto para mais validacao externa
+- `KWP 5-baud`: validado
+
+Observacao:
+
+- com o aceite de `ISO 9141-2`, `KWP Fast` e `KWP 5-baud`, este bloco `K-Line` deve ser tratado como base fechada para a captura da `RevA`
 
 ## Recomendacao para a placa de circuito impresso
 
@@ -160,3 +164,4 @@ Correcao:
 - manter `CK1` e `CK2` encostados no CI
 - usar `RK1` com folga termica
 - deixar ponto de teste em `K`, `TX_K`, `RX_K`, `VS` e `GND`
+- tratar este circuito como baseline de produto, nao mais apenas como experimento de bancada

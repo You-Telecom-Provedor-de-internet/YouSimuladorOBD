@@ -40,7 +40,7 @@ struct VehicleProfile {
 
 ## Catálogo de Perfis (22 veículos)
 
-Total atual da revisao: `23` perfis, incluindo o `peugeot_308_16thp`.
+Total atual da revisao: `24` perfis, incluindo `peugeot_308_16thp` e `kia_carens_20`.
 
 ### Fiat
 
@@ -98,6 +98,12 @@ Total atual da revisao: `23` perfis, incluindo o `peugeot_308_16thp`.
 |----|--------|-----|-----------|-----|---------|
 | `hyundai_hb20_10` | HB20 1.0 Sense | 2020-2024 | CAN 11b 500k | 750 | 90°C |
 | `hyundai_creta_16` | Creta 1.6 Pulse | 2017-2021 | CAN 11b 500k | 730 | 91°C |
+
+### Kia
+
+| ID | Modelo | Ano | Protocolo | RPM | Coolant |
+|----|--------|-----|-----------|-----|---------|
+| `kia_carens_20` | Carens EX 2.0L | 2008 | CAN 11b 500k | 720 | 93Â°C |
 
 ### Peugeot
 

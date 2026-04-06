@@ -15,6 +15,19 @@ Motivacao:
 - facilitar rework e substituicao do MCU em caso de falha
 - acelerar a passagem de protoboard para placa real
 
+## Estado atual do programa
+
+O prototipo fisico ja foi montado e validado em bancada com os barramentos alvo da `RevA`.
+
+Status consolidado:
+
+- `CAN`: validado
+- `ISO 9141-2`: validado
+- `KWP 5-baud`: validado
+- `KWP Fast`: validado
+
+Com isso, a `RevA` deixa de ser apenas uma hipotese de handoff e passa a ser a base imediata para a primeira `PCB` orientada a produto.
+
 ## Estrategia de integracao da RevA
 
 ### MCU

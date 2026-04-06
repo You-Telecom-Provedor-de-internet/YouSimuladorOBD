@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200">
+  <defs>
+    <style>
+      .bg { fill: #f7f7f4; }
+      .title { font: 700 34px 'Segoe UI', Arial, sans-serif; fill: #102a43; }
+      .subtitle { font: 500 18px 'Segoe UI', Arial, sans-serif; fill: #486581; }
+      .block-title { font: 700 22px 'Segoe UI', Arial, sans-serif; fill: #102a43; }
+      .text { font: 16px 'Segoe UI', Arial, sans-serif; fill: #243b53; }
+      .small { font: 14px 'Segoe UI', Arial, sans-serif; fill: #486581; }
+      .net { font: 700 15px 'Segoe UI', Arial, sans-serif; fill: #7c2d12; }
+      .box { stroke: #243b53; stroke-width: 2.5; rx: 18; ry: 18; }
+      .power { fill: #fff7ed; }
+      .obd { fill: #eff6ff; }
+      .mcu { fill: #ecfdf3; }
+      .ui { fill: #f5f3ff; }
+      .note { fill: #fffbea; stroke: #92400e; stroke-width: 2; rx: 18; ry: 18; }
+      .wire-power { stroke: #b91c1c; stroke-width: 4; fill: none; }
+      .wire-signal { stroke: #1d4ed8; stroke-width: 3; fill: none; }
+      .wire-can { stroke: #0f766e; stroke-width: 3; fill: none; }
+      .wire-k { stroke: #7c3aed; stroke-width: 3; fill: none; }
+      .wire-ui { stroke: #475569; stroke-width: 2.5; fill: none; }
+      .dashed { stroke-dasharray: 10 8; }
+    </style>
+    <marker id="arrow-red" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#b91c1c"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#1d4ed8"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#0f766e"/>
+    </marker>
+    <marker id="arrow-violet" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#7c3aed"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1800" height="1200"/>
+
+  <text class="title" x="70" y="70">YouSimuladorOBD RevA - Modulos Utilizados e Ligacao dos Pinos</text>
+  <text class="subtitle" x="70" y="105">Carrier para ESP32 DevKit 38 pinos | Protocolos validados: CAN, ISO 9141-2, KWP 5-baud, KWP Fast</text>
+
+  <rect class="box obd" x="70" y="170" width="280" height="280"/>
+  <text class="block-title" x="95" y="210">J1 - Conector OBD2</text>
+  <text class="text" x="95" y="250">Pin 4  -> GND</text>
+  <text class="text" x="95" y="280">Pin 5  -> GND</text>
+  <text class="text" x="95" y="310">Pin 6  -> CANH</text>
+  <text class="text" x="95" y="340">Pin 7  -> K-Line</text>
+  <text class="text" x="95" y="370">Pin 14 -> CANL</text>
+  <text class="text" x="95" y="400">Pin 16 -> +12V bateria</text>
+  <text class="small" x="95" y="432">Pin 15 (L-Line): NC</text>
+
+  <rect class="box power" x="420" y="150" width="360" height="330"/>
+  <text class="block-title" x="445" y="190">Power Input</text>
+  <text class="text" x="445" y="230">F1 = Fusivel 1A</text>
+  <text class="text" x="445" y="260">TVS1 = SMCJ24A</text>
+  <text class="text" x="445" y="290">UREV1 = LM74502-Q1</text>
+  <text class="text" x="445" y="320">QREV1/QREV2 = 2x MOSFET N</text>
+  <text class="text" x="445" y="350">U1 = Buck 12V -> 5V</text>
+  <text class="small" x="445" y="388">Saidas:</text>
+  <text class="text" x="445" y="418">+12V_PROT</text>
+  <text class="text" x="445" y="446">+5V_SYS</text>
+  <text class="text" x="585" y="446">+3V3_SYS via DevKit</text>
+
+  <rect class="box obd" x="420" y="560" width="360" height="330"/>
+  <text class="block-title" x="445" y="600">OBD Transceivers</text>
+  <text class="text" x="445" y="640">U2 = SN65HVD230 (CAN)</text>
+  <text class="small" x="465" y="670">CCAN1 = 100nF</text>
+  <text class="small" x="465" y="695">RCAN1 = 120R opcional</text>
+  <text class="text" x="445" y="735">U3 = L9637D (K-Line)</text>
+  <text class="small" x="465" y="765">RK1 = 510R entre K e VS</text>
+  <text class="small" x="465" y="790">RLI1 = 10k entre LI e VS</text>
+  <text class="small" x="465" y="815">CK1 = 100nF VCC-GND</text>
+  <text class="small" x="465" y="840">CK2 = 100nF VS-GND</text>
+
+  <rect class="box mcu" x="900" y="260" width="420" height="500"/>
+  <text class="block-title" x="925" y="300">MCU1 - ESP32 DevKit 38 pinos</text>
+  <text class="text" x="925" y="338">VIN  <- +5V_SYS</text>
+  <text class="text" x="925" y="366">3V3  -> +3V3_SYS</text>
+  <text class="text" x="925" y="394">GND  -> GND comum</text>
+  <text class="text" x="925" y="438">GPIO4  -> CAN TX</text>
+  <text class="text" x="925" y="466">GPIO5  <- CAN RX</text>
+  <text class="text" x="925" y="494">GPIO17 -> K-Line TX</text>
+  <text class="text" x="925" y="522">GPIO16 <- K-Line RX</text>
+  <text class="text" x="925" y="560">GPIO21 -> OLED SDA</text>
+  <text class="text" x="925" y="588">GPIO22 -> OLED SCL</text>
+  <text class="text" x="925" y="626">GPIO12 -> ENC CLK</text>
+  <text class="text" x="925" y="654">GPIO13 -> ENC DT</text>
+  <text class="text" x="925" y="682">GPIO15 -> ENC SW</text>
+  <text class="small" x="925" y="718">GPIO32/33/25/26/27/14 -> botoes</text>
+  <text class="small" x="925" y="744">GPIO34/35/36 -> DIP 3 bits</text>
+
+  <rect class="box ui" x="1440" y="150" width="270" height="180"/>
+  <text class="block-title" x="1465" y="190">OLED SH1107 I2C</text>
+  <text class="text" x="1465" y="230">VCC -> 3V3</text>
+  <text class="text" x="1465" y="258">GND -> GND</text>
+  <text class="text" x="1465" y="286">SDA -> GPIO21</text>
+  <text class="text" x="1465" y="314">SCL -> GPIO22</text>
+
+  <rect class="box ui" x="1440" y="370" width="270" height="170"/>
+  <text class="block-title" x="1465" y="410">Encoder KY-040</text>
+  <text class="text" x="1465" y="448">CLK -> GPIO12</text>
+  <text class="text" x="1465" y="476">DT  -> GPIO13</text>
+  <text class="text" x="1465" y="504">SW  -> GPIO15</text>
+  <text class="small" x="1465" y="530">VCC 3V3 / GND comum</text>
+
+  <rect class="box ui" x="1440" y="580" width="270" height="220"/>
+  <text class="block-title" x="1465" y="620">UI Local</text>
+  <text class="text" x="1465" y="655">Botoes:</text>
+  <text class="small" x="1485" y="682">GPIO32 PREV</text>
+  <text class="small" x="1485" y="706">GPIO33 NEXT</text>
+  <text class="small" x="1485" y="730">GPIO25 UP</text>
+  <text class="small" x="1485" y="754">GPIO26 DOWN</text>
+  <text class="small" x="1485" y="778">GPIO27 OK</text>
+  <text class="small" x="1485" y="802">GPIO14 PROTO</text>
+
+  <rect class="box ui" x="1440" y="840" width="270" height="220"/>
+  <text class="block-title" x="1465" y="880">DIP + LEDs</text>
+  <text class="small" x="1465" y="915">GPIO34 -> DIP bit 0</text>
+  <text class="small" x="1465" y="940">GPIO35 -> DIP bit 1</text>
+  <text class="small" x="1465" y="965">GPIO36 -> DIP bit 2</text>
+  <text class="small" x="1465" y="998">GPIO19 -> LED CAN</text>
+  <text class="small" x="1465" y="1023">GPIO18 -> LED K-Line</text>
+  <text class="small" x="1465" y="1048">GPIO23 -> LED TX</text>
+
+  <rect class="note" x="70" y="960" width="1250" height="170"/>
+  <text class="block-title" x="95" y="1000">Observacoes obrigatorias para quem vai fechar o esquema/PCB</text>
+  <text class="text" x="95" y="1036">1. GPIO34 / GPIO35 / GPIO36 sao somente entrada e precisam de pull-up externo (10k para 3V3).</text>
+  <text class="text" x="95" y="1064">2. OLED trabalha em 3V3. Manter keepout da antena do ESP32 DevKit e acesso mecanico ao USB.</text>
+  <text class="text" x="95" y="1092">3. Na K-Line, RK1 510R, RLI1 10k, CK1 100nF e CK2 100nF sao obrigatorios para reproduzir a bancada validada.</text>
+
+  <path class="wire-power" d="M350 400 L420 400" marker-end="url(#arrow-red)"/>
+  <text class="net" x="360" y="390">+12V_OBD</text>
+
+  <path class="wire-power" d="M350 270 L420 270" marker-end="url(#arrow-red)"/>
+  <text class="net" x="355" y="260">GND</text>
+
+  <path class="wire-power" d="M780 446 L900 446" marker-end="url(#arrow-red)"/>
+  <text class="net" x="802" y="436">+5V_SYS</text>
+
+  <path class="wire-power" d="M780 418 L820 418 L820 680 L900 680" marker-end="url(#arrow-red)"/>
+  <text class="net" x="792" y="408">+12V_PROT</text>
+
+  <path class="wire-power dashed" d="M1110 366 L1110 180 L1440 180" marker-end="url(#arrow-red)"/>
+  <text class="net" x="1185" y="170">+3V3_SYS</text>
+
+  <path class="wire-can" d="M350 310 L420 310 L420 650" marker-end="url(#arrow-green)"/>
+  <text class="net" x="358" y="300">CANH</text>
+
+  <path class="wire-can" d="M350 370 L400 370 L400 675 L420 675" marker-end="url(#arrow-green)"/>
+  <text class="net" x="355" y="360">CANL</text>
+
+  <path class="wire-k" d="M350 340 L390 340 L390 745 L420 745" marker-end="url(#arrow-violet)"/>
+  <text class="net" x="355" y="330">KLINE</text>
+
+  <path class="wire-signal" d="M900 438 L780 438 L780 620" marker-end="url(#arrow-blue)"/>
+  <text class="net" x="785" y="610">CAN_TX</text>
+
+  <path class="wire-signal" d="M780 648 L900 466" marker-end="url(#arrow-blue)"/>
+  <text class="net" x="792" y="640">CAN_RX</text>
+
+  <path class="wire-k" d="M900 494 L810 494 L810 760 L780 760" marker-end="url(#arrow-violet)"/>
+  <text class="net" x="815" y="486">K_TX</text>
+
+  <path class="wire-k" d="M780 790 L835 790 L835 522 L900 522" marker-end="url(#arrow-violet)"/>
+  <text class="net" x="786" y="780">K_RX</text>
+
+  <path class="wire-ui" d="M1320 560 L1440 286" marker-end="url(#arrow-blue)"/>
+  <text class="net" x="1340" y="455">GPIO21 SDA</text>
+
+  <path class="wire-ui" d="M1320 588 L1460 314" marker-end="url(#arrow-blue)"/>
+  <text class="net" x="1350" y="515">GPIO22 SCL</text>
+
+  <path class="wire-ui" d="M1320 626 L1440 448" marker-end="url(#arrow-blue)"/>
+  <text class="net" x="1340" y="530">GPIO12 CLK</text>
+
+  <path class="wire-ui" d="M1320 654 L1440 476" marker-end="url(#arrow-blue)"/>
+  <text class="net" x="1340" y="575">GPIO13 DT</text>
+
+  <path class="wire-ui" d="M1320 682 L1440 504" marker-end="url(#arrow-blue)"/>
+  <text class="net" x="1340" y="620">GPIO15 SW</text>
+
+  <path class="wire-ui" d="M1320 718 L1440 680" marker-end="url(#arrow-blue)"/>
+  <text class="net" x="1335" y="708">BTN GPIOs</text>
+
+  <path class="wire-ui" d="M1320 744 L1440 930" marker-end="url(#arrow-blue)"/>
+  <text class="net" x="1332" y="838">DIP GPIO34/35/36</text>
+
+  <path class="wire-ui" d="M1300 760 L1440 1006" marker-end="url(#arrow-blue)"/>
+  <text class="net" x="1315" y="900">LED GPIO19/18/23</text>
+</svg>

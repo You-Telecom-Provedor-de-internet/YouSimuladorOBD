@@ -223,6 +223,12 @@ static const VehicleProfile VEHICLE_PROFILES[] = {
       PROTO_CAN_11B_500K,
       800, 0, 89, 29, 4.0f, 36, 13, 13.0f, 21, 65,
       "VF1BSF20H39123456" },
+
+    { "kia_carens_20",
+      "Kia", "Carens EX 2.0L", "2008",
+      PROTO_CAN_11B_500K,
+      720, 0, 93, 31, 4.9f, 41, 15, 11.0f, 24, 72,
+      "KNAFG521A85012345" },
 };
 
 constexpr uint8_t VEHICLE_PROFILE_COUNT =

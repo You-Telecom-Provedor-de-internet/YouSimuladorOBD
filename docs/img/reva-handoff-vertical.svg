@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+  <defs>
+    <style>
+      .bg { fill: #f5f7fa; }
+      .header { fill: #102a43; }
+      .header-title { font: 700 34px 'Segoe UI', Arial, sans-serif; fill: #ffffff; }
+      .header-sub { font: 500 18px 'Segoe UI', Arial, sans-serif; fill: #d9e2ec; }
+      .card { fill: #ffffff; stroke: #cbd2d9; stroke-width: 2; rx: 24; ry: 24; }
+      .card-blue { fill: #eff6ff; stroke: #93c5fd; stroke-width: 2; rx: 24; ry: 24; }
+      .card-green { fill: #ecfdf3; stroke: #86efac; stroke-width: 2; rx: 24; ry: 24; }
+      .card-orange { fill: #fff7ed; stroke: #fdba74; stroke-width: 2; rx: 24; ry: 24; }
+      .title { font: 700 24px 'Segoe UI', Arial, sans-serif; fill: #102a43; }
+      .text { font: 16px 'Segoe UI', Arial, sans-serif; fill: #243b53; }
+      .small { font: 14px 'Segoe UI', Arial, sans-serif; fill: #486581; }
+      .foot { font: 13px 'Segoe UI', Arial, sans-serif; fill: #7b8794; }
+      .net { font: 700 15px 'Segoe UI', Arial, sans-serif; fill: #7c2d12; }
+      .line-power { stroke: #b91c1c; stroke-width: 4; fill: none; }
+      .line-can { stroke: #0f766e; stroke-width: 3; fill: none; }
+      .line-k { stroke: #7c3aed; stroke-width: 3; fill: none; }
+      .line-ui { stroke: #334e68; stroke-width: 2.5; fill: none; }
+    </style>
+    <marker id="ar-red" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#b91c1c"/>
+    </marker>
+    <marker id="ar-green" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#0f766e"/>
+    </marker>
+    <marker id="ar-violet" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#7c3aed"/>
+    </marker>
+    <marker id="ar-blue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#334e68"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1080" height="1920"/>
+
+  <rect class="header" x="0" y="0" width="1080" height="170"/>
+  <text class="header-title" x="60" y="70">YouSimuladorOBD RevA</text>
+  <text class="header-title" x="60" y="112">Handoff Tecnico - Modulos e Ligacao dos Pinos</text>
+  <text class="header-sub" x="60" y="145">Base validada em bancada | pronta para fechamento de esquema e PCB</text>
+
+  <rect class="card-blue" x="50" y="210" width="980" height="150"/>
+  <text class="title" x="80" y="255">Protocolos validados</text>
+  <text class="text" x="80" y="292">CAN 11b 500k | CAN 11b 250k | CAN 29b 500k | CAN 29b 250k</text>
+  <text class="text" x="80" y="322">ISO 9141-2 | KWP 5-baud | KWP Fast</text>
+
+  <rect class="card-blue" x="50" y="400" width="260" height="300"/>
+  <text class="title" x="75" y="445">J1 - OBD2</text>
+  <text class="text" x="75" y="485">Pin 4  -> GND</text>
+  <text class="text" x="75" y="515">Pin 5  -> GND</text>
+  <text class="text" x="75" y="545">Pin 6  -> CANH</text>
+  <text class="text" x="75" y="575">Pin 7  -> K-Line</text>
+  <text class="text" x="75" y="605">Pin 14 -> CANL</text>
+  <text class="text" x="75" y="635">Pin 16 -> +12V</text>
+  <text class="small" x="75" y="670">Pin 15: NC</text>
+
+  <rect class="card-orange" x="370" y="400" width="300" height="300"/>
+  <text class="title" x="395" y="445">Power Input</text>
+  <text class="text" x="395" y="485">F1 = Fusivel 1A</text>
+  <text class="text" x="395" y="515">TVS1 = SMCJ24A</text>
+  <text class="text" x="395" y="545">UREV1 = LM74502-Q1</text>
+  <text class="text" x="395" y="575">QREV1/QREV2 = MOSFET N</text>
+  <text class="text" x="395" y="605">U1 = Buck 12V -> 5V</text>
+  <text class="small" x="395" y="645">Saidas: +12V_PROT / +5V_SYS</text>
+  <text class="small" x="395" y="672">+3V3 vem do proprio DevKit</text>
+
+  <rect class="card-blue" x="730" y="400" width="300" height="300"/>
+  <text class="title" x="755" y="445">OBD Frontend</text>
+  <text class="text" x="755" y="485">U2 = SN65HVD230</text>
+  <text class="small" x="775" y="512">CCAN1 = 100nF</text>
+  <text class="small" x="775" y="536">RCAN1 = 120R opcional</text>
+  <text class="text" x="755" y="580">U3 = L9637D</text>
+  <text class="small" x="775" y="607">RK1 = 510R entre K e VS</text>
+  <text class="small" x="775" y="631">RLI1 = 10k entre LI e VS</text>
+  <text class="small" x="775" y="655">CK1 = 100nF VCC-GND</text>
+  <text class="small" x="775" y="679">CK2 = 100nF VS-GND</text>
+
+  <rect class="card-green" x="140" y="770" width="800" height="470"/>
+  <text class="title" x="170" y="815">MCU1 - ESP32 DevKit 38 pinos</text>
+  <text class="text" x="170" y="860">VIN <- +5V_SYS</text>
+  <text class="text" x="170" y="892">3V3 -> +3V3_SYS</text>
+  <text class="text" x="170" y="924">GND -> GND comum</text>
+  <text class="text" x="170" y="972">GPIO4  -> CAN TX</text>
+  <text class="text" x="170" y="1004">GPIO5  <- CAN RX</text>
+  <text class="text" x="170" y="1036">GPIO17 -> K-Line TX</text>
+  <text class="text" x="170" y="1068">GPIO16 <- K-Line RX</text>
+  <text class="text" x="470" y="972">GPIO21 -> OLED SDA</text>
+  <text class="text" x="470" y="1004">GPIO22 -> OLED SCL</text>
+  <text class="text" x="470" y="1036">GPIO12 -> ENC CLK</text>
+  <text class="text" x="470" y="1068">GPIO13 -> ENC DT</text>
+  <text class="text" x="470" y="1100">GPIO15 -> ENC SW</text>
+  <text class="small" x="170" y="1148">GPIO32/33/25/26/27/14 -> Botoes</text>
+  <text class="small" x="170" y="1178">GPIO34/35/36 -> DIP 3 bits</text>
+  <text class="small" x="470" y="1148">GPIO19/18/23 -> LEDs de status</text>
+  <text class="small" x="470" y="1178">GPIO2 -> LED onboard</text>
+
+  <rect class="card" x="50" y="1290" width="300" height="220"/>
+  <text class="title" x="75" y="1335">OLED SH1107</text>
+  <text class="text" x="75" y="1375">VCC -> 3V3</text>
+  <text class="text" x="75" y="1407">GND -> GND</text>
+  <text class="text" x="75" y="1439">SDA -> GPIO21</text>
+  <text class="text" x="75" y="1471">SCL -> GPIO22</text>
+
+  <rect class="card" x="390" y="1290" width="300" height="220"/>
+  <text class="title" x="415" y="1335">Encoder KY-040</text>
+  <text class="text" x="415" y="1375">CLK -> GPIO12</text>
+  <text class="text" x="415" y="1407">DT -> GPIO13</text>
+  <text class="text" x="415" y="1439">SW -> GPIO15</text>
+  <text class="small" x="415" y="1471">VCC 3V3 / GND comum</text>
+
+  <rect class="card" x="730" y="1290" width="300" height="220"/>
+  <text class="title" x="755" y="1335">UI Local</text>
+  <text class="small" x="755" y="1375">Botoes -> GPIO32/33/25/26/27/14</text>
+  <text class="small" x="755" y="1405">DIP -> GPIO34/35/36</text>
+  <text class="small" x="755" y="1435">LEDs -> GPIO19/18/23</text>
+  <text class="small" x="755" y="1465">DIP precisa de 3x 10k pull-up</text>
+
+  <rect class="card-orange" x="50" y="1570" width="980" height="250"/>
+  <text class="title" x="80" y="1615">Observacoes obrigatorias para a empresa da placa</text>
+  <text class="text" x="80" y="1655">1. K-Line validada com L9637D + RK1 510R + RLI1 10k + CK1 100nF + CK2 100nF.</text>
+  <text class="text" x="80" y="1690">2. GPIO34 / GPIO35 / GPIO36 sao somente entrada e precisam de pull-up externo.</text>
+  <text class="text" x="80" y="1725">3. OLED em 3V3. Manter keepout da antena do ESP32 DevKit e acesso ao USB.</text>
+  <text class="text" x="80" y="1760">4. Deixar pontos de teste em +12V, +5V, +3V3, GND, CANH, CANL, K, TX_K e RX_K.</text>
+  <text class="small" x="80" y="1798">Documento visual de apoio. A fonte tecnica oficial continua sendo docs/hardware.md + docs/pinout.md + docs/engenharia-pcb.md</text>
+
+  <path class="line-power" d="M310 635 L370 635" marker-end="url(#ar-red)"/>
+  <text class="net" x="318" y="625">+12V</text>
+
+  <path class="line-power" d="M520 700 L520 770" marker-end="url(#ar-red)"/>
+  <text class="net" x="535" y="744">+5V_SYS</text>
+
+  <path class="line-power" d="M620 860 L620 700 L880 700 L880 770" marker-end="url(#ar-red)"/>
+  <text class="net" x="895" y="740">+3V3_SYS</text>
+
+  <path class="line-can" d="M310 545 L730 545" marker-end="url(#ar-green)"/>
+  <text class="net" x="500" y="535">CANH</text>
+
+  <path class="line-can" d="M310 605 L710 605 L710 575 L730 575" marker-end="url(#ar-green)"/>
+  <text class="net" x="495" y="595">CANL</text>
+
+  <path class="line-k" d="M310 575 L700 575 L700 610 L730 610" marker-end="url(#ar-violet)"/>
+  <text class="net" x="505" y="565">K-Line</text>
+
+  <path class="line-can" d="M830 490 L900 490 L900 972 L355 972" marker-end="url(#ar-green)"/>
+  <text class="net" x="760" y="480">CAN TX/RX</text>
+
+  <path class="line-k" d="M830 600 L920 600 L920 1036 L355 1036" marker-end="url(#ar-violet)"/>
+  <text class="net" x="765" y="590">K TX/RX</text>
+
+  <path class="line-ui" d="M620 1000 L620 1290 L200 1290" marker-end="url(#ar-blue)"/>
+  <text class="net" x="630" y="1230">OLED SDA/SCL</text>
+
+  <path class="line-ui" d="M650 1060 L650 1290 L540 1290" marker-end="url(#ar-blue)"/>
+  <text class="net" x="660" y="1230">ENC GPIOs</text>
+
+  <path class="line-ui" d="M760 1160 L820 1160 L820 1290" marker-end="url(#ar-blue)"/>
+  <text class="net" x="830" y="1230">Botoes / DIP / LEDs</text>
+
+  <text class="foot" x="60" y="1880">Arquivo: docs/img/reva-handoff-vertical.svg</text>
+  <text class="foot" x="760" y="1880">Uso sugerido: preview tecnico-comercial / WhatsApp / handoff inicial</text>
+</svg>
