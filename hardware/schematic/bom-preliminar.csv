@@ -1,0 +1,27 @@
+RefDes,Componente,Valor / Modelo,Função,Encapsulamento sugerido,Observações
+J1,Conector OBD-II,J1962 femea 16 vias,Interface automotiva externa,Conector de borda ou chicote,Modelo exato a confirmar antes do layout final
+F1,Fusivel de entrada,1A,Protecao primaria da linha +12V,Automotivo radial ou SMD de potencia,Confirmado na documentacao/EDA existente; part number final em aberto
+TVS1,TVS automotiva,SMBJ ou SMCJ automotiva,Protecao contra surto na entrada +12V,SMBJ ou SMCJ,Hipotese fortemente recomendada para a PCB final; nao confirmada na bancada base
+QREV1 ou DREV1,Elemento de reversao de polaridade,Topologia a definir,Protecao contra inversao de polaridade,Power SMD ou diodo automotivo,Hipotese; escolher com base em perda termica e espaco
+U1,Buck regulator,LM2596 ou equivalente,Conversao 12V para 5V,Modulo ou footprint equivalente,Baseline confirmado na documentacao/EDA existente
+MCU1,Modulo MCU,ESP32 DevKit 38 pinos,MCU principal,Modulo comercial plugavel,RevA congelada como carrier para DevKit
+JMCU1,JMCU2,Headers femea,1x19 2.54 mm,Carrier do ESP32 DevKit,Through-hole,Confirmar geometria com o DevKit comercial final
+U2,Transceiver CAN,SN65HVD230,Interface fisica CAN,SOIC-8,Confirmado na documentacao/EDA existente
+CCAN1,Capacitor de desacoplamento,100nF,Desacoplamento local do U2,X7R 16V ou superior,Colocar junto do U2
+RCAN1,Resistor de terminacao,120R,Terminacao CAN opcional,1206 ou jumper,DNP ou jumper conforme estrategia final de barramento
+U3,Transceiver K-Line,L9637D,Interface fisica K-Line,SOIC-8,Confirmado na documentacao/EDA existente
+RK1,Resistor,510R,Pull-up de K para VS,>= 0.5W axial ou SMD de potencia,Obrigatorio para reproduzir a bancada validada
+RLI1,Resistor,10k,Bias de LI para VS,0805 ou 1206,Obrigatorio para reproduzir a bancada validada
+CK1,Capacitor,100nF,Desacoplamento VCC do L9637D,X7R 50V,Colocar encostado em U3 VCC-GND
+CK2,Capacitor,100nF,Desacoplamento VS do L9637D,X7R 50V,Colocar encostado em U3 VS-GND
+DISP1,Display OLED,SH1107 128x128 modulo,Interface local visual,Modulo I2C por header,Footprint final depende do modulo real escolhido
+JDISP1,Header do OLED,1x4 2.54 mm,Conexao do modulo OLED,Through-hole,RevA usa modulo por header
+ENC1,Encoder rotativo,KY-040,Entrada de navegacao local,Modulo ou footprint equivalente,Footprint final depende do modulo real escolhido
+JENC1,Header do encoder,1x5 2.54 mm,Conexao do modulo encoder,Through-hole,RevA usa modulo por header
+SW1,DIP switch,3 posicoes,Selecao de protocolo no boot,Through-hole ou SMD,Confirmado na documentacao/EDA existente
+RDIP1-RDIP3,Resistores de pull-up,10k,Pull-up externo dos GPIO34-36,0805 ou 1206,Obrigatorio porque esses GPIOs nao tem pull-up interno
+SW2-SW7,Botoes momentaneos,Tact switch,Interface local,Through-hole ou SMD,Seis botoes: PREV NEXT UP DOWN OK PROTO
+D1-D3,LEDs de status,LED 3 mm ou SMD,Indicacao de CAN K-Line e TX,3 mm THT ou 0805/1206,Escolha conforme painel mecanico
+RLED1-RLED3,Resistores serie de LED,330R,Limitacao de corrente dos LEDs,0805 ou 1206,Confirmado na documentacao/EDA existente
+MH1-MH4,Furos de fixacao,M3,Fixacao da placa,NPTH M3,Confirmados na documentacao/EDA existente
+TP1-TP9,Pontos de teste,Test point,Depuracao de bancada,Test point SMD ou pino,Minimos recomendados: +12V +5V +3V3 GND CANH CANL K TX_K RX_K
