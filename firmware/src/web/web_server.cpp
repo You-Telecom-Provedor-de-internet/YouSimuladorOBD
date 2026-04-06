@@ -1067,6 +1067,16 @@ static void handle_head_page(AsyncWebServerRequest* req, const char* content_typ
     req->send(resp);
 }
 
+static void handle_send_fs_page(AsyncWebServerRequest* req, const char* path, const char* content_type) {
+    if (!LittleFS.exists(path)) {
+        req->send(404, "text/plain; charset=UTF-8", "Arquivo nao encontrado");
+        return;
+    }
+
+    AsyncWebServerResponse* resp = req->beginResponse(LittleFS, path, content_type);
+    req->send(resp);
+}
+
 // OBD-II DTC encoding: bits 15-14 = system (00=P 01=C 10=B 11=U)
 // P0300 → 0x0300, B0001 → 0x8001, C0035 → 0x4035, U0100 → 0xC100
 static uint16_t dtcStrToVal(const char* code) {
@@ -1138,8 +1148,8 @@ static const char* simModeSourceSlug(uint8_t source) {
 static const char* simModeSourceLabel(uint8_t source) {
     switch (source) {
         case SIM_MODE_SOURCE_USER: return "Escolha manual";
-        case SIM_MODE_SOURCE_SCENARIO: return "Forcado pela camada diagnostica";
-        case SIM_MODE_SOURCE_PRESET: return "Aplicado por preset rapido";
+        case SIM_MODE_SOURCE_SCENARIO: return "Forçado pela camada diagnóstica";
+        case SIM_MODE_SOURCE_PRESET: return "Aplicado por preset rápido";
         default: return "Restaurado no boot";
     }
 }
@@ -1190,8 +1200,8 @@ static const char* effectiveDtcSourceSlug(const SimulationState& snap) {
 
 static const char* effectiveDtcSourceLabel(const SimulationState& snap) {
     const char* slug = effectiveDtcSourceSlug(snap);
-    if (strcmp(slug, "mixed") == 0) return "Mescla de cenario e injecao manual";
-    if (strcmp(slug, "scenario") == 0) return "Derivados da camada diagnostica";
+    if (strcmp(slug, "mixed") == 0) return "Mescla de cenário e injeção manual";
+    if (strcmp(slug, "scenario") == 0) return "Derivados da camada diagnóstica";
     if (strcmp(slug, "manual") == 0) return "Injetados manualmente";
     return "Sem DTCs efetivos";
 }
@@ -1209,27 +1219,27 @@ static String profileSummaryText(const VehicleProfile* profile, const Simulation
 static String precedenceNoticeMessage(const SimulationState& snap) {
     switch (simulation_precedence_snapshot().notice_code) {
         case SIM_NOTICE_PROFILE_APPLIED:
-            return "Perfil aplicado como base do veiculo; camada diagnostica e DTCs manuais foram limpos.";
+            return "Perfil aplicado como base do veículo; camada diagnóstica e DTCs manuais foram limpos.";
         case SIM_NOTICE_PROFILE_RESTORED:
             return "Perfil persistido foi restaurado automaticamente no boot.";
         case SIM_NOTICE_PROFILE_CLEARED_BY_PROTOCOL:
             return "Protocolo alterado manualmente; o perfil ativo foi desassociado para evitar ambiguidade.";
         case SIM_NOTICE_PROTOCOL_CHANGED:
-            return "Protocolo alterado manualmente sem mexer na camada diagnostica.";
+            return "Protocolo alterado manualmente sem mexer na camada diagnóstica.";
         case SIM_NOTICE_PRESET_APPLIED:
-            return "Preset rapido aplicado; perfil ativo e camada diagnostica foram limpos.";
+            return "Preset rápido aplicado; perfil ativo e camada diagnóstica foram limpos.";
         case SIM_NOTICE_SCENARIO_APPLIED:
-            return "Camada diagnostica aplicada como overlay sobre o perfil e o modo atuais.";
+            return "Camada diagnóstica aplicada como overlay sobre o perfil e o modo atuais.";
         case SIM_NOTICE_SCENARIO_FORCED_MODE:
-            return String("Cenario ativo forcou o modo para ") + simModeLabel(static_cast<uint8_t>(snap.sim_mode)) + ".";
+            return String("Cenário ativo forçou o modo para ") + simModeLabel(static_cast<uint8_t>(snap.sim_mode)) + ".";
         case SIM_NOTICE_SCENARIO_CLEARED_BY_MODE:
-            return "O modo escolhido pelo usuario limpou o cenario ativo por incompatibilidade.";
+            return "O modo escolhido pelo usuário limpou o cenário ativo por incompatibilidade.";
         case SIM_NOTICE_SCENARIO_CLEARED_BY_MANUAL_EDIT:
-            return "Edicao manual de sensores limpou o cenario ativo e preservou DTCs manuais.";
+            return "Edição manual de sensores limpou o cenário ativo e preservou DTCs manuais.";
         case SIM_NOTICE_SCENARIO_CLEARED:
-            return "Camada diagnostica limpa; perfil e DTCs manuais preservados.";
+            return "Camada diagnóstica limpa; perfil e DTCs manuais preservados.";
         default:
-            return "Hierarquia estavel: perfil define a base, modo define a dinamica, cenario atua como overlay e DTC manual entra na mescla final.";
+            return "Hierarquia estável: perfil define a base, modo define a dinâmica, cenário atua como overlay e DTC manual entra na mescla final.";
     }
 }
 
@@ -2442,12 +2452,18 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     server.on("/ping-json", HTTP_GET, [](AsyncWebServerRequest* req) {
         req->send(200, "application/json", "{\"ok\":true}");
     });
+    protect(server.on("/", HTTP_GET,
+        [](AsyncWebServerRequest* req) { handle_send_fs_page(req, "/index.html", "text/html; charset=UTF-8"); }));
+    protect(server.on("/index.html", HTTP_GET,
+        [](AsyncWebServerRequest* req) { handle_send_fs_page(req, "/index.html", "text/html; charset=UTF-8"); }));
+    protect(server.on("/ota.html", HTTP_GET,
+        [](AsyncWebServerRequest* req) { handle_send_fs_page(req, "/ota.html", "text/html; charset=UTF-8"); }));
     protect(server.on("/", HTTP_HEAD,
-        [](AsyncWebServerRequest* req) { handle_head_page(req, "text/html"); }));
+        [](AsyncWebServerRequest* req) { handle_head_page(req, "text/html; charset=UTF-8"); }));
     protect(server.on("/index.html", HTTP_HEAD,
-        [](AsyncWebServerRequest* req) { handle_head_page(req, "text/html"); }));
+        [](AsyncWebServerRequest* req) { handle_head_page(req, "text/html; charset=UTF-8"); }));
     protect(server.on("/ota.html", HTTP_HEAD,
-        [](AsyncWebServerRequest* req) { handle_head_page(req, "text/html"); }));
+        [](AsyncWebServerRequest* req) { handle_head_page(req, "text/html; charset=UTF-8"); }));
     // Serve arquivos do LittleFS (UI web)
     protect(server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html"));
 

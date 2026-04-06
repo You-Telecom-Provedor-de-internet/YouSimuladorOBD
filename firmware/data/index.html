@@ -335,10 +335,10 @@
       <div class="layer-pill" id="layer-dtc-card">
         <span class="layer-title">DTCs Efetivos</span>
         <strong id="layer-dtc-main">Nenhum DTC</strong>
-        <small id="layer-dtc-meta">Sem injecao manual nem cenario</small>
+        <small id="layer-dtc-meta">Sem injeção manual nem cenário</small>
       </div>
     </div>
-    <div class="rule-note" id="layer-rule-note">Hierarquia estavel: perfil define a base, modo define a dinamica, cenario atua como overlay e DTC manual entra na mescla final.</div>
+    <div class="rule-note" id="layer-rule-note">Hierarquia estável: perfil define a base, modo define a dinâmica, cenário atua como overlay e DTC manual entra na mescla final.</div>
   </div>
 
   <!-- Presets -->
@@ -368,10 +368,10 @@
     <label>Camada Diagnóstica</label>
     <div class="diag-actions">
       <select id="scenario-sel">
-        <option value="">-- Sem cenário diagnostico --</option>
+        <option value="">-- Sem cenário diagnóstico --</option>
       </select>
-      <button onclick="applyScenario()">Ativar Cenario</button>
-      <button class="secondary" onclick="clearScenario()">Limpar Cenario</button>
+      <button onclick="applyScenario()">Ativar Cenário</button>
+      <button class="secondary" onclick="clearScenario()">Limpar Cenário</button>
     </div>
     <div class="diag-odometer-hero">
       <div class="diag-odometer-copy">
@@ -392,7 +392,7 @@
     </div>
     <div class="diag-grid">
       <div class="diag-box">
-        <span>Cenario Ativo</span>
+        <span>Cenário Ativo</span>
         <strong id="diag-scenario">Sem cenário</strong>
       </div>
       <div class="diag-box">
@@ -405,7 +405,7 @@
       </div>
       <div class="diag-box">
         <span>Limp Mode</span>
-        <strong id="diag-limp">Nao</strong>
+        <strong id="diag-limp">Não</strong>
       </div>
     </div>
     <div class="diag-faults">
@@ -499,7 +499,7 @@ let diagRefreshTimer = null;
 let diagFingerprint = '';
 
 function scenarioLabelById(id) {
-  return SCENARIOS[id]?.label || (id ? `Cenario #${id}` : 'Sem cenário');
+  return SCENARIOS[id]?.label || (id ? `Cenário #${id}` : 'Sem cenário');
 }
 
 function scheduleDiagnosticsRefresh(force = false) {
@@ -553,7 +553,7 @@ function renderDiagnostics(diag) {
   document.getElementById('diag-primary').textContent =
     diag.alerts && diag.alerts.length ? diag.alerts.find(a => a.primary)?.label || diag.alerts[0].label : 'Nenhum';
   const limpEl = document.getElementById('diag-limp');
-  limpEl.textContent = diag.limp_mode ? 'Sim' : 'Nao';
+  limpEl.textContent = diag.limp_mode ? 'Sim' : 'Não';
   limpEl.classList.toggle('limp-on', !!diag.limp_mode);
   const odometerTotal = formatKm(diag.vehicle?.odometer_current_km, 1);
   const odometerClear = `${diag.obd_counters?.distance_since_clear_km ?? 0} km`;
@@ -576,7 +576,7 @@ function loadScenarios() {
     .then(r => r.json())
     .then(items => {
       const sel = document.getElementById('scenario-sel');
-      sel.innerHTML = '<option value="">-- Sem cenário diagnostico --</option>';
+      sel.innerHTML = '<option value="">-- Sem cenário diagnóstico --</option>';
       SCENARIOS = {};
       items.forEach(item => {
         SCENARIOS[item.scenario_id] = item;
@@ -669,7 +669,7 @@ function renderControlLayers(state) {
     'layer-diag-card',
     'layer-diag-main',
     'layer-diag-meta',
-    diag.active ? (diag.label || 'Cenario ativo') : 'Sem cenário',
+    diag.active ? (diag.label || 'Cenário ativo') : 'Sem cenário',
     diag.active ? (diag.forced_mode ? 'Overlay ativo e controlando o modo' : 'Overlay ativo sobre o estado atual') : 'Overlay desligado',
     diagTone
   );
@@ -680,13 +680,13 @@ function renderControlLayers(state) {
     'layer-dtc-main',
     'layer-dtc-meta',
     dtcs.effective_count ? `${dtcs.effective_count} DTC(s) efetivo(s)` : 'Nenhum DTC',
-    dtcs.source_label || 'Sem injecao manual nem cenario',
+    dtcs.source_label || 'Sem injeção manual nem cenário',
     dtcTone
   );
 
   const note = document.getElementById('layer-rule-note');
   if (note) {
-    note.textContent = precedence.message || 'Hierarquia estavel: perfil define a base, modo define a dinamica, cenario atua como overlay e DTC manual entra na mescla final.';
+    note.textContent = precedence.message || 'Hierarquia estável: perfil define a base, modo define a dinâmica, cenário atua como overlay e DTC manual entra na mescla final.';
     note.className = 'rule-note ' + (precedence.notice_level === 'warn' ? 'warn' : 'info');
   }
 }
@@ -751,7 +751,7 @@ function update(d) {
   }
   if (d.limp_mode !== undefined) {
     const limpEl = document.getElementById('diag-limp');
-    limpEl.textContent = d.limp_mode ? 'Sim' : 'Nao';
+    limpEl.textContent = d.limp_mode ? 'Sim' : 'Não';
     limpEl.classList.toggle('limp-on', !!d.limp_mode);
   }
   if (d.primary_alert !== undefined) {
