@@ -4,7 +4,7 @@
 
 Consolidar o estado real do `YouSimuladorOBD` apos as rodadas de bring-up, reducao de firmware, camada diagnostica e validacao de scanners reais.
 
-Data de consolidacao desta versao: `2026-04-04`
+Data de consolidacao desta versao: `2026-04-06`
 
 ## Correcao estrutural do transporte
 
@@ -162,7 +162,7 @@ Estado operacional:
 | CAN | Validado |
 | ISO 9141-2 | Validado |
 | KWP Fast | Validado |
-| KWP 5-baud | Implementado, ampliar validacao |
+| KWP 5-baud | Validado |
 | Web / API / WebSocket | Validado |
 | OTA online | Validado |
 | OLED / UI local | Validado |
@@ -174,5 +174,5 @@ Estado operacional:
 
 ## Pendencias honestas
 
-- ampliar a validacao externa de `KWP 5-baud`
-- transformar o handoff textual de engenharia em captura nativa de `KiCad` ou `EasyEDA` quando uma ferramenta EDA estiver disponivel
+- transformar a validacao fisica consolidada em captura nativa de `KiCad` ou `EasyEDA`
+- fechar os detalhes de `PCB` orientados a produto: protecao, mecanica, pontos de teste e repetibilidade de montagem

@@ -43,6 +43,21 @@
 - DIP de protocolo
 - LEDs de status
 
+## Marco atual do projeto
+
+O projeto ja saiu da fase de bring-up puro de bancada.
+
+Estado atual:
+
+- prototipo fisico montado e testado
+- barramentos `CAN` e `K-Line` operacionais
+- `KWP 5-baud` agora tratado como validado
+
+Direcao desta rodada:
+
+- transformar a topologia validada em `PCB RevA`
+- preparar a placa para repetibilidade de montagem e evolucao para produto
+
 ## O que ainda fica a cargo do engenheiro
 
 - fechar a captura completa do esquema dentro do `KiCad`
@@ -50,3 +65,4 @@
 - definir footprint final do modulo OLED e do encoder
 - fechar outline da PCB
 - ajustar a mecanica final da tampa com base nas posicoes definitivas da placa
+- revisar a placa com criterio de produto: protecao, teste, montagem, manutencao e robustez

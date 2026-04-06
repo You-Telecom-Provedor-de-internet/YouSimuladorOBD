@@ -9,7 +9,7 @@
 | `2` | `CAN 29b 500k` | CAN | n/a | Validado |
 | `3` | `CAN 29b 250k` | CAN | n/a | Validado |
 | `4` | `ISO 9141-2` | K-Line | 5 baud | Validado |
-| `5` | `KWP 5-baud` | K-Line | 5 baud | Implementado, ampliar validacao externa |
+| `5` | `KWP 5-baud` | K-Line | 5 baud | Validado |
 | `6` | `KWP Fast` | K-Line | fast init | Validado |
 
 ## Servicos OBD por protocolo
@@ -99,10 +99,11 @@ Suportar scanners que sobem `ISO 14230-4` com slow init pela mesma linha K.
 - handshake e sessao KWP implementados no firmware
 - tratamento proprio de key bytes e complemento de endereco
 - rearm de sessao por inatividade implementado
+- protocolo validado na rodada fisica de bancada mais recente
 
 ### Observacao de status
 
-O stack esta ativo e funcional no firmware, mas a validacao externa ainda precisa ser ampliada com mais um scanner/app alem da rodada principal.
+O protocolo `KWP 5-baud` passa a ser tratado como validado para a `RevA`. O proximo foco deixa de ser "aceite basico do protocolo" e passa a ser "captura de PCB e robustez de produto".
 
 ## KWP Fast
 
@@ -152,6 +153,6 @@ Isso foi essencial para melhorar aceite de scanners comerciais, principalmente e
 | `YouAutoCar` | OK | OK | n/a | Modes 02/06 validados |
 | `ELM327 generico` | CAN validado em bancada | depende da rodada | n/a | usar como regressao adicional |
 
-## Pendencia tecnica conhecida
+## Proxima pendencia tecnica conhecida
 
-- ampliar a validacao externa de `KWP 5-baud` com mais uma ferramenta alem da rodada principal
+- transformar a validacao de bancada ja concluida em requisitos fechados de `PCB`, `DFT` e robustez de produto

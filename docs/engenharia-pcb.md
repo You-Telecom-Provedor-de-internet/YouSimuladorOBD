@@ -13,6 +13,21 @@ A `RevA` desta rodada esta congelada como:
 - `KY-040` via header
 - `LM2596` ou buck equivalente de baixo risco para `12V -> 5V`
 
+## Fase atual do projeto
+
+O objetivo desta fase ja nao e mais validar se a arquitetura funciona em bancada. Esse marco foi atingido com o prototipo fisico atual.
+
+Estado consolidado:
+
+- prototipo montado e testado fisicamente
+- `CAN`, `ISO 9141-2`, `KWP 5-baud` e `KWP Fast` tratados como validados
+- foco imediato deslocado para `PCB RevA` e preparacao para produto
+
+Consequencia pratica para a engenharia:
+
+- partir do principio de que a topologia central esta aceita
+- concentrar esforco em layout, protecao, repetibilidade, teste e industrializacao leve
+
 Fora de escopo nesta rodada:
 
 - integrar `ESP32-WROOM` diretamente na PCB

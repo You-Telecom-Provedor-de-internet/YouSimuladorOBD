@@ -1,6 +1,6 @@
 # YouSimuladorOBD - Emulador OBD-II com ESP32
 
-Simulador OBD-II baseado em `ESP32` para validar scanners, adaptadores e aplicativos automotivos reais em bancada.
+Simulador OBD-II baseado em `ESP32` para validar scanners, adaptadores e aplicativos automotivos reais em bancada e evoluir para uma placa dedicada orientada a produto.
 
 O projeto atual entrega:
 
@@ -24,7 +24,7 @@ Importante:
 | `2` | `CAN 29b 500k` | CAN | Validado |
 | `3` | `CAN 29b 250k` | CAN | Validado |
 | `4` | `ISO 9141-2` | K-Line | Validado |
-| `5` | `KWP 5-baud` | K-Line | Implementado e em validacao ampliada |
+| `5` | `KWP 5-baud` | K-Line | Validado |
 | `6` | `KWP Fast` | K-Line | Validado |
 
 ## Hardware validado
@@ -47,6 +47,20 @@ A `RevA` da placa foi congelada como:
 - `LM2596` mantido como modulo ou footprint equivalente de baixo risco
 
 Ou seja, nesta revisao a PCB nao integra `ESP32-WROOM` soldado diretamente. O objetivo e preservar o modulo validado em bancada, reduzir risco da primeira placa e acelerar a ida para layout.
+
+## Fase atual do projeto
+
+Estado atual consolidado:
+
+- prototipo fisico montado e testado com `ESP32 DevKit`, `L9637D`, `SN65HVD230`, `OLED` e interface local
+- `7` protocolos suportados com aceite operacional, incluindo `KWP 5-baud`
+- arquitetura `RevA` mantida como `carrier para ESP32 DevKit 38 pinos`
+
+Objetivo desta proxima fase:
+
+- capturar e fechar a `PCB RevA`
+- reduzir improvisos de bancada e transformar a arquitetura atual em hardware repetivel
+- preparar a plataforma para virar produto com foco em robustez eletrica, montagem, teste e manutencao
 
 ## Documentacao canonica
 
@@ -111,6 +125,11 @@ Para detalhes do firmware e das dependencias:
 3. Aplicar as regras de layout em [hardware/pcb/requisitos-layout.md](hardware/pcb/requisitos-layout.md).
 4. Comparar com o handoff congelado em [hardware/pcb-handoff/](hardware/pcb-handoff/).
 5. Continuar a captura nativa a partir de [hardware/kicad/revA/](hardware/kicad/revA/).
+6. Fechar a `RevA` com criterio de produto:
+   - protecao automotiva definitiva
+   - conectividade mecanica repetivel
+   - pontos de teste
+   - montagem e manutencao previsiveis
 
 ## Estrutura de pastas
 
