@@ -59,23 +59,23 @@
     <div class="info-list" id="info-list">
       <div class="info-item"><span>Status</span><strong>Carregando...</strong></div>
     </div>
-    <button class="secondary" type="button" onclick="loadInfo()">Atualizar informacoes</button>
+    <button class="secondary" type="button" onclick="loadInfo()">Atualizar informações</button>
   </section>
 
   <section class="card" style="margin-bottom:14px">
-    <h2>Configuracao de Campo</h2>
-    <p class="hint">Defina o hostname do dispositivo, o manifest OTA padrao e as credenciais da interface. Essas configuracoes ficam salvas na NVS e o ESP32 reinicia para aplicar autenticacao e mDNS.</p>
+    <h2>Configuração de Campo</h2>
+    <p class="hint">Defina o hostname do dispositivo, o manifest OTA padrão e as credenciais da interface. Essas configurações ficam salvas na NVS e o ESP32 reinicia para aplicar autenticação e mDNS.</p>
     <div class="settings-grid">
       <div>
         <label for="cfg-hostname">Hostname mDNS</label>
         <input id="cfg-hostname" type="text" maxlength="31" placeholder="youobd-01" spellcheck="false">
       </div>
       <div>
-        <label for="cfg-auth-user">Usuario Web/OTA</label>
+        <label for="cfg-auth-user">Usuário Web/OTA</label>
         <input id="cfg-auth-user" type="text" maxlength="24" placeholder="admin" spellcheck="false">
       </div>
       <div class="settings-full">
-        <label for="cfg-manifest-url">Manifest OTA Padrao</label>
+        <label for="cfg-manifest-url">Manifest OTA Padrão</label>
         <input id="cfg-manifest-url" type="url" placeholder="https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json" spellcheck="false">
       </div>
       <div>
@@ -83,7 +83,7 @@
         <input id="cfg-auth-password" type="password" maxlength="63" placeholder="deixe vazio para manter a atual">
       </div>
       <div>
-        <label for="cfg-api-auth-user">Usuario API</label>
+        <label for="cfg-api-auth-user">Usuário API</label>
         <input id="cfg-api-auth-user" type="text" maxlength="24" placeholder="api" spellcheck="false">
       </div>
       <div>
@@ -99,14 +99,14 @@
         <label for="cfg-auto-check" style="margin:0;text-transform:none;letter-spacing:0;color:var(--text)">verificar o manifest automaticamente sem atualizar sozinho</label>
       </div>
     </div>
-    <div class="status" id="cfg-security-status">Carregando politica de seguranca...</div>
-    <div class="status" id="cfg-save-status">Aguardando leitura da configuracao do dispositivo.</div>
+    <div class="status" id="cfg-security-status">Carregando política de segurança...</div>
+    <div class="status" id="cfg-save-status">Aguardando leitura da configuração do dispositivo.</div>
     <div class="actions">
-      <button type="button" onclick="saveDeviceSettings()">Salvar configuracao e reiniciar</button>
+      <button type="button" onclick="saveDeviceSettings()">Salvar configuração e reiniciar</button>
       <button class="secondary" type="button" onclick="rotateApiCredentials()">Rotacionar senha da API</button>
     </div>
     <div class="status" id="cfg-rotate-status">Nenhuma rotacao executada nesta sessao.</div>
-    <div class="status secret-box" id="cfg-rotate-result">Usuario atual da API e a ultima senha gerada aparecerao aqui.</div>
+    <div class="status secret-box" id="cfg-rotate-result">Usuário atual da API e a última senha gerada aparecerão aqui.</div>
   </section>
 
   <section class="card" style="margin-bottom:14px">
@@ -226,9 +226,9 @@ function renderInfo(data) {
 
 function renderOnlineInfo(data) {
   const items = [
-    ['Manifest atual', data.checked_manifest_url || data.default_manifest_url || '(nao definido)'],
-    ['Versao online', data.checked_version || 'nenhuma'],
-    ['Update disponivel', data.update_available ? 'sim' : 'nao'],
+    ['Manifest atual', data.checked_manifest_url || data.default_manifest_url || '(não definido)'],
+    ['Versão online', data.checked_version || 'nenhuma'],
+    ['Update disponível', data.update_available ? 'sim' : 'não'],
     ['Assets', `${data.checked_has_firmware ? 'firmware ' : ''}${data.checked_has_filesystem ? 'filesystem' : ''}`.trim() || 'nenhum']
   ];
   if (data.checked_notes) {
@@ -248,7 +248,7 @@ function updateOnlineProgress(data) {
     setProgress('online', pct);
     setStatus(
       'online',
-      `Atualizacao ${data.last_target || 'ota'} em andamento.\nEtapa: ${data.job_stage || 'processando'}\n${data.last_total ? `${data.last_written || 0}/${data.last_total} bytes (${pct.toFixed(1)}%)` : `${data.last_written || 0} bytes`}`
+      `Atualização ${data.last_target || 'ota'} em andamento.\nEtapa: ${data.job_stage || 'processando'}\n${data.last_total ? `${data.last_written || 0}/${data.last_total} bytes (${pct.toFixed(1)}%)` : `${data.last_written || 0} bytes`}`
     );
     return;
   }
@@ -300,16 +300,16 @@ async function loadDeviceSettings(silent = false) {
     const webDefault = !!data.auth_default;
     const apiDefault = !!data.api_auth_default;
     if (webDefault || apiDefault) {
-      setBoxStatus('cfg-security-status', `Seguranca carregada.\nWeb/OTA: ${webDefault ? 'padrao' : 'personalizada'}\nAPI: ${apiDefault ? 'padrao' : 'personalizada'}\nSugestao de hostname unico: ${hostnameHint}`, 'err');
+      setBoxStatus('cfg-security-status', `Segurança carregada.\nWeb/OTA: ${webDefault ? 'padrão' : 'personalizada'}\nAPI: ${apiDefault ? 'padrão' : 'personalizada'}\nSugestão de hostname único: ${hostnameHint}`, 'err');
     } else {
-      setBoxStatus('cfg-security-status', `Credenciais personalizadas ativas.\nHostname atual: ${currentHost}\nSugestao de hostname unico por unidade: ${hostnameHint}`, 'ok');
+      setBoxStatus('cfg-security-status', `Credenciais personalizadas ativas.\nHostname atual: ${currentHost}\nSugestão de hostname único por unidade: ${hostnameHint}`, 'ok');
     }
-    setBoxStatus('cfg-save-status', `Configuracao carregada.\nmDNS atual: http://${currentHost}/\nChecagem automatica: ${data.ota_auto_check ? `a cada ${data.ota_auto_check_hours}h` : 'desativada'}`);
+    setBoxStatus('cfg-save-status', `Configuração carregada.\nmDNS atual: http://${currentHost}/\nChecagem automática: ${data.ota_auto_check ? `a cada ${data.ota_auto_check_hours}h` : 'desativada'}`);
     return data;
   } catch (err) {
     if (!silent) {
-      setBoxStatus('cfg-save-status', 'Falha ao carregar configuracao persistente do dispositivo.', 'err');
-      setBoxStatus('cfg-security-status', 'Nao foi possivel ler o estado de seguranca.', 'err');
+      setBoxStatus('cfg-save-status', 'Falha ao carregar configuração persistente do dispositivo.', 'err');
+      setBoxStatus('cfg-security-status', 'Não foi possível ler o estado de segurança.', 'err');
     }
     return null;
   }
@@ -325,19 +325,19 @@ async function saveDeviceSettings() {
   const autoCheckHours = Number(cfgAutoHours.value || 0);
 
   if (!/^[a-z0-9-]{1,31}$/.test(hostname) || hostname.startsWith('-') || hostname.endsWith('-')) {
-    setBoxStatus('cfg-save-status', 'Hostname invalido. Use apenas letras, numeros e hifen.', 'err');
+    setBoxStatus('cfg-save-status', 'Hostname inválido. Use apenas letras, números e hífen.', 'err');
     return;
   }
   if (!/^[a-zA-Z0-9._-]{1,24}$/.test(authUser)) {
-    setBoxStatus('cfg-save-status', 'Usuario invalido. Use letras, numeros, ponto, underline ou hifen.', 'err');
+    setBoxStatus('cfg-save-status', 'Usuário inválido. Use letras, números, ponto, underline ou hífen.', 'err');
     return;
   }
   if (!/^[a-zA-Z0-9._-]{1,24}$/.test(apiAuthUser)) {
-    setBoxStatus('cfg-save-status', 'Usuario API invalido. Use letras, numeros, ponto, underline ou hifen.', 'err');
+    setBoxStatus('cfg-save-status', 'Usuário API inválido. Use letras, números, ponto, underline ou hífen.', 'err');
     return;
   }
   if (manifestUrl && !/^https?:\/\//i.test(manifestUrl)) {
-    setBoxStatus('cfg-save-status', 'Manifest invalido. Use URL iniciando com http:// ou https://', 'err');
+    setBoxStatus('cfg-save-status', 'Manifest inválido. Use URL iniciando com http:// ou https://', 'err');
     return;
   }
   if (authPassword && (authPassword.length < 8 || authPassword.length > 63)) {
@@ -353,7 +353,7 @@ async function saveDeviceSettings() {
     return;
   }
 
-  setBoxStatus('cfg-save-status', 'Salvando configuracao persistente e preparando reboot...');
+  setBoxStatus('cfg-save-status', 'Salvando configuração persistente e preparando reboot...');
   try {
     const data = await apiJson('/api/device/settings', {
       method: 'POST',
@@ -378,26 +378,26 @@ async function saveDeviceSettings() {
     }
 
     const hostnameText = data.hostname || `${hostname}.local`;
-    setBoxStatus('cfg-save-status', `Configuracao salva.\nO ESP32 vai reiniciar para aplicar autenticacao e mDNS.\nNovo acesso esperado: http://${hostnameText}/`, 'ok');
+    setBoxStatus('cfg-save-status', `Configuração salva.\nO ESP32 vai reiniciar para aplicar autenticação e mDNS.\nNovo acesso esperado: http://${hostnameText}/`, 'ok');
     setBoxStatus('cfg-security-status', data.auth_default
-      ? 'As credenciais ainda estao no padrao. Troque a senha para uso em campo.'
+      ? 'As credenciais ainda estão no padrão. Troque a senha para uso em campo.'
       : 'Credenciais personalizadas salvas. Aguarde o reboot para usar o novo login.', data.auth_default ? 'err' : 'ok');
     cfgAuthPassword.value = '';
     cfgApiAuthPassword.value = '';
     setActionButtonsBusy(true);
   } catch (err) {
-    setBoxStatus('cfg-save-status', `Nao foi possivel salvar a configuracao.\n${err.message}`, 'err');
+    setBoxStatus('cfg-save-status', `Não foi possível salvar a configuração.\n${err.message}`, 'err');
   }
 }
 
 async function rotateApiCredentials() {
   const currentUser = (cfgApiAuthUser.value || '').trim();
   if (!currentUser) {
-    setBoxStatus('cfg-rotate-status', 'Nao foi possivel determinar o usuario atual da API.', 'err');
+    setBoxStatus('cfg-rotate-status', 'Não foi possível determinar o usuário atual da API.', 'err');
     return;
   }
 
-  if (!confirm(`Gerar uma nova senha para o usuario da API "${currentUser}"? Atualize scripts e automacoes que usam essa conta depois.`)) {
+  if (!confirm(`Gerar uma nova senha para o usuário da API "${currentUser}"? Atualize scripts e automações que usam essa conta depois.`)) {
     return;
   }
 
@@ -412,9 +412,9 @@ async function rotateApiCredentials() {
 
     cfgApiAuthUser.value = data.api_auth_user || currentUser;
     cfgApiAuthPassword.value = '';
-    setBoxStatus('cfg-security-status', 'Credencial da API rotacionada com sucesso. Atualize qualquer automacao que use a senha anterior.', 'ok');
+    setBoxStatus('cfg-security-status', 'Credencial da API rotacionada com sucesso. Atualize qualquer automação que use a senha anterior.', 'ok');
     setBoxStatus('cfg-rotate-status', data.message || 'Nova senha da API gerada e salva.', 'ok');
-    setBoxStatus('cfg-rotate-result', `Usuario API: ${data.api_auth_user}\nNova senha API: ${data.api_auth_password}\n\nGuarde agora. Essa senha nao sera exibida novamente pelo dispositivo.`, 'ok');
+    setBoxStatus('cfg-rotate-result', `Usuário API: ${data.api_auth_user}\nNova senha API: ${data.api_auth_password}\n\nGuarde agora. Essa senha não será exibida novamente pelo dispositivo.`, 'ok');
   } catch (err) {
     setBoxStatus('cfg-rotate-status', `Falha ao rotacionar a senha da API.\n${err.message}`, 'err');
     setBoxStatus('cfg-rotate-result', 'Nenhuma nova credencial foi gerada.', 'err');
@@ -466,7 +466,7 @@ async function loadInfo(silent = false) {
     return data;
   } catch (err) {
     if (!silent) {
-      infoList.innerHTML = '<div class="info-item"><span>Erro</span><strong>Falha ao carregar informacoes de OTA.</strong></div>';
+      infoList.innerHTML = '<div class="info-item"><span>Erro</span><strong>Falha ao carregar informações de OTA.</strong></div>';
     }
     return null;
   }
@@ -517,7 +517,7 @@ async function startOnline(target) {
     setStatus('online', `Download remoto de ${target} iniciado.\nAcompanhe o progresso abaixo.`);
     startPolling();
   } catch (err) {
-    setStatus('online', `Nao foi possivel iniciar o OTA online.\n${err.message}`, 'err');
+    setStatus('online', `Não foi possível iniciar o OTA online.\n${err.message}`, 'err');
     setActionButtonsBusy(false);
     await loadInfo(true);
   }

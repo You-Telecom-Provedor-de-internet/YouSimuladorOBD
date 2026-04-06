@@ -531,7 +531,7 @@ static bool ota_fetch_text(const String& url, String& payload, char* error_buf, 
     WiFiClient plain;
     WiFiClientSecure secure;
     if (!ota_http_begin(http, plain, secure, url)) {
-        copy_text(error_buf, error_buf_len, "nao foi possivel abrir a URL");
+        copy_text(error_buf, error_buf_len, "não foi possível abrir a URL");
         return false;
     }
     http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
@@ -619,7 +619,7 @@ static bool ota_download_and_apply(const OtaRemoteJob& job) {
     WiFiClient plain;
     WiFiClientSecure secure;
     if (!ota_http_begin(http, plain, secure, job.url)) {
-        ota_set_error_text("http begin", "nao foi possivel abrir a URL");
+        ota_set_error_text("http begin", "não foi possível abrir a URL");
         return false;
     }
     http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
@@ -648,7 +648,7 @@ static bool ota_download_and_apply(const OtaRemoteJob& job) {
     }
     if (job.md5[0] != '\0' && !Update.setMD5(job.md5)) {
         Update.abort();
-        ota_set_error_text("md5", "manifest com md5 invalido");
+            ota_set_error_text("md5", "manifest com md5 inválido");
         http.end();
         return false;
     }
@@ -765,7 +765,7 @@ static void handle_get_ota_info(AsyncWebServerRequest* req) {
 static void handle_post_ota_check(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
     JsonDocument doc;
     if (deserializeJson(doc, data, len)) {
-        req->send(400, "application/json", "{\"ok\":false,\"error\":\"json invalido\"}");
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"json inválido\"}");
         return;
     }
 
@@ -814,7 +814,7 @@ static void handle_post_ota_online(AsyncWebServerRequest* req, uint8_t* data, si
 
     JsonDocument doc;
     if (deserializeJson(doc, data, len)) {
-        req->send(400, "application/json", "{\"ok\":false,\"error\":\"json invalido\"}");
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"json inválido\"}");
         return;
     }
 
@@ -827,7 +827,7 @@ static void handle_post_ota_online(AsyncWebServerRequest* req, uint8_t* data, si
         return;
     }
     if (target != "firmware" && target != "filesystem") {
-        req->send(400, "application/json", "{\"ok\":false,\"error\":\"target invalido\"}");
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"target inválido\"}");
         return;
     }
 
@@ -865,7 +865,7 @@ static void handle_post_ota_online(AsyncWebServerRequest* req, uint8_t* data, si
         delete job;
         s_ota_busy = false;
         s_ota_job_running = false;
-        ota_set_error_text("task", "nao foi possivel iniciar a task OTA");
+        ota_set_error_text("task", "não foi possível iniciar a task OTA");
         req->send(500, "application/json", "{\"ok\":false,\"error\":\"falha ao iniciar task OTA\"}");
         return;
     }
@@ -900,7 +900,7 @@ static void handle_get_device_settings(AsyncWebServerRequest* req) {
 static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
     JsonDocument doc;
     if (deserializeJson(doc, data, len)) {
-        req->send(400, "application/json", "{\"ok\":false,\"error\":\"json invalido\"}");
+        req->send(400, "application/json", "{\"ok\":false,\"error\":\"json inválido\"}");
         return;
     }
 
@@ -913,7 +913,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
         hostname.trim();
         hostname.toLowerCase();
         if (!is_valid_hostname(hostname)) {
-            req->send(400, "application/json", "{\"ok\":false,\"error\":\"hostname invalido\"}");
+            req->send(400, "application/json", "{\"ok\":false,\"error\":\"hostname inválido\"}");
             return;
         }
         if (strcmp(next.hostname, hostname.c_str()) != 0) {
@@ -927,7 +927,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
         String manifest_url = doc["manifest_url"].as<String>();
         manifest_url.trim();
         if (!is_valid_manifest_url(manifest_url)) {
-            req->send(400, "application/json", "{\"ok\":false,\"error\":\"manifest_url invalido\"}");
+            req->send(400, "application/json", "{\"ok\":false,\"error\":\"manifest_url inválido\"}");
             return;
         }
         if (strcmp(next.manifest_url, manifest_url.c_str()) != 0) {
@@ -940,7 +940,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
         String auth_user = doc["auth_user"].as<String>();
         auth_user.trim();
         if (!is_valid_auth_user(auth_user)) {
-            req->send(400, "application/json", "{\"ok\":false,\"error\":\"usuario invalido\"}");
+            req->send(400, "application/json", "{\"ok\":false,\"error\":\"usuário inválido\"}");
             return;
         }
         if (strcmp(next.auth_user, auth_user.c_str()) != 0) {
@@ -970,7 +970,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
         String api_auth_user = doc["api_auth_user"].as<String>();
         api_auth_user.trim();
         if (!is_valid_auth_user(api_auth_user)) {
-            req->send(400, "application/json", "{\"ok\":false,\"error\":\"usuario api invalido\"}");
+            req->send(400, "application/json", "{\"ok\":false,\"error\":\"usuário api inválido\"}");
             return;
         }
         if (strcmp(next.api_auth_user, api_auth_user.c_str()) != 0) {
@@ -1069,7 +1069,7 @@ static void handle_head_page(AsyncWebServerRequest* req, const char* content_typ
 
 static void handle_send_fs_page(AsyncWebServerRequest* req, const char* path, const char* content_type) {
     if (!LittleFS.exists(path)) {
-        req->send(404, "text/plain; charset=UTF-8", "Arquivo nao encontrado");
+        req->send(404, "text/plain; charset=UTF-8", "Arquivo não encontrado");
         return;
     }
 
@@ -1211,7 +1211,7 @@ static String profileSummaryText(const VehicleProfile* profile, const Simulation
         return String(profile->brand) + " " + profile->model + " (" + profile->year + ")";
     }
     if (snap.profile_id[0]) {
-        return String(snap.profile_id) + " (nao catalogado)";
+        return String(snap.profile_id) + " (não catalogado)";
     }
     return "Nenhum perfil ativo";
 }
@@ -1717,7 +1717,7 @@ static void handle_get_diagnostics(AsyncWebServerRequest* req) {
 static void handle_post_scenario(AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
     JsonDocument doc;
     if (deserializeJson(doc, data, len)) {
-        req->send(400, "application/json", "{\"error\":\"json invalido\"}");
+        req->send(400, "application/json", "{\"error\":\"json inválido\"}");
         return;
     }
 
@@ -1725,7 +1725,7 @@ static void handle_post_scenario(AsyncWebServerRequest* req, uint8_t* data, size
     const DiagnosticScenarioId scenario_id = diagnostic_scenario_from_slug(scenario_slug.c_str());
 
     if (!scenario_slug.isEmpty() && scenario_id == DIAG_SCENARIO_NONE) {
-        req->send(404, "application/json", "{\"error\":\"cenario nao encontrado\"}");
+        req->send(404, "application/json", "{\"error\":\"cenário não encontrado\"}");
         return;
     }
 
@@ -2147,7 +2147,7 @@ static void handle_post_profile(AsyncWebServerRequest* req, uint8_t* data, size_
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
     const char* id = doc["id"] | "";
     const VehicleProfile* p = findProfile(id);
-    if (!p) { req->send(404, "application/json", "{\"error\":\"perfil nao encontrado\"}"); return; }
+    if (!p) { req->send(404, "application/json", "{\"error\":\"perfil não encontrado\"}"); return; }
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     dynamic_persist_odometer_now();
     apply_profile_selection(*s_state, *p);
@@ -2390,7 +2390,7 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     if (!LittleFS.begin()) {
         Serial.println("[LittleFS] Mount falhou!");
     } else if (!LittleFS.exists("/index.html")) {
-        Serial.println("[LittleFS] /index.html nao encontrado");
+        Serial.println("[LittleFS] /index.html não encontrado");
     } else {
         Serial.println("[LittleFS] /index.html pronto para servir");
     }
