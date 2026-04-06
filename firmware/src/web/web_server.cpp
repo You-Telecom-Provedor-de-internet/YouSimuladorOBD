@@ -1137,9 +1137,9 @@ static const char* simModeSourceSlug(uint8_t source) {
 
 static const char* simModeSourceLabel(uint8_t source) {
     switch (source) {
-        case SIM_MODE_SOURCE_USER: return "Escolha do usuario";
+        case SIM_MODE_SOURCE_USER: return "Escolha manual";
         case SIM_MODE_SOURCE_SCENARIO: return "Forcado pela camada diagnostica";
-        case SIM_MODE_SOURCE_PRESET: return "Definido por preset";
+        case SIM_MODE_SOURCE_PRESET: return "Aplicado por preset rapido";
         default: return "Restaurado no boot";
     }
 }
@@ -1221,7 +1221,7 @@ static String precedenceNoticeMessage(const SimulationState& snap) {
         case SIM_NOTICE_SCENARIO_APPLIED:
             return "Camada diagnostica aplicada como overlay sobre o perfil e o modo atuais.";
         case SIM_NOTICE_SCENARIO_FORCED_MODE:
-            return String("Cenario ativo forçou o modo para ") + simModeLabel(static_cast<uint8_t>(snap.sim_mode)) + ".";
+            return String("Cenario ativo forcou o modo para ") + simModeLabel(static_cast<uint8_t>(snap.sim_mode)) + ".";
         case SIM_NOTICE_SCENARIO_CLEARED_BY_MODE:
             return "O modo escolhido pelo usuario limpou o cenario ativo por incompatibilidade.";
         case SIM_NOTICE_SCENARIO_CLEARED_BY_MANUAL_EDIT:

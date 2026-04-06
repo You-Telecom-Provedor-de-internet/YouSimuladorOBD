@@ -318,18 +318,18 @@
     <label>Hierarquia Ativa</label>
     <div class="layer-grid">
       <div class="layer-pill" id="layer-profile-card">
-        <span class="layer-title">Perfil do VeÃ­culo</span>
+        <span class="layer-title">Perfil do Veículo</span>
         <strong id="layer-profile-main">Nenhum perfil ativo</strong>
-        <small id="layer-profile-meta">Base manual/preset</small>
+        <small id="layer-profile-meta">Base manual ou preset</small>
       </div>
       <div class="layer-pill" id="layer-mode-card">
-        <span class="layer-title">Modo de SimulaÃ§Ã£o</span>
+        <span class="layer-title">Modo de Simulação</span>
         <strong id="layer-mode-main">Manual</strong>
         <small id="layer-mode-meta">Restaurado no boot</small>
       </div>
       <div class="layer-pill" id="layer-diag-card">
-        <span class="layer-title">Camada Diagnostica</span>
-        <strong id="layer-diag-main">Sem cenario</strong>
+        <span class="layer-title">Camada Diagnóstica</span>
+        <strong id="layer-diag-main">Sem cenário</strong>
         <small id="layer-diag-meta">Overlay desligado</small>
       </div>
       <div class="layer-pill" id="layer-dtc-card">
@@ -365,10 +365,10 @@
   </div>
 
   <div class="card diagnostic-card">
-    <label>Camada Diagnostica</label>
+    <label>Camada Diagnóstica</label>
     <div class="diag-actions">
       <select id="scenario-sel">
-        <option value="">-- Sem cenario diagnostico --</option>
+        <option value="">-- Sem cenário diagnostico --</option>
       </select>
       <button onclick="applyScenario()">Ativar Cenario</button>
       <button class="secondary" onclick="clearScenario()">Limpar Cenario</button>
@@ -393,7 +393,7 @@
     <div class="diag-grid">
       <div class="diag-box">
         <span>Cenario Ativo</span>
-        <strong id="diag-scenario">Sem cenario</strong>
+        <strong id="diag-scenario">Sem cenário</strong>
       </div>
       <div class="diag-box">
         <span>Saude Local</span>
@@ -499,7 +499,7 @@ let diagRefreshTimer = null;
 let diagFingerprint = '';
 
 function scenarioLabelById(id) {
-  return SCENARIOS[id]?.label || (id ? `Cenario #${id}` : 'Sem cenario');
+  return SCENARIOS[id]?.label || (id ? `Cenario #${id}` : 'Sem cenário');
 }
 
 function scheduleDiagnosticsRefresh(force = false) {
@@ -546,7 +546,7 @@ function renderFaultsList(activeFaults) {
 
 function renderDiagnostics(diag) {
   const scenarioEntry = Object.values(SCENARIOS).find(item => item.id === diag.scenario_id);
-  document.getElementById('diag-scenario').textContent = scenarioEntry?.label || diag.scenario_id || 'Sem cenario';
+  document.getElementById('diag-scenario').textContent = scenarioEntry?.label || diag.scenario_id || 'Sem cenário';
   const healthEl = document.getElementById('diag-health');
   healthEl.textContent = diag.health_score ?? 100;
   setHealthClass(healthEl, Number(diag.health_score ?? 100));
@@ -576,7 +576,7 @@ function loadScenarios() {
     .then(r => r.json())
     .then(items => {
       const sel = document.getElementById('scenario-sel');
-      sel.innerHTML = '<option value="">-- Sem cenario diagnostico --</option>';
+      sel.innerHTML = '<option value="">-- Sem cenário diagnostico --</option>';
       SCENARIOS = {};
       items.forEach(item => {
         SCENARIOS[item.scenario_id] = item;
@@ -621,9 +621,9 @@ function refreshProfileStatus() {
     Number(activeProfile.protocol) === Number(state.protocol_id);
 
   if (protocolMatches) {
-    setProfileStatus(`Perfil ativo: ${profileSummary(activeProfile)} • persistente`, 'active');
+    setProfileStatus(`Perfil ativo: ${profileSummary(activeProfile)} - persistente`, 'active');
   } else {
-    setProfileStatus(`Perfil base: ${profileSummary(activeProfile)} • protocolo alterado`, 'warn');
+    setProfileStatus(`Perfil base: ${profileSummary(activeProfile)} - protocolo alterado`, 'warn');
   }
 }
 
@@ -650,7 +650,7 @@ function renderControlLayers(state) {
     'layer-profile-main',
     'layer-profile-meta',
     profile.label || 'Nenhum perfil ativo',
-    profile.active ? (profile.protocol_linked === false ? 'Perfil salvo, mas protocolo divergente' : 'Base persistente do veiculo') : 'Base manual/preset',
+    profile.active ? (profile.protocol_linked === false ? 'Perfil salvo, mas protocolo divergente' : 'Base persistente do veículo') : 'Base manual ou preset',
     profileTone
   );
 
@@ -669,7 +669,7 @@ function renderControlLayers(state) {
     'layer-diag-card',
     'layer-diag-main',
     'layer-diag-meta',
-    diag.active ? (diag.label || 'Cenario ativo') : 'Sem cenario',
+    diag.active ? (diag.label || 'Cenario ativo') : 'Sem cenário',
     diag.active ? (diag.forced_mode ? 'Overlay ativo e controlando o modo' : 'Overlay ativo sobre o estado atual') : 'Overlay desligado',
     diagTone
   );
