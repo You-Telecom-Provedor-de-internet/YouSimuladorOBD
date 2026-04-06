@@ -39,3 +39,10 @@ torque_serial*.txt
 phone_screen.*
 torque_*screen.png
 *.FCBak
+
+# Keep curated validation assets when stored under assets/validation/
+!assets/
+!assets/validation/
+!assets/validation/*.txt
+!assets/validation/*.png
+!assets/validation/*.jpg

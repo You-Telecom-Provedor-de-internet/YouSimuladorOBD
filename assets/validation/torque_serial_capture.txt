@@ -1,0 +1,42 @@
+ets Jul 29 2019 12:21:46
+
+rst:0x1 (POWERON_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+E (363) psram: PSRAM ID read error: 0xffffffff
+
+[YouSimuladorOBD] Iniciando...
+[OBD] Protocolo inicial travado em: ISO 9141-2 (DIP=CAN 11b 500k)
+[K-Line] Aguardando 5-baud init para ISO 9141-2
+[WiFi] 2 rede(s) salva(s)
+[WiFi]   0: 'YOU_AUTO_CAR_2.4' (DHCP)
+[WiFi]   1: 'You-Enzo-e-Eloise' (DHCP)
+[WiFi] Escaneando redes...
+[K-Line] Endereco 0x33 nao detectado
+[K-Line] Falha ao iniciar UART para ISO 9141-2
+[K-Line] Aguardando 5-baud init para ISO 9141-2
+[WiFi] 9 redes encontradas
+[WiFi] Tentando 'You-Enzo-e-Eloise'.
+[WiFi] Conectado! SSID: 'You-Enzo-e-Eloise'  IP: http://192.168.1.11
+[mDNS] http://youobd2.local registrado
+[LittleFS] /index.html pronto para servir
+[WebServer] Porta 80 iniciada
+[YouSimuladorOBD] Tasks iniciadas.
+[K-Line] Endereco 0x33 nao detectado
+[K-Line] Falha ao iniciar UART para ISO 9141-2
+[K-Line] Aguardando 5-baud init para ISO 9141-2
+[K-Line] Endereco 0x33 nao detectado
+[K-Line] Falha ao iniciar UART para ISO 9141-2
+[K-Line] Aguardando 5-baud init para ISO 9141-2
+[K-Line] Endereco 0x33 nao detectado
+[K-Line] Falha ao iniciar UART para ISO 9141-2
+[K-Line] Aguardando 5-baud init para ISO 9141-2
+[OTA] Check automatico OK: 2026.04.02
+[K-Line] Endereco 0x33 nao detectado
+[K-Line] Falha ao iniciar UART para ISO 9141-2
+[K-Line] Aguardando 5-baud init para ISO 9141-2

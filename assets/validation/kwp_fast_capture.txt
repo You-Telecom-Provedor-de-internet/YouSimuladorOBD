@@ -1,0 +1,151 @@
+E (5392) task_wdt: Task watchdog got triggered. The following tasks did not reset the watchdog in time:
+E (5392) task_wdt:  - IDLE0 (CPU 0)
+E (5392) task_wdt: Tasks currently running:
+E (5392) task_wdt: CPU 0: task_kline
+E (5392) task_wdt: CPU 1: IDLE1
+E (5392) task_wdt: Aborting.
+
+abort() was called at PC 0x40103a20 on core 0
+
+
+Backtrace: 0x40083f85:0x3ffbf34c |<-CORRUPTED
+
+
+
+
+ELF file SHA256: e585c7032e2ecb8d
+
+Rebooting...
+ets Jul 29 2019 12:21:46
+
+rst:0xc (SW_CPU_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+E (355) psram: PSRAM ID read error: 0xffffffff
+
+[YouSimuladorOBD] Iniciando...
+[OBD] Protocolo inicial: KWP Fast (DIP=CAN 11b 500k)
+[K-Line] Aguardando fast init para KWP Fast
+[WiFi] 2 rede(s) salva(s)
+[WiFi]   0: 'YOU_AUTO_CAR_2.4' (DHCP)
+[WiFi]   1: 'You-Enzo-e-Eloise' (DHCP)
+[WiFi] Escaneando redes...
+E (5392) task_wdt: Task watchdog got triggered. The following tasks did not reset the watchdog in time:
+E (5392) task_wdt:  - IDLE0 (CPU 0)
+E (5392) task_wdt: Tasks currently running:
+E (5392) task_wdt: CPU 0: task_kline
+E (5392) task_wdt: CPU 1: IDLE1
+E (5392) task_wdt: Aborting.
+
+abort() was called at PC 0x40103a20 on core 0
+
+
+Backtrace: 0x40083f85:0x3ffbf34c |<-CORRUPTED
+
+
+
+
+ELF file SHA256: e585c7032e2ecb8d
+
+Rebooting...
+ets Jul 29 2019 12:21:46
+
+rst:0xc (SW_CPU_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+E (355) psram: PSRAM ID read error: 0xffffffff
+
+[YouSimuladorOBD] Iniciando...
+[OBD] Protocolo inicial: KWP Fast (DIP=CAN 11b 500k)
+[K-Line] Aguardando fast init para KWP Fast
+[WiFi] 2 rede(s) salva(s)
+[WiFi]   0: 'YOU_AUTO_CAR_2.4' (DHCP)
+[WiFi]   1: 'You-Enzo-e-Eloise' (DHCP)
+[WiFi] Escaneando redes...
+[WiFi] 8 redes encontradas
+[WiFi] Tentando 'You-Enzo-e-Eloise'....
+[WiFi] Conectado! SSID: 'You-Enzo-e-Eloise'  IP: http://192.168.1.11
+E (5392) task_wdt: Task watchdog got triggered. The following tasks did not reset the watchdog in time:
+E (5392) task_wdt:  - IDLE0 (CPU 0)
+E (5392) task_wdt: Tasks currently running:
+E (5392) task_wdt: CPU 0: task_kline
+E (5392) task_wdt: CPU 1: IDLE1
+E (5392) task_wdt: Aborting.
+
+abort() was called at PC 0x40103a20 on core 0
+
+
+Backtrace: 0x40083f85:0x3ffbf34c |<-CORRUPTED
+
+
+
+
+ELF file SHA256: e585c7032e2ecb8d
+
+Rebooting...
+ets Jul 29 2019 12:21:46
+
+rst:0xc (SW_CPU_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+E (356) psram: PSRAM ID read error: 0xffffffff
+
+[YouSimuladorOBD] Iniciando...
+[OBD] Protocolo inicial: KWP Fast (DIP=CAN 11b 500k)
+[K-Line] Aguardando fast init para KWP Fast
+[WiFi] 2 rede(s) salva(s)
+[WiFi]   0: 'YOU_AUTO_CAR_2.4' (DHCP)
+[WiFi]   1: 'You-Enzo-e-Eloise' (DHCP)
+[WiFi] Escaneando redes...
+E (5393) task_wdt: Task watchdog got triggered. The following tasks did not reset the watchdog in time:
+E (5393) task_wdt:  - IDLE0 (CPU 0)
+E (5393) task_wdt: Tasks currently running:
+E (5393) task_wdt: CPU 0: task_kline
+E (5393) task_wdt: CPU 1: IDLE1
+E (5393) task_wdt: Aborting.
+
+abort() was called at PC 0x40103a20 on core 0
+
+
+Backtrace: 0x40083f85:0x3ffbf34c |<-CORRUPTED
+
+
+
+
+ELF file SHA256: e585c7032e2ecb8d
+
+Rebooting...
+ets Jul 29 2019 12:21:46
+
+rst:0xc (SW_CPU_RESET),boot:0x12 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:1184
+load:0x40078000,len:13232
+load:0x40080400,len:3028
+entry 0x400805e4
+E (355) psram: PSRAM ID read error: 0xffffffff
+
+[YouSimuladorOBD] Iniciando...
+[OBD] Protocolo inicial: KWP Fast (DIP=CAN 11b 500k)
+[K-Line] Aguardando fast init para KWP Fast
+[WiFi] 2 rede(s) salva(s)
+[WiFi]   0: 'YOU_AUTO_CAR_2.4' (DHCP)
+[WiFi]   1: 'You-Enzo-e-Eloise' (DHCP)
+[WiFi] Escaneando redes...

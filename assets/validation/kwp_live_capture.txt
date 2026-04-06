@@ -1,0 +1,8 @@
+[K-Line] Endereco 0x33 nao detectado
+[K-Line] Falha ao iniciar UART para KWP 5-baud
+[K-Line] Aguardando 5-baud init para KWP 5-baud
+[K-Line] Endereco 0x33 detectado
+[K-Line] Keywords enviados: 0xEF 0x8F
+[K-Line] Complemento recebido: 0xEF
+[K-Line] Complemento de endereco 0xEE enviado
+[K-Line] Init OK - KWP 5-baud

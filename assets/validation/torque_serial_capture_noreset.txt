@@ -1,0 +1,9 @@
+[K-Line] Endereco 0x33 nao detectado
+[K-Line] Falha ao iniciar UART para ISO 9141-2
+[K-Line] Aguardando 5-baud init para ISO 9141-2
+[K-Line] Endereco 0x33 nao detectado
+[K-Line] Falha ao iniciar UART para ISO 9141-2
+[K-Line] Aguardando 5-baud init para ISO 9141-2
+[K-Line] Endereco 0x33 nao detectado
+[K-Line] Falha ao iniciar UART para ISO 9141-2
+[K-Line] Aguardando 5-baud init para ISO 9141-2
