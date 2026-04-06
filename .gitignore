@@ -46,3 +46,6 @@ torque_*screen.png
 !assets/validation/*.txt
 !assets/validation/*.png
 !assets/validation/*.jpg
+
+# KiCad local history / autosave repositories
+hardware/kicad/revA/.history/
