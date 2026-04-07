@@ -425,7 +425,7 @@ def markdown_to_html(markdown_path: Path, html_path: Path) -> None:
         <li>5. Perfis, modos e cenarios</li>
         <li>6. Pagina OTA e configuracao de campo</li>
         <li>7. Salvar configuracao e reiniciar</li>
-        <li>8. Rotacionar senha da API</li>
+        <li>8. Credencial fixa e plugin</li>
         <li>9. Plugin YOU OBD Lab</li>
         <li>10. Fluxo recomendado de bancada</li>
         <li>11. OTA online</li>

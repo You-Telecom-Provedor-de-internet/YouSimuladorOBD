@@ -1,6 +1,6 @@
-# 19 - Manual de Operação com Imagens
+# 19 - Manual de Operacao com Imagens
 
-Manual prático para uso diário do `YouSimuladorOBD` em bancada, campo e desenvolvimento com o `YouAutoCarvAPP2`, `Torque Pro`, `OBDLink` e plugin `YOU OBD Lab`.
+Manual pratico para uso diario do `YouSimuladorOBD` em bancada, campo e desenvolvimento com `YouAutoCarvAPP2`, `Torque Pro`, `OBDLink` e plugin `YOU OBD Lab`.
 
 ## 1. Objetivo
 
@@ -8,11 +8,10 @@ Este manual cobre:
 
 - acesso ao painel web
 - troca de protocolo
-- uso de perfil, modo, cenário e DTC
+- uso de perfil, modo, cenario e DTC
 - OTA online
-- gestão de credenciais
-- rotação da senha da API
-- integração com o plugin local do Codex
+- uso da credencial fixa do sistema
+- integracao com o plugin local do Codex
 
 ## 2. Acesso ao simulador
 
@@ -23,30 +22,30 @@ http://youobd2.local/
 http://192.168.1.11/
 ```
 
-Página de administração OTA:
+Pagina de administracao OTA:
 
 ```text
 http://youobd2.local/ota.html
 http://192.168.1.11/ota.html
 ```
 
-Credenciais atuais do laboratório:
+Credencial atual do laboratorio:
 
-- Web/OTA: credencial personalizada de operação
-- API: credencial dedicada separada da Web
+- Web/OTA: credencial fixa de operacao
+- API: mesma credencial fixa usada na Web
 
-Observação:
+Observacao:
 
-- a senha da API pode ser rotacionada sem reboot
-- a senha Web/OTA continua no fluxo de salvar configuração e reiniciar
+- hostname e manifest OTA continuam editaveis
+- login e senha nao sao alterados pela pagina OTA nesta revisao
 
 ## 3. Painel principal
 
-O painel principal concentra o controle de protocolo, sensores, perfil, modo, cenário e DTCs.
+O painel principal concentra o controle de protocolo, sensores, perfil, modo, cenario e DTCs.
 
-Observação:
+Observacao:
 
-- a captura abaixo é ilustrativa
+- a captura abaixo e ilustrativa
 - valores e indicadores podem variar conforme o protocolo, perfil e estado atual do simulador
 
 ![Painel principal do simulador](img/manual/panel-page.png)
@@ -56,44 +55,44 @@ Observação:
 - seletor de protocolo no topo
 - badge do barramento ativo (`CAN` ou `K-Line`)
 - sliders de sensores principais
-- banco de DTCs e adição manual
-- seleção de perfil do veículo
+- banco de DTCs e adicao manual
+- selecao de perfil do veiculo
 - bloco `Hierarquia Ativa`
-- modos de simulação
-- camada diagnóstica
-- odômetro total e métricas de falha
+- modos de simulacao
+- camada diagnostica
+- odometro total e metricas de falha
 
-## 4. Lógica de operação
+## 4. Logica de operacao
 
-Use esta ordem para trabalhar de forma previsível:
+Use esta ordem para trabalhar de forma previsivel:
 
 1. Escolha o protocolo.
-2. Aplique o perfil do veículo.
-3. Escolha o modo de simulação.
-4. Ative o cenário diagnóstico, se necessário.
-5. Injete DTCs manuais só quando o teste exigir.
+2. Aplique o perfil do veiculo.
+3. Escolha o modo de simulacao.
+4. Ative o cenario diagnostico, se necessario.
+5. Injete DTCs manuais so quando o teste exigir.
 
-Regra prática:
+Regra pratica:
 
 - `Perfil` define a base do carro.
-- `Modo` define a dinâmica.
-- `Camada diagnóstica` aplica o overlay de falha.
-- `DTC manual` é injeção direta para teste.
+- `Modo` define a dinamica.
+- `Camada diagnostica` aplica o overlay de falha.
+- `DTC manual` e injecao direta para teste.
 
-## 5. Perfis, modos e cenários
+## 5. Perfis, modos e cenarios
 
-### Perfil do veículo
+### Perfil do veiculo
 
 Use para carregar baseline realista de:
 
 - VIN
 - protocolo
-- comportamento básico
-- parâmetros coerentes por veículo
+- comportamento basico
+- parametros coerentes por veiculo
 
-### Modo de simulação
+### Modo de simulacao
 
-Os modos mais comuns são:
+Os modos mais comuns sao:
 
 - `Manual`
 - `Marcha Lenta`
@@ -102,7 +101,7 @@ Os modos mais comuns são:
 - `Aquecimento`
 - `Falha DTC`
 
-### Camada diagnóstica
+### Camada diagnostica
 
 Use para falhas compostas, por exemplo:
 
@@ -111,84 +110,61 @@ Use para falhas compostas, por exemplo:
 - misfire
 - anomalias de sensores
 
-## 6. Página OTA e configuração de campo
+## 6. Pagina OTA e configuracao de campo
 
 Na `/ota.html` ficam:
 
-- informações do dispositivo
+- informacoes do dispositivo
 - hostname
-- manifest OTA padrão
-- usuário Web/OTA
-- usuário API
-- nova senha Web/OTA
-- nova senha API
+- manifest OTA padrao
+- status da credencial fixa Web/OTA e API
 - intervalo de checagem online
 
-Observação:
+Observacao:
 
-- a captura abaixo mostra a estrutura da página
-- mensagens de status podem variar conforme autenticação, rede e checagem OTA
+- a captura abaixo mostra a estrutura da pagina
+- mensagens de status podem variar conforme autenticacao, rede e checagem OTA
 
-![Página OTA e Configuração de Campo](img/manual/ota-page.png)
+![Pagina OTA e Configuracao de Campo](img/manual/ota-page.png)
 
-## 7. Salvar configuração e reiniciar
+## 7. Salvar configuracao e reiniciar
 
-Use `Salvar configuração e reiniciar` quando você alterar:
+Use `Salvar configuracao e reiniciar` quando voce alterar:
 
 - hostname
 - manifest OTA
-- usuário Web/OTA
-- senha Web/OTA
-- usuário API
-- senha API manualmente
-- política de checagem OTA
+- politica de checagem OTA
 
 Esse fluxo:
 
 - grava em NVS
 - agenda reboot
-- reaplica autenticação e mDNS
+- reaplica mDNS e demais configuracoes persistentes
 
-## 8. Rotacionar senha da API
+## 8. Credencial fixa e plugin
 
-Agora existe um botão dedicado:
+Nesta revisao:
 
-- `Rotacionar senha da API`
-
-Esse fluxo:
-
-- gera uma senha nova forte
-- salva na NVS imediatamente
-- não reinicia o ESP32
-- mostra a nova senha uma única vez
-
-![Fluxo de rotação da senha da API](img/manual/api-rotation-flow.svg)
-
-### Procedimento recomendado
-
-1. Entre em `/ota.html`.
-2. Vá em `Configuração de Campo`.
-3. Clique em `Rotacionar senha da API`.
-4. Copie a nova senha na hora.
-5. Atualize scripts, plugin e automações.
-6. Teste com `GET /api/status`.
+- a credencial do sistema e fixa no firmware
+- Web/OTA e API usam o mesmo login
+- nao existe rotacao de senha pela UI
 
 ## 9. Plugin YOU OBD Lab
 
 O plugin serve para:
 
-- preparar cenários
+- preparar cenarios
 - consultar o oracle da API
 - abrir o app Android
 - coletar logcat
 - registrar screenshot
 - gerar `report.md` e `report.json`
 
-![Fluxo do laboratório com o plugin](img/manual/plugin-lab-flow.svg)
+![Fluxo do laboratorio com o plugin](img/manual/plugin-lab-flow.svg)
 
 ### Arquivo local de credenciais do plugin
 
-O plugin lê automaticamente:
+O plugin le automaticamente:
 
 ```text
 C:\www\you-obd-lab-plugin\scripts\local-api-credentials.json
@@ -198,31 +174,31 @@ Formato:
 
 ```json
 {
-  "user": "youapi",
-  "password": "sua-senha-forte"
+  "user": "youobd-core",
+  "password": "credencial-fixa-da-bancada"
 }
 ```
 
 Esse arquivo:
 
 - fica fora do Git
-- deve ser atualizado sempre que a senha da API for rotacionada
+- deve refletir a credencial fixa vigente do firmware ou da bancada
 
 ## 10. Fluxo recomendado de bancada
 
 ### Para validar scanner ou app
 
 1. Escolha o protocolo correto.
-2. Aplique o perfil do veículo.
+2. Aplique o perfil do veiculo.
 3. Defina o modo.
-4. Ative o cenário, se necessário.
+4. Ative o cenario, se necessario.
 5. Conecte `OBDLink` ou `ELM327`.
 6. Teste com `YouAutoCarvAPP2`, `Torque Pro` ou `OBDLink`.
 
 ### Para validar com o plugin
 
-1. Confirme a senha atual da API.
-2. Atualize `local-api-credentials.json` se necessário.
+1. Confirme a credencial fixa vigente no firmware.
+2. Atualize `local-api-credentials.json` se necessario.
 3. Rode o runner de bancada.
 4. Compare `API`, `OBD real` e `UI/logcat`.
 
@@ -238,39 +214,39 @@ Fluxo recomendado:
 - `Baixar firmware`
 - `Baixar filesystem`
 
-5. Aguarde a gravação.
+5. Aguarde a gravacao.
 6. O ESP32 reinicia automaticamente ao final do OTA.
 
-## 12. Troubleshooting rápido
+## 12. Troubleshooting rapido
 
-### Não consigo entrar na web
+### Nao consigo entrar na web
 
 - confirme IP ou mDNS
-- confirme usuário e senha Web/OTA
+- confirme usuario e senha da credencial fixa Web/OTA
 - se o hostname mudou, use o novo `.local`
 
 ### API retorna `401`
 
-- confirme o usuário dedicado da API
+- confirme a credencial fixa Web/API
 - teste em `/api/status`
-- se a senha foi rotacionada, atualize o plugin e scripts
+- confirme que plugin e scripts usam a mesma credencial do firmware
 
 ### Plugin parou de validar
 
 - revise `local-api-credentials.json`
 - teste `GET /api/status`
-- execute o runner com `-SkipPhone -SkipAppLaunch` para smoke test rápido
+- execute o runner com `-SkipPhone -SkipAppLaunch` para smoke test rapido
 
-### OTA não baixa
+### OTA nao baixa
 
 - valide a URL do `manifest.json`
 - confirme que o ESP32 tem rede
 - use `Verificar online` antes do download
 
-## 13. Referências cruzadas
+## 13. Referencias cruzadas
 
 - [08 - Wi-Fi, Web e OTA](08-wifi-webui.md)
-- [09 - Perfis de Veículo](09-vehicle-profiles.md)
-- [10 - Simulação Dinâmica](10-dynamic-simulation.md)
-- [14 - Cenários Diagnósticos](14-diagnostic-scenarios.md)
+- [09 - Perfis de Veiculo](09-vehicle-profiles.md)
+- [10 - Simulacao Dinamica](10-dynamic-simulation.md)
+- [14 - Cenarios Diagnosticos](14-diagnostic-scenarios.md)
 - [18 - Plugin Codex YOU OBD Lab](18-codex-plugin-you-obd-lab.md)

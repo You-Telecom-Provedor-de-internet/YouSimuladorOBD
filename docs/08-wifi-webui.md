@@ -28,7 +28,8 @@ ESP32
 - O Wi-Fi STA usa DHCP por padrao
 - Se a rede STA falhar, o ESP32 sobe AP fallback
 - A interface web inteira exige autenticacao
-- Hostname, `manifest.json` padrao e credenciais web/OTA podem ser alterados na UI e ficam persistidos na NVS
+- Hostname e `manifest.json` padrao podem ser alterados na UI e ficam persistidos na NVS
+- As credenciais Web/OTA e API desta revisao sao fixas no firmware
 - O ESP32 pode checar o manifest OTA periodicamente sem atualizar sozinho
 - O upload OTA local por arquivo foi removido para reduzir o firmware
 - O OTA online deste repositorio e exclusivo do `YouSimuladorOBD`
@@ -60,37 +61,19 @@ URL: http://192.168.4.1/
 
 ## Autenticacao Web
 
-Toda a interface web protegida e as rotas sensiveis usam autenticacao HTTP com desafio Digest por padrao.
+Toda a interface web protegida e as rotas sensiveis usam autenticacao HTTP.
 
-Credenciais de fabrica:
+Politica atual:
 
-```text
-Usuario: admin
-Senha: obd12345
-```
+- Web/OTA e API usam uma credencial fixa unica
+- essa credencial sai de `firmware/include/config.h`
+- a pagina `/ota.html` nao altera mais login nem senha
+- hostname e manifest OTA continuam persistentes na NVS
 
-Essas credenciais saem de `firmware/include/config.h` no primeiro boot, mas depois podem ser trocadas na pagina `/ota.html` e ficam gravadas na NVS. Para uso em campo, troque a senha padrao antes da entrega.
+Para bancada e automacao:
 
-### Credencial dedicada da API
-
-As rotas em `/api/*` tambem aceitam uma credencial propria voltada para script, plugin e automacao.
-
-Padrao de fabrica:
-
-```text
-Usuario API: api
-Senha API: obdapi2026
-```
-
-Comportamento atual:
-
-- a WebUI continua funcionando com a credencial `Web/OTA`
-- a API aceita:
-  - a credencial `Web/OTA`
-  - ou a credencial dedicada da `API`
-- em caso de desafio novo, a API responde em `Basic auth`, o que simplifica `curl`, PowerShell e o plugin `YOU OBD Lab`
-
-Esses campos tambem podem ser alterados em `/ota.html` e ficam persistidos na NVS.
+- `curl`, PowerShell, plugin `YOU OBD Lab` e Web UI devem usar a mesma credencial
+- nao existe mais rotacao da senha da API nesta revisao
 
 ## URLs Importantes
 
@@ -150,7 +133,6 @@ Todas as rotas abaixo exigem autenticacao.
 - `POST /api/wifi/scan`
 - `POST /api/reboot`
 - `POST /api/device/settings`
-- `POST /api/device/rotate-api-auth`
 - `POST /api/ota/check`
 - `POST /api/ota/online`
 
@@ -209,8 +191,10 @@ GET /api/wifi
 GET /api/ota/info
 {
   "enabled": true,
-  "auth_user": "admin",
-  "auth_default": true,
+  "auth_user": "youobd-core",
+  "api_auth_user": "youobd-core",
+  "auth_fixed": true,
+  "api_auth_fixed": true,
   "current_version": "2026.04.02.1",
   "online_only": true,
   "default_manifest_url": "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json",
@@ -253,8 +237,10 @@ GET /api/device/settings
   "hostname": "youobd-01",
   "hostname_hint": "youobd-cfc1c0",
   "manifest_url": "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json",
-  "auth_user": "admin",
-  "auth_default": false,
+  "auth_user": "youobd-core",
+  "api_auth_user": "youobd-core",
+  "auth_fixed": true,
+  "api_auth_fixed": true,
   "ota_auto_check": true,
   "ota_auto_check_hours": 12
 }
@@ -426,16 +412,15 @@ Hoje o firmware armazena uma lista de redes conhecidas e tenta:
 
 ## Seguranca e Operacao
 
-- Troque a senha padrao da interface antes de colocar em campo
 - Defina um hostname unico por unidade para evitar conflito em redes com mais de um ESP32
 - Troque a senha do AP fallback se o equipamento for sair do laboratorio
 - Evite deixar credenciais fixas de Wi-Fi no `config.h` em ambiente final
+- Proteja a credencial fixa do sistema fora de materiais publicos e fluxos de demo
 - Defina `APP_VERSION` para controlar comparacao de release
 - Se quiser preload de fabrica, defina `OTA_MANIFEST_URL` no `config.h`
 - O `OTA_MANIFEST_URL` deste projeto deve apontar apenas para `updates/yousimuladorobd/`
 - A checagem automatica consulta o manifest, mas nao instala update sozinha
 - Para automacao via script, use autenticacao HTTP no cliente
-- Para rotacionar rapidamente a senha da API em campo, use o botao `Rotacionar senha da API` em `/ota.html`
 
 ## Validacao Atual
 

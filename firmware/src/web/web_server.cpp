@@ -74,10 +74,6 @@ constexpr uint16_t OTA_AUTO_CHECK_HOURS_MAX = 168;
 struct DeviceSettings {
     char hostname[32] = "";
     char manifest_url[256] = "";
-    char auth_user[32] = "";
-    char auth_password[64] = "";
-    char api_auth_user[32] = "";
-    char api_auth_password[64] = "";
     bool ota_auto_check = true;
     uint16_t ota_auto_check_hours = OTA_AUTO_CHECK_HOURS_DEFAULT;
 };
@@ -92,7 +88,6 @@ static const char* current_auth_user();
 static const char* current_auth_password();
 static const char* current_api_auth_user();
 static const char* current_api_auth_password();
-static void generate_api_password(char* dst, size_t dst_size, size_t length = 20);
 
 static void persist_active_protocol(uint8_t protocol) {
     if (protocol >= PROTO_COUNT) {
@@ -128,18 +123,7 @@ static T& protect(T& handler) {
 }
 
 static bool authenticate_api_request(AsyncWebServerRequest* request) {
-    if (request->authenticate(current_api_auth_user(), current_api_auth_password())) {
-        return true;
-    }
-
-    if (strcmp(current_api_auth_user(), current_auth_user()) != 0
-        || strcmp(current_api_auth_password(), current_auth_password()) != 0) {
-        if (request->authenticate(current_auth_user(), current_auth_password())) {
-            return true;
-        }
-    }
-
-    return false;
+    return request->authenticate(current_auth_user(), current_auth_password());
 }
 
 template <typename Handler>
@@ -215,29 +199,19 @@ static const char* current_manifest_url() {
 }
 
 static const char* current_auth_user() {
-    return s_device_settings.auth_user[0] ? s_device_settings.auth_user : WEB_AUTH_USER;
+    return WEB_AUTH_USER;
 }
 
 static const char* current_auth_password() {
-    return s_device_settings.auth_password[0] ? s_device_settings.auth_password : WEB_AUTH_PASSWORD;
+    return WEB_AUTH_PASSWORD;
 }
 
 static const char* current_api_auth_user() {
-    return s_device_settings.api_auth_user[0] ? s_device_settings.api_auth_user : API_AUTH_USER;
+    return current_auth_user();
 }
 
 static const char* current_api_auth_password() {
-    return s_device_settings.api_auth_password[0] ? s_device_settings.api_auth_password : API_AUTH_PASSWORD;
-}
-
-static bool using_default_auth() {
-    return strcmp(current_auth_user(), WEB_AUTH_USER) == 0
-        && strcmp(current_auth_password(), WEB_AUTH_PASSWORD) == 0;
-}
-
-static bool using_default_api_auth() {
-    return strcmp(current_api_auth_user(), API_AUTH_USER) == 0
-        && strcmp(current_api_auth_password(), API_AUTH_PASSWORD) == 0;
+    return current_auth_password();
 }
 
 static void build_hostname_hint() {
@@ -263,27 +237,10 @@ static bool is_valid_hostname(const String& value) {
     return true;
 }
 
-static bool is_valid_auth_user(const String& value) {
-    if (value.isEmpty() || value.length() > 24) {
-        return false;
-    }
-    for (size_t i = 0; i < value.length(); i++) {
-        const unsigned char c = static_cast<unsigned char>(value[i]);
-        if (!(std::isalnum(c) || c == '-' || c == '_' || c == '.')) {
-            return false;
-        }
-    }
-    return true;
-}
-
 static bool is_valid_manifest_url(const String& value) {
     return value.isEmpty()
         || value.startsWith("http://")
         || value.startsWith("https://");
-}
-
-static bool is_valid_auth_password(const String& value) {
-    return value.length() >= 8 && value.length() <= 63;
 }
 
 static void apply_device_settings_defaults() {
@@ -291,10 +248,6 @@ static void apply_device_settings_defaults() {
     build_hostname_hint();
     copy_text(s_device_settings.hostname, sizeof(s_device_settings.hostname), MDNS_NAME);
     copy_text(s_device_settings.manifest_url, sizeof(s_device_settings.manifest_url), OTA_MANIFEST_URL);
-    copy_text(s_device_settings.auth_user, sizeof(s_device_settings.auth_user), WEB_AUTH_USER);
-    copy_text(s_device_settings.auth_password, sizeof(s_device_settings.auth_password), WEB_AUTH_PASSWORD);
-    copy_text(s_device_settings.api_auth_user, sizeof(s_device_settings.api_auth_user), API_AUTH_USER);
-    copy_text(s_device_settings.api_auth_password, sizeof(s_device_settings.api_auth_password), API_AUTH_PASSWORD);
     s_device_settings.ota_auto_check = true;
     s_device_settings.ota_auto_check_hours = OTA_AUTO_CHECK_HOURS_DEFAULT;
 }
@@ -315,38 +268,22 @@ static void normalize_device_settings() {
     }
     copy_text(s_device_settings.manifest_url, sizeof(s_device_settings.manifest_url), manifest_url);
 
-    String auth_user = s_device_settings.auth_user;
-    auth_user.trim();
-    if (!is_valid_auth_user(auth_user)) {
-        auth_user = WEB_AUTH_USER;
-    }
-    copy_text(s_device_settings.auth_user, sizeof(s_device_settings.auth_user), auth_user);
-
-    String auth_password = s_device_settings.auth_password;
-    auth_password.trim();
-    if (!is_valid_auth_password(auth_password)) {
-        auth_password = WEB_AUTH_PASSWORD;
-    }
-    copy_text(s_device_settings.auth_password, sizeof(s_device_settings.auth_password), auth_password);
-
-    String api_auth_user = s_device_settings.api_auth_user;
-    api_auth_user.trim();
-    if (!is_valid_auth_user(api_auth_user)) {
-        api_auth_user = API_AUTH_USER;
-    }
-    copy_text(s_device_settings.api_auth_user, sizeof(s_device_settings.api_auth_user), api_auth_user);
-
-    String api_auth_password = s_device_settings.api_auth_password;
-    api_auth_password.trim();
-    if (!is_valid_auth_password(api_auth_password)) {
-        api_auth_password = API_AUTH_PASSWORD;
-    }
-    copy_text(s_device_settings.api_auth_password, sizeof(s_device_settings.api_auth_password), api_auth_password);
-
     if (s_device_settings.ota_auto_check_hours < OTA_AUTO_CHECK_HOURS_MIN
         || s_device_settings.ota_auto_check_hours > OTA_AUTO_CHECK_HOURS_MAX) {
         s_device_settings.ota_auto_check_hours = OTA_AUTO_CHECK_HOURS_DEFAULT;
     }
+}
+
+static void clear_legacy_auth_settings() {
+    Preferences prefs;
+    if (!prefs.begin("device", false)) {
+        return;
+    }
+    prefs.remove("user");
+    prefs.remove("pass");
+    prefs.remove("api_user");
+    prefs.remove("api_pass");
+    prefs.end();
 }
 
 static void load_device_settings() {
@@ -356,14 +293,11 @@ static void load_device_settings() {
     prefs.begin("device", true);
     copy_text(s_device_settings.hostname, sizeof(s_device_settings.hostname), prefs.getString("host", s_device_settings.hostname));
     copy_text(s_device_settings.manifest_url, sizeof(s_device_settings.manifest_url), prefs.getString("manifest", s_device_settings.manifest_url));
-    copy_text(s_device_settings.auth_user, sizeof(s_device_settings.auth_user), prefs.getString("user", s_device_settings.auth_user));
-    copy_text(s_device_settings.auth_password, sizeof(s_device_settings.auth_password), prefs.getString("pass", s_device_settings.auth_password));
-    copy_text(s_device_settings.api_auth_user, sizeof(s_device_settings.api_auth_user), prefs.getString("api_user", s_device_settings.api_auth_user));
-    copy_text(s_device_settings.api_auth_password, sizeof(s_device_settings.api_auth_password), prefs.getString("api_pass", s_device_settings.api_auth_password));
     s_device_settings.ota_auto_check = prefs.getBool("ota_chk", s_device_settings.ota_auto_check);
     s_device_settings.ota_auto_check_hours = prefs.getUShort("ota_hrs", s_device_settings.ota_auto_check_hours);
     prefs.end();
 
+    clear_legacy_auth_settings();
     normalize_device_settings();
 }
 
@@ -372,40 +306,13 @@ static void save_device_settings() {
     prefs.begin("device", false);
     prefs.putString("host", current_hostname());
     prefs.putString("manifest", current_manifest_url());
-    prefs.putString("user", current_auth_user());
-    prefs.putString("pass", current_auth_password());
-    prefs.putString("api_user", current_api_auth_user());
-    prefs.putString("api_pass", current_api_auth_password());
+    prefs.remove("user");
+    prefs.remove("pass");
+    prefs.remove("api_user");
+    prefs.remove("api_pass");
     prefs.putBool("ota_chk", s_device_settings.ota_auto_check);
     prefs.putUShort("ota_hrs", s_device_settings.ota_auto_check_hours);
     prefs.end();
-}
-
-static void generate_api_password(char* dst, size_t dst_size, size_t length) {
-    static constexpr char kAlphabet[] =
-        "ABCDEFGHJKLMNPQRSTUVWXYZ"
-        "abcdefghijkmnopqrstuvwxyz"
-        "23456789"
-        "_-";
-
-    if (dst_size == 0) {
-        return;
-    }
-
-    const size_t alphabet_len = sizeof(kAlphabet) - 1;
-    size_t max_len = dst_size - 1;
-    if (length < 12) {
-        length = 12;
-    }
-    if (length > max_len) {
-        length = max_len;
-    }
-
-    for (size_t i = 0; i < length; ++i) {
-        uint32_t r = esp_random();
-        dst[i] = kAlphabet[r % alphabet_len];
-    }
-    dst[length] = '\0';
 }
 
 static void ota_set_stage(const char* stage) {
@@ -723,7 +630,9 @@ static void handle_get_ota_info(AsyncWebServerRequest* req) {
     const esp_partition_t* running = esp_ota_get_running_partition();
     doc["enabled"] = true;
     doc["auth_user"] = current_auth_user();
-    doc["auth_default"] = using_default_auth();
+    doc["api_auth_user"] = current_api_auth_user();
+    doc["auth_fixed"] = true;
+    doc["api_auth_fixed"] = true;
     doc["current_version"] = APP_VERSION;
     doc["online_only"] = true;
     doc["default_manifest_url"] = current_manifest_url();
@@ -887,9 +796,9 @@ static void handle_get_device_settings(AsyncWebServerRequest* req) {
     doc["hostname_hint"] = s_hostname_hint;
     doc["manifest_url"] = current_manifest_url();
     doc["auth_user"] = current_auth_user();
-    doc["auth_default"] = using_default_auth();
     doc["api_auth_user"] = current_api_auth_user();
-    doc["api_auth_default"] = using_default_api_auth();
+    doc["auth_fixed"] = true;
+    doc["api_auth_fixed"] = true;
     doc["ota_auto_check"] = s_device_settings.ota_auto_check;
     doc["ota_auto_check_hours"] = s_device_settings.ota_auto_check_hours;
     String out;
@@ -936,6 +845,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
         }
     }
 
+    #if 0
     if (doc["auth_user"].is<String>()) {
         String auth_user = doc["auth_user"].as<String>();
         auth_user.trim();
@@ -996,6 +906,8 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
         }
     }
 
+    #endif
+
     if (!doc["ota_auto_check"].isNull()) {
         bool ota_auto_check = doc["ota_auto_check"] | next.ota_auto_check;
         if (next.ota_auto_check != ota_auto_check) {
@@ -1032,8 +944,10 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
     resp["restart_required"] = restart_required;
     resp["hostname"] = String(current_hostname()) + ".local";
     resp["manifest_url"] = current_manifest_url();
-    resp["auth_default"] = using_default_auth();
-    resp["api_auth_default"] = using_default_api_auth();
+    resp["auth_user"] = current_auth_user();
+    resp["api_auth_user"] = current_api_auth_user();
+    resp["auth_fixed"] = true;
+    resp["api_auth_fixed"] = true;
     String out;
     serializeJson(resp, out);
     req->send(200, "application/json", out);
@@ -1042,6 +956,7 @@ static void handle_post_device_settings(AsyncWebServerRequest* req, uint8_t* dat
     }
 }
 
+#if 0
 static void handle_post_rotate_api_credentials(AsyncWebServerRequest* req) {
     char generated_password[33] = {};
     generate_api_password(generated_password, sizeof(generated_password), 24);
@@ -1061,6 +976,7 @@ static void handle_post_rotate_api_credentials(AsyncWebServerRequest* req) {
     serializeJson(resp, out);
     req->send(200, "application/json", out);
 }
+#endif
 
 static void handle_head_page(AsyncWebServerRequest* req, const char* content_type) {
     AsyncWebServerResponse* resp = req->beginResponse(200, content_type, "");
@@ -2439,8 +2355,6 @@ void web_init(SimulationState* state, SemaphoreHandle_t mutex) {
     server.on("/api/device/settings", HTTP_GET, protect_api_get(handle_get_device_settings));
     server.on("/api/device/settings", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
         nullptr, protect_api_body(handle_post_device_settings));
-    server.on("/api/device/rotate-api-auth", HTTP_POST,
-        protect_api_get([](AsyncWebServerRequest* r){ handle_post_rotate_api_credentials(r); }));
     server.on("/api/ota/info", HTTP_GET, protect_api_get(handle_get_ota_info));
     server.on("/api/ota/check", HTTP_POST, protect_api_get([](AsyncWebServerRequest*){}),
         nullptr, protect_api_body(handle_post_ota_check));

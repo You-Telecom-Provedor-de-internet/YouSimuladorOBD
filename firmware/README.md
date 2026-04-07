@@ -98,7 +98,7 @@ Se algum GPIO mudar no futuro, atualizar junto:
 - a estrutura interna de `firmware/` foi preservada nesta rodada para evitar risco de quebrar build
 - esta revisao usa `ESP32 DevKit 38 pinos` como baseline, nao `ESP32-WROOM` integrado
 - o firmware usa `Wi-Fi`, mas nao usa `BLE/Bluetooth` de forma ativa nesta revisao
-- `SSID`, `hostname` e credenciais default ainda existem no firmware e devem ser tratados como risco operacional/documental
+- `SSID`, `hostname` e a credencial fixa do sistema continuam definidos no firmware e devem ser tratados como risco operacional/documental
 
 ## Dados web em flash
 
@@ -131,15 +131,15 @@ Comportamento esperado da interface web atual:
 Autenticacao em bancada:
 
 - todas as rotas `/api/*` exigem autenticacao valida no dispositivo ativo
-- as credenciais em `include/config.h` sao apenas o baseline do firmware, nao uma garantia do estado atual salvo no ESP32
-- se as credenciais tiverem sido rotacionadas pela UI, automacoes locais, `curl` e fluxos do `YOU OBD Lab` podem receber `401 Unauthorized` mesmo com o firmware atualizado
+- Web/OTA e API usam a mesma credencial fixa definida em `include/config.h`
+- a UI de OTA nao rotaciona nem sobrescreve mais as credenciais em runtime
+- hostname e manifest OTA continuam persistentes, mas login e senha nao divergem mais por NVS
 
 Checklist rapido antes de culpar a API ou o frontend:
 
 1. abrir `http://youobd2.local` e confirmar login normal na Web UI
-2. conferir as credenciais ativas em `Configuracao do Dispositivo`
-3. se necessario, rotacionar novamente as credenciais antes de rodar scripts ou smoke tests
-4. validar a autenticacao antes de usar `GET /api/status`, `GET /api/diagnostics` ou `GET /api/scenarios` como oracle automatizado
+2. confirmar a credencial fixa vigente em `include/config.h` ou no procedimento interno da bancada
+3. validar a autenticacao antes de usar `GET /api/status`, `GET /api/diagnostics` ou `GET /api/scenarios` como oracle automatizado
 
 Checklist pratico de validacao apos mexer na UI:
 

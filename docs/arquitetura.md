@@ -87,9 +87,9 @@ Observacao importante:
 
 Risco operacional de laboratorio:
 
-- as credenciais ativas do dispositivo podem divergir do baseline salvo em `firmware/include/config.h`
-- quando isso acontece, validacoes externas via `curl`, scripts ou plugin `YOU OBD Lab` podem falhar com `401 Unauthorized` mesmo se o frontend estiver funcionando normalmente
-- para validar por automacao, primeiro confirmar a autenticacao viva na Web UI e so depois usar `GET /api/status`, `GET /api/diagnostics` e `GET /api/scenarios` como fonte de verdade
+- a API continua protegida, mas agora Web/OTA e API usam uma credencial fixa unica definida em `firmware/include/config.h`
+- hostname e manifest OTA podem mudar por NVS, porem login e senha nao divergem mais entre firmware, UI e automacao
+- para validar por automacao, primeiro confirmar a autenticacao viva na Web UI e depois usar `GET /api/status`, `GET /api/diagnostics` e `GET /api/scenarios` como fonte de verdade
 
 ## Boot e orquestracao
 

@@ -111,16 +111,17 @@ constexpr char STA_DNS1[] = "";
 constexpr char STA_DNS2[] = "";
 
 // -- Geral -------------------------------------------------------------------
-// Defaults de fabrica. Em campo, hostname, manifesto OTA e credenciais
-// podem ser sobrescritos via interface protegida e ficam salvos na NVS.
+// Defaults de fabrica. Hostname e manifesto OTA podem ser sobrescritos via
+// interface protegida e ficam salvos na NVS.
+// As credenciais Web/API desta revisao sao fixas no firmware.
 constexpr char MDNS_NAME[] = "youobd";
 constexpr char APP_VERSION[] = "2026.04.02.1";
 constexpr char OTA_MANIFEST_URL[] =
     "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json";
-constexpr char WEB_AUTH_USER[] = "admin";
-constexpr char WEB_AUTH_PASSWORD[] = "obd12345";
-constexpr char API_AUTH_USER[] = "api";
-constexpr char API_AUTH_PASSWORD[] = "obdapi2026";
+constexpr char WEB_AUTH_USER[] = "youobd-core";
+constexpr char WEB_AUTH_PASSWORD[] = "YouOBD.RevA@2026#Core";
+constexpr char API_AUTH_USER[] = "youobd-core";
+constexpr char API_AUTH_PASSWORD[] = "YouOBD.RevA@2026#Core";
 constexpr uint16_t WEB_PORT = 80;
 constexpr uint32_t WS_BROADCAST_MS = 500;
 constexpr uint32_t OTA_HTTP_TIMEOUT_MS = 15000;
