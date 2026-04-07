@@ -85,6 +85,12 @@ Observacao importante:
 - se a lista de cenarios vier vazia em uma tentativa inicial, a UI faz nova tentativa automatica
 - a API continua protegida por autenticacao; o navegador reaproveita a autenticacao da sessao aberta na mesma origem
 
+Risco operacional de laboratorio:
+
+- as credenciais ativas do dispositivo podem divergir do baseline salvo em `firmware/include/config.h`
+- quando isso acontece, validacoes externas via `curl`, scripts ou plugin `YOU OBD Lab` podem falhar com `401 Unauthorized` mesmo se o frontend estiver funcionando normalmente
+- para validar por automacao, primeiro confirmar a autenticacao viva na Web UI e so depois usar `GET /api/status`, `GET /api/diagnostics` e `GET /api/scenarios` como fonte de verdade
+
 ## Boot e orquestracao
 
 Arquivo principal:

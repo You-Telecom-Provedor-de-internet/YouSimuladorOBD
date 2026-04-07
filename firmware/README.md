@@ -128,6 +128,19 @@ Comportamento esperado da interface web atual:
   - presets
   - sliders e parametros
 
+Autenticacao em bancada:
+
+- todas as rotas `/api/*` exigem autenticacao valida no dispositivo ativo
+- as credenciais em `include/config.h` sao apenas o baseline do firmware, nao uma garantia do estado atual salvo no ESP32
+- se as credenciais tiverem sido rotacionadas pela UI, automacoes locais, `curl` e fluxos do `YOU OBD Lab` podem receber `401 Unauthorized` mesmo com o firmware atualizado
+
+Checklist rapido antes de culpar a API ou o frontend:
+
+1. abrir `http://youobd2.local` e confirmar login normal na Web UI
+2. conferir as credenciais ativas em `Configuracao do Dispositivo`
+3. se necessario, rotacionar novamente as credenciais antes de rodar scripts ou smoke tests
+4. validar a autenticacao antes de usar `GET /api/status`, `GET /api/diagnostics` ou `GET /api/scenarios` como oracle automatizado
+
 Checklist pratico de validacao apos mexer na UI:
 
 1. abrir `http://youobd2.local`
