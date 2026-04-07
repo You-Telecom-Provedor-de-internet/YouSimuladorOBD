@@ -479,14 +479,66 @@
 
 <script>
 const WS_URL = `ws://${location.host}/ws`;
-let ws, reconnTimer;
+let ws, reconnTimer, httpPollTimer;
 const PROFILE_MAP = {};
 let LAST_STATE = {};
+let scenarioFetchInFlight = false;
+let scenarioRetryTimer = null;
+let pendingParamFlushTimer = null;
+let pendingParamPatch = {};
+
+function isWsReady() {
+  return ws && ws.readyState === 1;
+}
+
+function stopHttpPolling() {
+  if (httpPollTimer) {
+    clearInterval(httpPollTimer);
+    httpPollTimer = null;
+  }
+}
+
+function startHttpPolling() {
+  if (httpPollTimer) return;
+  httpPollTimer = setInterval(() => {
+    loadStatus();
+    scheduleDiagnosticsRefresh(true);
+    if (!Object.keys(SCENARIOS).length) loadScenarios();
+  }, 1500);
+}
+
+function postJson(url, payload) {
+  return fetch(url, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  }).then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json().catch(() => ({}));
+  });
+}
 
 function connect() {
+  if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
   ws = new WebSocket(WS_URL);
-  ws.onopen  = () => { document.getElementById('status-dot').classList.add('on'); };
-  ws.onclose = () => { document.getElementById('status-dot').classList.remove('on'); reconnTimer = setTimeout(connect, 2000); };
+  ws.onopen  = () => {
+    document.getElementById('status-dot').classList.add('on');
+    clearTimeout(reconnTimer);
+    stopHttpPolling();
+    loadStatus();
+    loadScenarios(true);
+    scheduleDiagnosticsRefresh(true);
+  };
+  ws.onerror = () => {
+    document.getElementById('status-dot').classList.remove('on');
+  };
+  ws.onclose = () => {
+    document.getElementById('status-dot').classList.remove('on');
+    startHttpPolling();
+    clearTimeout(reconnTimer);
+    ws = null;
+    reconnTimer = setTimeout(connect, 2000);
+  };
   ws.onmessage = e => {
     const d = JSON.parse(e.data);
     update(d);
@@ -566,27 +618,54 @@ function renderDiagnostics(diag) {
 
 function loadDiagnostics() {
   fetch('/api/diagnostics')
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
     .then(renderDiagnostics)
     .catch(() => {});
 }
 
-function loadScenarios() {
+function scheduleScenarioReload(delay = 1200) {
+  if (scenarioRetryTimer || Object.keys(SCENARIOS).length) return;
+  scenarioRetryTimer = setTimeout(() => {
+    scenarioRetryTimer = null;
+    loadScenarios(true);
+  }, delay);
+}
+
+function loadScenarios(force = false) {
+  if (scenarioFetchInFlight) return;
+  if (!force && Object.keys(SCENARIOS).length) return;
+  scenarioFetchInFlight = true;
   fetch('/api/scenarios')
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
     .then(items => {
+      const list = Array.isArray(items) ? items : [];
       const sel = document.getElementById('scenario-sel');
       sel.innerHTML = '<option value="">-- Sem cenário diagnóstico --</option>';
       SCENARIOS = {};
-      items.forEach(item => {
+      list.forEach(item => {
         SCENARIOS[item.scenario_id] = item;
         const opt = document.createElement('option');
         opt.value = item.id;
         opt.textContent = item.label;
         sel.appendChild(opt);
       });
+      if (LAST_STATE.scenario_id !== undefined && document.activeElement !== sel) {
+        sel.value = SCENARIOS[LAST_STATE.scenario_id]?.id || '';
+      }
+      if (!list.length) throw new Error('empty');
     })
-    .catch(() => {});
+    .catch(() => {
+      scheduleScenarioReload();
+    })
+    .finally(() => {
+      scenarioFetchInFlight = false;
+    });
 }
 
 function profileSummary(profile) {
@@ -693,9 +772,14 @@ function renderControlLayers(state) {
 
 function loadStatus() {
   fetch('/api/status')
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    })
     .then(update)
-    .catch(() => {});
+    .catch(() => {
+      if (!Object.keys(SCENARIOS).length) loadScenarios(true);
+    });
 }
 
 function update(d) {
@@ -811,41 +895,79 @@ function renderDtcs(dtcs) {
 }
 
 function send(key, val) {
-  if (ws && ws.readyState === 1)
+  if (isWsReady()) {
     ws.send(JSON.stringify({type:'set', key, value: val}));
+    return;
+  }
+  pendingParamPatch[key] = val;
+  clearTimeout(pendingParamFlushTimer);
+  pendingParamFlushTimer = setTimeout(() => {
+    const payload = pendingParamPatch;
+    pendingParamPatch = {};
+    pendingParamFlushTimer = null;
+    postJson('/api/params', payload)
+      .then(() => {
+        loadStatus();
+        scheduleDiagnosticsRefresh(true);
+      })
+      .catch(() => {});
+  }, 140);
 }
 
 function setProtocol(id) {
-  if (ws && ws.readyState === 1)
+  if (isWsReady()) {
     ws.send(JSON.stringify({type:'protocol', id: +id}));
+    return;
+  }
+  postJson('/api/protocol', {protocol: +id})
+    .then(() => loadStatus())
+    .catch(() => {});
 }
 
 function preset(name) {
-  if (ws && ws.readyState === 1)
+  if (isWsReady()) {
     ws.send(JSON.stringify({type:'preset', name}));
+    return;
+  }
+  postJson('/api/preset', {preset: name})
+    .then(() => loadStatus())
+    .catch(() => {});
 }
 
 function setMode(id) {
-  if (ws && ws.readyState === 1)
+  if (isWsReady()) {
     ws.send(JSON.stringify({type:'mode', id}));
+    return;
+  }
+  postJson('/api/mode', {mode: id})
+    .then(() => loadStatus())
+    .catch(() => {});
 }
 
 function applyScenario() {
   const id = document.getElementById('scenario-sel').value;
-  if (ws && ws.readyState === 1) {
+  if (isWsReady()) {
     ws.send(JSON.stringify({type:'scenario', id}));
   } else {
-    fetch('/api/scenario', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id})})
-      .then(() => scheduleDiagnosticsRefresh(true));
+    postJson('/api/scenario', {id})
+      .then(() => {
+        loadStatus();
+        scheduleDiagnosticsRefresh(true);
+      })
+      .catch(() => {});
   }
 }
 
 function clearScenario() {
-  if (ws && ws.readyState === 1) {
+  if (isWsReady()) {
     ws.send(JSON.stringify({type:'scenario', id:''}));
   } else {
-    fetch('/api/scenario', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:''})})
-      .then(() => scheduleDiagnosticsRefresh(true));
+    postJson('/api/scenario', {id:''})
+      .then(() => {
+        loadStatus();
+        scheduleDiagnosticsRefresh(true);
+      })
+      .catch(() => {});
   }
 }
 
@@ -1309,7 +1431,8 @@ document.getElementById('dtc-bank-panel').addEventListener('toggle', function() 
   if (this.open && !this._loaded) { renderDtcBank(''); this._loaded = true; }
 });
 
-loadScenarios();
+startHttpPolling();
+loadScenarios(true);
 loadStatus();
 connect();
 scheduleDiagnosticsRefresh(true);
