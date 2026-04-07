@@ -52,6 +52,39 @@ SimulationState
   <-> diagnostic_scenario_engine
 ```
 
+## Web UI e robustez operacional
+
+Arquivos principais:
+
+- `firmware/data/index.html`
+- `firmware/data/ota.html`
+- `firmware/src/web/web_server.cpp`
+
+Comportamento atual:
+
+- a `Web UI` tenta operar em tempo real via `WebSocket`
+- quando o `WebSocket` cai, a interface passa a usar `HTTP` como fallback
+- o fallback cobre:
+  - leitura de status
+  - leitura de diagnostico
+  - carga de cenarios
+  - troca de protocolo
+  - troca de modo
+  - aplicacao de presets
+  - aplicacao e limpeza de cenarios
+  - envio de sliders e parametros manuais
+
+Objetivo pratico:
+
+- evitar que a tela fique "meio viva" quando o navegador perde o `WebSocket`
+- manter a bancada utilizavel mesmo com reconexao em andamento
+- reduzir casos em que o usuario clica em `Modo de Simulacao` ou `Camada Diagnostica` e nada acontece
+
+Observacao importante:
+
+- se a lista de cenarios vier vazia em uma tentativa inicial, a UI faz nova tentativa automatica
+- a API continua protegida por autenticacao; o navegador reaproveita a autenticacao da sessao aberta na mesma origem
+
 ## Boot e orquestracao
 
 Arquivo principal:

@@ -112,3 +112,32 @@ Se houver mudanca relevante na UI web:
 1. atualizar os arquivos em `data/`
 2. reexecutar `pio run`
 3. se necessario, subir o filesystem com `pio run -t uploadfs`
+
+## Web UI em bancada
+
+Comportamento esperado da interface web atual:
+
+- `WebSocket` e o caminho preferencial para atualizacao em tempo real
+- se o `WebSocket` oscilar ou cair, a UI usa `HTTP` como fallback
+- o fallback cobre:
+  - status
+  - diagnostico
+  - cenarios
+  - protocolo
+  - modo
+  - presets
+  - sliders e parametros
+
+Checklist pratico de validacao apos mexer na UI:
+
+1. abrir `http://youobd2.local`
+2. confirmar que o `Perfil do Veiculo` carrega
+3. confirmar que a lista de `Camada Diagnostica` carrega
+4. testar troca de `Modo de Simulacao`
+5. testar aplicacao e limpeza de um cenario
+6. testar um slider qualquer e conferir atualizacao de estado
+
+Se o firmware mudou e a UI tambem mudou:
+
+1. `pio run -t upload`
+2. `pio run -t uploadfs`
