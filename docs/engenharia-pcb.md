@@ -112,14 +112,14 @@ Esses componentes entram como baseline proposto para a PCB final, mas nao devem 
 
 ## Conflitos e divergencias que nao devem ser resolvidos silenciosamente
 
-1. `docs/07-ui-controls.md` descreve um comportamento de UI mais amplo do que o firmware atual em `ui_init.cpp`.
+1. Narrativas antigas de UI local foram removidas desta rodada.
    - consequencia: para decisao de hardware usar a pinagem real do firmware, nao a narrativa antiga de menus
 
-2. `docs/01-overview.md` ainda cita selecao de protocolo por serial USB.
+2. Narrativas antigas de selecao por serial USB foram removidas.
    - consequencia: tratar como historico; o fluxo real atual e `NVS + DIP + UI + web`
 
 3. O firmware nao prova sozinho a existencia fisica de todos os componentes da carrier.
-   - consequencia: para liberar esquematico final cruzar sempre firmware com `docs/15`, `docs/16`, `docs/17`, handoff CSV e `KiCad RevA`
+   - consequencia: para liberar esquematico final cruzar sempre firmware com `docs/diagrama-eletrico-pcb.md`, `docs/engenharia-pcb.md`, `docs/reva-carrier-esp32-devkit.md`, handoff CSV e `KiCad RevA`
 
 4. Protecoes automotivas aparecem como recomendacao de engenharia, nao como implementacao fechada da bancada.
    - consequencia: a placa final deve incorporar essas protecoes, mas elas nao podem ser marcadas como "confirmadas no codigo"

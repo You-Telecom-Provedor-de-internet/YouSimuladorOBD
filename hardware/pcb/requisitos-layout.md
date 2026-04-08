@@ -93,7 +93,7 @@ Obrigatorio para a RevA:
 
 Referencia base:
 
-- `docs/17-revA-carrier-esp32-devkit.md`
+- `docs/reva-carrier-esp32-devkit.md`
 
 ## 7. Posicionamento de `SN65HVD230` e `L9637D`
 

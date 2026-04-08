@@ -18,12 +18,12 @@ Fontes principais usadas nesta consolidacao:
 - `firmware/src/web/ui_init.cpp`
 - `firmware/src/web/web_server.cpp`
 - `firmware/platformio.ini`
-- `docs/02-hardware.md`
-- `docs/03-pinout.md`
-- `docs/13-kline-l9637d-montagem.md`
-- `docs/15-diagrama-eletrico-pcb.md`
-- `docs/16-pacote-engenheiro-pcb.md`
-- `docs/17-revA-carrier-esp32-devkit.md`
+- `docs/pinout.md`
+- `docs/kline-l9637d-montagem.md`
+- `docs/diagrama-eletrico-pcb.md`
+- `docs/engenharia-pcb.md`
+- `docs/reva-carrier-esp32-devkit.md`
+- `docs/mapa-gpio-reva.md`
 - `hardware/pcb-handoff/bom-rev-a.csv`
 - `hardware/pcb-handoff/netlist-rev-a.csv`
 - `hardware/kicad/revA/README.md`
@@ -145,8 +145,8 @@ U4 OUT
 | Item | Estado | Origem | Observacao |
 |---|---|---|---|
 | `F1` fusivel de entrada `1A` | confirmado como baseline de handoff | docs + `hardware/pcb-handoff` + KiCad bootstrap | nao ha part number final congelado |
-| TVS na entrada `+12V` | recomendado e registrado | `docs/02-hardware.md` e `docs/15-diagrama-eletrico-pcb.md` | nao confirmado como implementado na bancada base |
-| protecao contra inversao de polaridade | recomendada | `docs/15-diagrama-eletrico-pcb.md` | topologia final nao fechada |
+| TVS na entrada `+12V` | recomendado e registrado | `docs/diagrama-eletrico-pcb.md` e `docs/engenharia-pcb.md` | nao confirmado como implementado na bancada base |
+| protecao contra inversao de polaridade | recomendada | `docs/diagrama-eletrico-pcb.md` | topologia final nao fechada |
 | ESD no conector OBD | nao encontrado como item fechado | inferido / hipotese | recomendavel para PCB automotiva, principalmente nas linhas externas |
 | terminacao CAN `120R` por jumper ou DNP | recomendada | docs + `hardware/pcb-handoff/bom-rev-a.csv` | nao ha prova no codigo; no breakout de bancada a terminacao pode ja existir |
 | desacoplamento local do `L9637D` | confirmado | docs + `hardware/pcb-handoff` + KiCad bootstrap | `CK1` e `CK2` de `100nF` obrigatorios |
@@ -198,29 +198,29 @@ Estas dependencias nao dependem de preferencia de software; elas sao impostas pe
 
 1. `GPIO34`, `GPIO35` e `GPIO36` sao somente entrada e sem `pull-up` interno.
    - efeito: o `DIP` precisa de `pull-up` externo para `+3V3_AUX`
-   - base: `config.h`, `main.cpp`, `docs/02`, `docs/03`, `hardware/pcb-handoff/netlist-rev-a.csv`
+   - base: `config.h`, `main.cpp`, `docs/pinout.md`, `hardware/pcb-handoff/netlist-rev-a.csv`
 
 2. A linha `K-Line` precisa de nivel de idle alto estavel em `+12V`.
    - efeito: `RK1 510R` entre `K` e `VS` e `RLI1 10k` entre `LI` e `VS` deixam de ser opcionais para reproduzir a bancada validada
-   - base: `docs/13`, `docs/15`, `hardware/pcb-handoff`
+   - base: `docs/kline-l9637d-montagem.md`, `docs/diagrama-eletrico-pcb.md`, `hardware/pcb-handoff`
 
 3. O `L9637D` precisa de dois dominios de alimentacao.
    - `VCC` logico em `+3V3_AUX`
    - `VS` automotivo em `+12V`
-   - base: `docs/13`, `docs/15`, `hardware/pcb-handoff/netlist-rev-a.csv`
+   - base: `docs/kline-l9637d-montagem.md`, `docs/diagrama-eletrico-pcb.md`, `hardware/pcb-handoff/netlist-rev-a.csv`
 
 4. O `SN65HVD230` precisa operar em `+3V3_AUX` e ficar com `RS` em `GND` para o modo rapido registrado no handoff.
-   - base: `docs/02`, `docs/03`, `hardware/pcb-handoff/netlist-rev-a.csv`
+   - base: `docs/pinout.md`, `hardware/pcb-handoff/netlist-rev-a.csv`
 
 5. A regiao de antena do `ESP32 DevKit` exige `keepout` de cobre e componentes.
-   - base: `docs/17-revA-carrier-esp32-devkit.md`
+   - base: `docs/reva-carrier-esp32-devkit.md`
 
 6. O `OLED` depende de barramento `I2C` em `400 kHz` configurado no firmware e de `+3V3_AUX` bem desacoplado.
    - base: `ui_init.cpp`
    - implicacao: manter trilhas curtas e return path limpo para evitar instabilidade visual
 
 7. O buck e o resistor `RK1` precisam de cuidado termico.
-   - base: `docs/02-hardware.md`
+   - base: `docs/diagrama-eletrico-pcb.md`
    - implicacao: placement e cobre devem considerar dissipacao, especialmente para `RK1`
 
 ## Itens confirmados no codigo
@@ -268,14 +268,14 @@ Estas dependencias nao dependem de preferencia de software; elas sao impostas pe
 
 ## Conflitos e divergencias identificadas
 
-1. `docs/07-ui-controls.md` descreve fluxos e telas que nao refletem integralmente o que `firmware/src/web/ui_init.cpp` implementa hoje.
+1. Narrativas antigas de UI local foram removidas desta rodada.
    - efeito: usar `ui_init.cpp` como fonte primaria de comportamento real da UI local
 
-2. `docs/01-overview.md` ainda menciona selecao de protocolo por serial USB.
-   - efeito: tratar isso como historico/documental; no estado atual o firmware usa `NVS`, `DIP` e mudanca por UI/web
+2. Narrativas antigas de selecao por serial USB foram removidas desta rodada.
+   - efeito: no estado atual o firmware usa `NVS`, `DIP` e mudanca por UI/web
 
 3. O firmware confirma pinagem e barramentos, mas nao confirma sozinho todos os componentes fisicos do carrier RevA.
-   - efeito: para esquematico/PCB usar sempre a combinacao `codigo + docs/15 + docs/16 + docs/17 + pcb-handoff + KiCad RevA`
+   - efeito: para esquematico/PCB usar sempre a combinacao `codigo + docs/diagrama-eletrico-pcb.md + docs/engenharia-pcb.md + docs/reva-carrier-esp32-devkit.md + pcb-handoff + KiCad RevA`
 
 4. Protecoes automotivas adicionais aparecem como recomendacao de engenharia, nao como baseline eletrico comprovado pelo firmware.
    - efeito: registrar essas protecoes como obrigatorias para PCB robusta, mas nao como "confirmadas no codigo"

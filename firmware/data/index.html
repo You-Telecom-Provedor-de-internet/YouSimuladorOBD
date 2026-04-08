@@ -1157,12 +1157,21 @@ function saveWifi() {
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(body)
   })
-  .then(r => r.json())
+  .then(async r => {
+    let data = {};
+    try { data = await r.json(); } catch (_) {}
+    if (!r.ok) throw new Error(data.error || 'Erro ao salvar.');
+    return data;
+  })
   .then(d => {
     if (d.ok) startRebootCountdown(body.sta_ip || null);
-    else showWifiMsg('Erro ao salvar.', 'err');
+    else showWifiMsg(d.error || 'Erro ao salvar.', 'err');
   })
-  .catch(() => showWifiMsg('Sem resposta — ESP32 provavelmente reiniciando.', 'ok'));
+  .catch(err => {
+    const msg = (err && err.message) ? err.message : 'Sem resposta — ESP32 provavelmente reiniciando.';
+    const looksLikeReboot = msg.toLowerCase().includes('sem resposta');
+    showWifiMsg(msg, looksLikeReboot ? 'ok' : 'err');
+  });
 }
 
 function startRebootCountdown(newIp) {

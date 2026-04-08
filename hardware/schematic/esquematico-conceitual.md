@@ -6,7 +6,7 @@ Fontes base:
 
 - `docs/hardware.md`
 - `docs/pinout.md`
-- `docs/15-diagrama-eletrico-pcb.md`
+- `docs/diagrama-eletrico-pcb.md`
 - `hardware/pcb-handoff/netlist-rev-a.csv`
 - `hardware/pcb-handoff/bom-rev-a.csv`
 - `hardware/kicad/revA/*.kicad_sch`

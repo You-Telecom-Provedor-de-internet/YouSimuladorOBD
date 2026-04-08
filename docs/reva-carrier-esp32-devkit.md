@@ -1,4 +1,4 @@
-# 17 - RevA Carrier para ESP32 DevKit
+# RevA Carrier para ESP32 DevKit
 
 ## Decisao congelada da revisao
 
@@ -39,8 +39,8 @@ Com isso, a `RevA` deixa de ser apenas uma hipotese de handoff e passa a ser a b
 Importante:
 
 - antes de fechar `Gerber`, o engenheiro deve confirmar o desenho mecanico do `DevKit` comercial escolhido
-- o pinout legado de bancada continua documentado em [03 - Pinout e Ligacoes](03-pinout.md)
-- para fechar o esquematico final da `RevA`, usar como referencia primaria [20 - Mapa Final de GPIO da RevA](20-mapa-final-gpio-reva.md)
+- o pinout canonico de bancada e PCB continua documentado em [Pinout Canonico](pinout.md)
+- para fechar o esquematico final da `RevA`, usar como referencia primaria [Mapa Final de GPIO da RevA](mapa-gpio-reva.md)
 
 ### UI local
 

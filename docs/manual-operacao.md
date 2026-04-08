@@ -1,4 +1,4 @@
-# 19 - Manual de Operacao com Imagens
+# Manual de Operacao
 
 Manual pratico para uso diario do `YouSimuladorOBD` em bancada, campo e desenvolvimento com `YouAutoCarvAPP2`, `Torque Pro`, `OBDLink` e plugin `YOU OBD Lab`.
 
@@ -19,14 +19,14 @@ Acesse pelo hostname mDNS ou pelo IP:
 
 ```text
 http://youobd2.local/
-http://192.168.1.11/
+http://192.168.1.9/
 ```
 
 Pagina de administracao OTA:
 
 ```text
 http://youobd2.local/ota.html
-http://192.168.1.11/ota.html
+http://192.168.1.9/ota.html
 ```
 
 Credencial atual do laboratorio:
@@ -245,8 +245,7 @@ Fluxo recomendado:
 
 ## 13. Referencias cruzadas
 
-- [08 - Wi-Fi, Web e OTA](08-wifi-webui.md)
-- [09 - Perfis de Veiculo](09-vehicle-profiles.md)
-- [10 - Simulacao Dinamica](10-dynamic-simulation.md)
-- [14 - Cenarios Diagnosticos](14-diagnostic-scenarios.md)
-- [18 - Plugin Codex YOU OBD Lab](18-codex-plugin-you-obd-lab.md)
+- [Arquitetura canonica](arquitetura.md)
+- [Hardware consolidado](hardware.md)
+- [Pinout canonico](pinout.md)
+- [Firmware - README local](../firmware/README.md)

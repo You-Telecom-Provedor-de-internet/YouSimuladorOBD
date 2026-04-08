@@ -1786,6 +1786,16 @@ static NetConfig default_wifi_net() {
     return { STA_SSID, STA_PASSWORD, STA_STATIC_IP, STA_GATEWAY };
 }
 
+static bool parse_ipv4_or_default(IPAddress& out, const char* preferred, const char* fallback) {
+    if (preferred && strlen(preferred) > 0 && out.fromString(preferred)) {
+        return true;
+    }
+    if (fallback && strlen(fallback) > 0 && out.fromString(fallback)) {
+        return true;
+    }
+    return false;
+}
+
 static int find_saved_net_index(const String& ssid) {
     for (uint8_t i = 0; i < s_net_count; i++) {
         if (s_nets[i].ssid == ssid) {
@@ -1866,11 +1876,16 @@ static bool try_connect(const NetConfig& net) {
 
     IPAddress ip, gateway, subnet, dns1, dns2;
     if (net.ip.length() > 0 && ip.fromString(net.ip) && gateway.fromString(net.gw)) {
-        subnet.fromString(STA_SUBNET);
-        dns1.fromString(STA_DNS1);
-        dns2.fromString(STA_DNS2);
-        WiFi.config(ip, gateway, subnet, dns1, dns2);
-        Serial.printf(" (IP fixo: %s)", net.ip.c_str());
+        parse_ipv4_or_default(subnet, STA_SUBNET, "255.255.255.0");
+        parse_ipv4_or_default(dns1, STA_DNS1, net.gw.c_str());
+        parse_ipv4_or_default(dns2, STA_DNS2, "");
+        bool config_ok = WiFi.config(ip, gateway, subnet, dns1, dns2);
+        Serial.printf(" (IP fixo: %s gw:%s mask:%s dns1:%s%s)",
+                      net.ip.c_str(),
+                      net.gw.c_str(),
+                      subnet.toString().c_str(),
+                      dns1.toString().c_str(),
+                      config_ok ? "" : " config-falhou");
     } else {
         // DHCP — limpa config estática anterior
         WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
@@ -1990,6 +2005,29 @@ static void handle_post_wifi(AsyncWebServerRequest* req, uint8_t* data, size_t l
     if (deserializeJson(doc, data, len)) { req->send(400); return; }
     const char* ssid = doc["ssid"] | "";
     if (strlen(ssid) == 0) { req->send(400, "application/json", "{\"error\":\"ssid required\"}"); return; }
+    String sta_ip = doc["sta_ip"].isNull() ? String("") : doc["sta_ip"].as<String>();
+    String gateway = doc["gateway"].isNull() ? String("") : doc["gateway"].as<String>();
+    sta_ip.trim();
+    gateway.trim();
+
+    IPAddress parsed_ip, parsed_gateway;
+    if (sta_ip.length() > 0) {
+        if (!parsed_ip.fromString(sta_ip)) {
+            req->send(400, "application/json", "{\"error\":\"invalid sta_ip\"}");
+            return;
+        }
+        if (gateway.length() == 0) {
+            req->send(400, "application/json", "{\"error\":\"gateway required when sta_ip is set\"}");
+            return;
+        }
+        if (!parsed_gateway.fromString(gateway)) {
+            req->send(400, "application/json", "{\"error\":\"invalid gateway\"}");
+            return;
+        }
+    } else if (gateway.length() > 0) {
+        req->send(400, "application/json", "{\"error\":\"sta_ip required when gateway is set\"}");
+        return;
+    }
 
     // Procura rede existente com mesmo SSID
     int idx = -1;
@@ -2008,8 +2046,8 @@ static void handle_post_wifi(AsyncWebServerRequest* req, uint8_t* data, size_t l
     s_nets[idx].ssid = ssid;
     const char* pass = doc["password"] | "";
     if (strlen(pass) > 0) s_nets[idx].pass = pass;
-    if (!doc["sta_ip"].isNull())  s_nets[idx].ip = doc["sta_ip"].as<String>();
-    if (!doc["gateway"].isNull()) s_nets[idx].gw = doc["gateway"].as<String>();
+    s_nets[idx].ip = sta_ip;
+    s_nets[idx].gw = gateway;
 
     save_wifi_nets();
     dynamic_persist_odometer_now();
@@ -2202,7 +2240,9 @@ static void wifi_start() {
         : -1;
     bool prefer_factory_net = factory_net.ssid.length() > 0
         && (factory_idx < 0
-            || (factory_net.ip.length() == 0 && factory_idx >= 0 && s_nets[factory_idx].ip.length() > 0));
+            || (factory_idx >= 0
+                && factory_net.ip.length() > 0
+                && s_nets[factory_idx].ip.length() == 0));
 
     Serial.printf("[WiFi] %d rede(s) salva(s)\n", s_net_count);
     for (uint8_t i = 0; i < s_net_count; i++)

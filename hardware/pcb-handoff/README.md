@@ -13,8 +13,8 @@ Este diretorio contem o material tecnico consolidado para o engenheiro capturar 
 
 O documento principal do handoff e:
 
-- `docs/15-diagrama-eletrico-pcb.md`
-- `docs/16-pacote-engenheiro-pcb.md`
+- `docs/diagrama-eletrico-pcb.md`
+- `docs/engenharia-pcb.md`
 
 ## Captura nativa iniciada
 
@@ -48,4 +48,4 @@ O pacote desta pasta e o bootstrap em `KiCad` devem ser interpretados nessa arqu
 
 ## Observacao importante
 
-Os arquivos antigos em `hardware/schematic/` nao sao mais a referencia de engenharia. Eles ficam apenas como historico e foram supersedidos por este pacote.
+Este pacote complementa `hardware/schematic/` e o bootstrap em `hardware/kicad/revA/`; os tres devem permanecer coerentes com os documentos canonicos em `docs/`.

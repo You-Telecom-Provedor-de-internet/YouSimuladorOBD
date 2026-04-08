@@ -270,9 +270,9 @@ Dependencias diretas de software:
 
 ## Conflitos documentais relevantes
 
-1. `docs/07-ui-controls.md` descreve uma experiencia de UI mais ampla que o comportamento implementado em `ui_init.cpp`.
-2. `docs/01-overview.md` cita selecao de protocolo por serial USB, o que nao representa o fluxo principal atual.
-3. Componentes fisicos do carrier RevA nao podem ser inferidos apenas do firmware; precisam ser cruzados com `docs/15`, `docs/16`, `docs/17`, `hardware/pcb-handoff/` e `hardware/kicad/revA/`.
+1. Narrativas antigas de UI local foram removidas desta rodada; o comportamento implementado e o que esta em `ui_init.cpp`.
+2. Narrativas antigas de selecao de protocolo por serial USB foram removidas; o fluxo principal atual e `NVS + DIP + UI + web`.
+3. Componentes fisicos do carrier RevA nao podem ser inferidos apenas do firmware; precisam ser cruzados com `docs/diagrama-eletrico-pcb.md`, `docs/engenharia-pcb.md`, `docs/reva-carrier-esp32-devkit.md`, `hardware/pcb-handoff/` e `hardware/kicad/revA/`.
 
 ## Documentos relacionados
 

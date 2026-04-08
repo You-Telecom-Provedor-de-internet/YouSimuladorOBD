@@ -1,13 +1,10 @@
-# 20 - Mapa Final de GPIO da RevA
+# Mapa Final de GPIO da RevA
 
 ## Objetivo
 
 Este documento congela o mapa de GPIO da `RevA` para fechamento do esquematico final.
 
-Ele nao substitui o registro historico da bancada validada. O objetivo aqui e separar:
-
-- o pinout legado que refletia o prototipo de bancada
-- o pinout final recomendado para a `PCB RevA`
+Ele consolida o mapa de GPIO que deve ser usado como referencia de fechamento para a `PCB RevA`.
 
 ## Criterios de fechamento
 
@@ -160,7 +157,7 @@ Nenhuma mudanca adicional de barramento foi necessaria para:
 
 ## Referencias
 
-- [03 - Pinout ESP32 e Ligacoes](03-pinout.md)
-- [16 - Pacote para o Engenheiro de PCB](16-pacote-engenheiro-pcb.md)
-- [17 - RevA Carrier para ESP32 DevKit](17-revA-carrier-esp32-devkit.md)
+- [Pinout canonico](pinout.md)
+- [Guia executivo para PCB](engenharia-pcb.md)
+- [RevA Carrier para ESP32 DevKit](reva-carrier-esp32-devkit.md)
 - [hardware/kicad/revA/ui-panel-reference.csv](../hardware/kicad/revA/ui-panel-reference.csv)

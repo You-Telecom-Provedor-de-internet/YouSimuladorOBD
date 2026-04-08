@@ -1,9 +1,0 @@
-{
-  "status": "OBSOLETE",
-  "message": "Nao usar este arquivo para a PCB.",
-  "superseded_by": [
-    "docs/15-diagrama-eletrico-pcb.md",
-    "hardware/pcb-handoff/netlist-rev-a.csv",
-    "hardware/pcb-handoff/bom-rev-a.csv"
-  ]
-}

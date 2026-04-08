@@ -24,7 +24,7 @@
 		)
 		(uuid "1799f3d3-8e7f-402b-a98d-f75a4031ac51")
 	)
-	(text "Fonte tecnica:\n- docs/15-diagrama-eletrico-pcb.md\n- hardware/pcb-handoff/netlist-rev-a.csv" 
+(text "Fonte tecnica:\n- docs/diagrama-eletrico-pcb.md\n- hardware/pcb-handoff/netlist-rev-a.csv"
 		(exclude_from_sim no)
 		(at 18 52 0)
 		(effects

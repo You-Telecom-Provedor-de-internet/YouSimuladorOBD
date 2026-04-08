@@ -45,5 +45,5 @@ Os itens abaixo nao sao mais a referencia principal do projeto:
 
 Use para a PCB:
 
-- [docs/15-diagrama-eletrico-pcb.md](../../docs/15-diagrama-eletrico-pcb.md)
+- [docs/diagrama-eletrico-pcb.md](../../docs/diagrama-eletrico-pcb.md)
 - [hardware/pcb-handoff/README.md](../pcb-handoff/README.md)

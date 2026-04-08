@@ -35,9 +35,9 @@ Esta revisao ainda nao e o esquematico completo final. Ela entrega:
 
 Os dados eletricos consolidados continuam sendo:
 
-- `docs/15-diagrama-eletrico-pcb.md`
-- `docs/17-revA-carrier-esp32-devkit.md`
-- `docs/20-mapa-final-gpio-reva.md`
+- `docs/diagrama-eletrico-pcb.md`
+- `docs/reva-carrier-esp32-devkit.md`
+- `docs/mapa-gpio-reva.md`
 - `hardware/pcb-handoff/netlist-rev-a.csv`
 - `hardware/pcb-handoff/bom-rev-a.csv`
 

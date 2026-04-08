@@ -23,7 +23,7 @@
 		)
 		(uuid "3889134a-e64b-41e0-8908-71eb0f4c5e13")
 	)
-	(text "Fonte tecnica:\n- docs/03-pinout.md\n- docs/17-revA-carrier-esp32-devkit.md\n- firmware/include/config.h\n- firmware/src/web/ui_init.cpp" 
+(text "Fonte tecnica:\n- docs/pinout.md\n- docs/reva-carrier-esp32-devkit.md\n- firmware/include/config.h\n- firmware/src/web/ui_init.cpp"
 		(exclude_from_sim no)
 		(at 18 70 0)
 		(effects

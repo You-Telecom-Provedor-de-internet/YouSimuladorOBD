@@ -1,4 +1,4 @@
-# 15 - Diagrama Eletrico e Handoff PCB
+# Diagrama Eletrico e Handoff PCB
 
 ## Objetivo
 
@@ -165,7 +165,7 @@ Para esta revisao, o MCU fica congelado como:
 
 Referencia:
 
-- [17 - RevA Carrier para ESP32 DevKit](17-revA-carrier-esp32-devkit.md)
+- [RevA Carrier para ESP32 DevKit](reva-carrier-esp32-devkit.md)
 - [hardware/kicad/revA/esp32-devkit38-carrier-reference.csv](../hardware/kicad/revA/esp32-devkit38-carrier-reference.csv)
 
 ### Escolha de implementacao da fonte

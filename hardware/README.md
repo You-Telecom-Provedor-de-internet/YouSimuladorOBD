@@ -32,7 +32,6 @@ A `RevA` atual deve ser entendida como:
   - `esquematico-conceitual.md`
   - `netlist-humana.md`
   - `bom-preliminar.csv`
-  - `legacy/`
 
 ### `pcb/`
 
@@ -46,11 +45,6 @@ A `RevA` atual deve ser entendida como:
 
 - registros auxiliares de status de BOM
 
-### `schematics/`
-
-- diretorio historico ou residual
-- nao e a fonte canonica desta rodada
-
 ## Fluxo recomendado para engenharia
 
 1. comecar por `../docs/hardware.md`
@@ -58,12 +52,6 @@ A `RevA` atual deve ser entendida como:
 3. usar `schematic/` como base textual atual
 4. comparar com `pcb-handoff/`
 5. continuar a captura em `kicad/revA/`
-
-## Material legado
-
-Arquivos antigos que nao devem ser usados como fonte principal foram movidos para:
-
-- `schematic/legacy/`
 
 ## Observacao importante
 

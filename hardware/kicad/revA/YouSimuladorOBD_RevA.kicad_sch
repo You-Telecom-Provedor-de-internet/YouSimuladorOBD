@@ -10,7 +10,7 @@
 		(rev "A")
 		(company "You Telecom")
 		(comment 1 "Bootstrap KiCad capture from validated bench handoff")
-		(comment 2 "Source: docs/15-diagrama-eletrico-pcb.md + hardware/pcb-handoff")
+(comment 2 "Source: docs/diagrama-eletrico-pcb.md + hardware/pcb-handoff")
 		(comment 3 "Mechanical reference: hardware/kicad/revA/ui-panel-reference.csv")
 	)
 	(lib_symbols)

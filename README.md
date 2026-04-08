@@ -69,6 +69,11 @@ Use estes arquivos como ponto de entrada principal:
 - [Arquitetura canonica](docs/arquitetura.md)
 - [Hardware consolidado](docs/hardware.md)
 - [Pinout canonico](docs/pinout.md)
+- [Manual de operacao](docs/manual-operacao.md)
+- [Montagem K-Line com L9637D](docs/kline-l9637d-montagem.md)
+- [Diagrama eletrico e handoff PCB](docs/diagrama-eletrico-pcb.md)
+- [RevA carrier para ESP32 DevKit](docs/reva-carrier-esp32-devkit.md)
+- [Mapa final de GPIO da RevA](docs/mapa-gpio-reva.md)
 - [Guia executivo para PCB](docs/engenharia-pcb.md)
 - [Firmware - README local](firmware/README.md)
 - [Hardware - README local](hardware/README.md)
@@ -76,29 +81,6 @@ Use estes arquivos como ponto de entrada principal:
 - [Netlist humana](hardware/schematic/netlist-humana.md)
 - [BOM preliminar](hardware/schematic/bom-preliminar.csv)
 - [Requisitos de layout PCB](hardware/pcb/requisitos-layout.md)
-
-## Documentacao detalhada e historica
-
-- [01 - Visao Geral](docs/01-overview.md)
-- [02 - Hardware e Componentes](docs/02-hardware.md)
-- [03 - Pinout e Ligacoes](docs/03-pinout.md)
-- [04 - Protocolos OBD-II](docs/04-protocols.md)
-- [05 - PIDs OBD-II](docs/05-obd-pids.md)
-- [06 - Arquitetura de Firmware](docs/06-architecture.md)
-- [07 - Controles e UI](docs/07-ui-controls.md)
-- [08 - Wi-Fi, Web e OTA](docs/08-wifi-webui.md)
-- [09 - Perfis de Veiculo](docs/09-vehicle-profiles.md)
-- [10 - Simulacao Dinamica](docs/10-dynamic-simulation.md)
-- [12 - Auditoria de Firmware e Bancada](docs/12-auditoria-firmware-e-bancada.md)
-- [13 - Montagem K-Line com L9637D](docs/13-kline-l9637d-montagem.md)
-- [14 - Cenarios Diagnosticos](docs/14-diagnostic-scenarios.md)
-- [15 - Diagrama Eletrico e Handoff PCB](docs/15-diagrama-eletrico-pcb.md)
-- [16 - Pacote para o Engenheiro de PCB](docs/16-pacote-engenheiro-pcb.md)
-- [17 - RevA Carrier para ESP32 DevKit](docs/17-revA-carrier-esp32-devkit.md)
-- [18 - Codex Plugin YOU OBD Lab](docs/18-codex-plugin-you-obd-lab.md)
-- [19 - Manual de Operacao com Imagens](docs/19-manual-operacao.md)
-- [19 - Manual de Operacao com Imagens (HTML)](docs/19-manual-operacao.html)
-- [19 - Manual de Operacao com Imagens (PDF)](docs/19-manual-operacao.pdf)
 - [Hardware - Pacote para PCB](hardware/pcb-handoff/README.md)
 - [Hardware - KiCad RevA](hardware/kicad/revA/README.md)
 
@@ -142,8 +124,13 @@ YouSimuladorOBD/
 |  |- arquitetura.md
 |  |- hardware.md
 |  |- pinout.md
+|  |- manual-operacao.md
+|  |- kline-l9637d-montagem.md
+|  |- diagrama-eletrico-pcb.md
+|  |- reva-carrier-esp32-devkit.md
+|  |- mapa-gpio-reva.md
 |  |- engenharia-pcb.md
-|  `- docs numerados de apoio
+|  `- ota-manifest.example.json
 |- firmware/
 |  |- README.md
 |  |- include/
@@ -166,7 +153,6 @@ YouSimuladorOBD/
 
 - os documentos canonicos desta rodada sao `docs/hardware.md`, `docs/pinout.md`, `docs/engenharia-pcb.md` e os arquivos em `hardware/schematic/`
 - `hardware/pcb-handoff/` e `hardware/kicad/revA/` continuam sendo baseline tecnico importante para o engenheiro de PCB
-- `hardware/schematic/legacy/` guarda o material antigo que nao deve ser usado como fonte principal
 - os artefatos de validacao de bancada que estavam soltos na raiz foram movidos para `assets/validation/`
-- o laboratorio de validacao com Codex, simulador, app Android e celular real esta documentado em `docs/18-codex-plugin-you-obd-lab.md`
-- a operacao diaria do simulador, incluindo OTA e rotacao da senha da API, esta no manual com imagens em `docs/19-manual-operacao.md`, com versoes renderizadas em `docs/19-manual-operacao.html` e `docs/19-manual-operacao.pdf`
+- a integracao com o laboratorio Codex permanece no repositorio do plugin `YOU OBD Lab`, separado deste repositorio
+- a operacao diaria do simulador, incluindo OTA e credencial fixa da API, esta em `docs/manual-operacao.md`

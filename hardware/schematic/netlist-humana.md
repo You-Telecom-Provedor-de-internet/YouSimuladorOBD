@@ -9,8 +9,8 @@ Fontes de cruzamento:
 - `docs/hardware.md`
 - `docs/pinout.md`
 - `firmware/include/config.h`
-- `docs/13-kline-l9637d-montagem.md`
-- `docs/15-diagrama-eletrico-pcb.md`
+- `docs/kline-l9637d-montagem.md`
+- `docs/diagrama-eletrico-pcb.md`
 
 Legenda curta:
 
