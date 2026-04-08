@@ -23,6 +23,7 @@ flowchart LR
     J1["J1 OBD-II J1962"]
     F1["F1 Fuse 1A"]
     U1["U1 LM2596 module\n12V -> 5V"]
+    U4["U4 3.3V regulator\n+5V -> +3V3_AUX"]
     MCU["MCU1 ESP32 DevKit 38p\npluggable on carrier RevA"]
     U2["U2 SN65HVD230"]
     U3["U3 L9637D"]
@@ -34,8 +35,8 @@ flowchart LR
     DISP1["DISP1 OLED SH1107"]
     ENC1["ENC1 KY-040"]
     BTN["SW2-SW7 buttons"]
-    DIP["SW1 DIP 3 bits\nRDIP1-RDIP3 10k -> 3V3"]
-    LEDS["D1-D3 LEDs\nRLED1-RLED3 330R"]
+    DIP["SW1 DIP 3 bits\nRDIP1-RDIP3 10k -> +3V3_AUX"]
+    LEDTX["D3 LED_TX optional\nRLED3 330R"]
 
     J1 -- "pin16 +12V" --> F1
     F1 --> U1
@@ -48,18 +49,21 @@ flowchart LR
     GND --> MCU
     GND --> U2
     GND --> U3
+    GND --> U4
     GND --> DISP1
     GND --> ENC1
     GND --> BTN
-    GND --> LEDS
+    GND --> LEDTX
     GND --> CK1
     GND --> CK2
 
     U1 -- "5V" --> MCU
-    MCU -- "3V3" --> U2
-    MCU -- "3V3" --> U3
-    MCU -- "3V3" --> DISP1
-    MCU -- "3V3" --> DIP
+    U1 -- "5V" --> U4
+    U4 -- "+3V3_AUX" --> U2
+    U4 -- "+3V3_AUX" --> U3
+    U4 -- "+3V3_AUX" --> DISP1
+    U4 -- "+3V3_AUX" --> DIP
+    U4 -- "+3V3_AUX" --> ENC1
 
     MCU -- "GPIO4 CAN_TX" --> U2
     MCU -- "GPIO5 CAN_RX" --> U2
@@ -76,10 +80,10 @@ flowchart LR
     CK2 --> U3
 
     MCU -- "GPIO21 SDA / GPIO22 SCL" --> DISP1
-    MCU -- "GPIO12/13/15" --> ENC1
-    MCU -- "GPIO32/33/25/26/27/14" --> BTN
+    MCU -- "GPIO14/13/19" --> ENC1
+    MCU -- "GPIO32/33/25/26/27/18" --> BTN
     MCU -- "GPIO34/35/36" --> DIP
-    MCU -- "GPIO19/18/23" --> LEDS
+    MCU -- "GPIO23" --> LEDTX
 ```
 
 ## Mapa de sinais
@@ -130,6 +134,7 @@ flowchart LR
 - `CK2 100nF`
 - `F1` na entrada `+12V`
 - `LM2596` ou buck equivalente
+- regulador `3.3V` dedicado para `+3V3_AUX`
 
 ### Recomendados para a revisao da placa
 
@@ -139,7 +144,7 @@ flowchart LR
 - ponto de teste em:
   - `+12V`
   - `+5V`
-  - `+3V3`
+  - `+3V3_AUX`
   - `GND`
   - `CANH`
   - `CANL`

@@ -88,8 +88,6 @@ void setup() {
     }
 
     pinMode(PIN_LED_BUILTIN, OUTPUT);
-    pinMode(PIN_LED_CAN, OUTPUT);
-    pinMode(PIN_LED_KLINE, OUTPUT);
     pinMode(PIN_LED_TX, OUTPUT);
 
     protocol_init(&g_sim, g_sim_mutex);

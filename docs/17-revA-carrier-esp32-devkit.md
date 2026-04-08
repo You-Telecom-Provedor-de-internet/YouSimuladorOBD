@@ -39,7 +39,8 @@ Com isso, a `RevA` deixa de ser apenas uma hipotese de handoff e passa a ser a b
 Importante:
 
 - antes de fechar `Gerber`, o engenheiro deve confirmar o desenho mecanico do `DevKit` comercial escolhido
-- a `RevA` deve manter compatibilidade com o mapa de GPIOs ja validado em [03 - Pinout e Ligacoes](03-pinout.md)
+- o pinout legado de bancada continua documentado em [03 - Pinout e Ligacoes](03-pinout.md)
+- para fechar o esquematico final da `RevA`, usar como referencia primaria [20 - Mapa Final de GPIO da RevA](20-mapa-final-gpio-reva.md)
 
 ### UI local
 
@@ -47,7 +48,9 @@ Na `RevA`, a estrategia de baixo risco fica:
 
 - `DISP1` como modulo `OLED SH1107 128x128` em header
 - `ENC1` como modulo `KY-040` em header
-- `SW2-SW7`, `SW1` e `D1-D3` podem ficar diretamente na carrier
+- `SW2-SW7` e `SW1` podem ficar diretamente na carrier
+- `LED_TX` pode ficar diretamente na carrier como diagnostico opcional
+- `LED_CAN` e `LED_KLINE` deixam de ser obrigatorios no fechamento final
 
 ### Fonte e barramentos
 
@@ -117,10 +120,11 @@ Recomendacao:
 ### UI
 
 - `GPIO21/22` -> `OLED`
-- `GPIO12/13/15` -> `KY-040`
-- `GPIO32/33/25/26/27/14` -> botoes
+- `GPIO14/13/19` -> `KY-040`
+- `GPIO32/33/25/26/27/18` -> botoes
 - `GPIO34/35/36` -> DIP
-- `GPIO19/18/23` -> LEDs
+- `GPIO23` -> `LED_TX` opcional
+- `GPIO12` e `GPIO15` ficam fora da UI por risco de boot
 
 ## Placement de referencia
 

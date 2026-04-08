@@ -29,12 +29,12 @@ constexpr int PIN_BTN_NEXT = 33;
 constexpr int PIN_BTN_UP = 25;
 constexpr int PIN_BTN_DOWN = 26;
 constexpr int PIN_BTN_SELECT = 27;
-constexpr int PIN_BTN_PROTOCOL = 14;
+constexpr int PIN_BTN_PROTOCOL = 18;
 
 // -- Encoder rotativo KY-040 -------------------------------------------------
-constexpr int PIN_ENC_A = 12;
+constexpr int PIN_ENC_A = 14;
 constexpr int PIN_ENC_B = 13;
-constexpr int PIN_ENC_SW = 15;
+constexpr int PIN_ENC_SW = 19;
 
 // -- DIP Switch (somente entrada - GPIO 34-39) -------------------------------
 constexpr int PIN_DIP_0 = 34;
@@ -43,8 +43,6 @@ constexpr int PIN_DIP_2 = 36;
 
 // -- LEDs de status ----------------------------------------------------------
 constexpr int PIN_LED_BUILTIN = 2;
-constexpr int PIN_LED_CAN = 19;
-constexpr int PIN_LED_KLINE = 18;
 constexpr int PIN_LED_TX = 23;
 
 // ============================================================================

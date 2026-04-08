@@ -27,7 +27,7 @@
 | `GPIO25` | `BTN_UP` |
 | `GPIO26` | `BTN_DOWN` |
 | `GPIO27` | `BTN_SELECT` |
-| `GPIO14` | `BTN_PROTOCOL` |
+| `GPIO18` | `BTN_PROTOCOL` |
 
 Todos os botoes usam `INPUT_PULLUP` interno e devem ser ligados entre o GPIO e o `GND`.
 
@@ -35,17 +35,17 @@ Todos os botoes usam `INPUT_PULLUP` interno e devem ser ligados entre o GPIO e o
 
 | GPIO | Funcao |
 |---|---|
-| `GPIO12` | encoder `A / CLK` |
+| `GPIO14` | encoder `A / CLK` |
 | `GPIO13` | encoder `B / DT` |
-| `GPIO15` | encoder `SW` |
+| `GPIO19` | encoder `SW` |
 
 ### DIP de protocolo
 
 | GPIO | Bit | Observacao |
 |---|---|---|
-| `GPIO34` | bit 0 | somente entrada, usar `10k` externo para `3V3` |
-| `GPIO35` | bit 1 | somente entrada, usar `10k` externo para `3V3` |
-| `GPIO36` | bit 2 | somente entrada, usar `10k` externo para `3V3` |
+| `GPIO34` | bit 0 | somente entrada, usar `10k` externo para `+3V3_AUX` |
+| `GPIO35` | bit 1 | somente entrada, usar `10k` externo para `+3V3_AUX` |
+| `GPIO36` | bit 2 | somente entrada, usar `10k` externo para `+3V3_AUX` |
 
 Leitura:
 
@@ -56,8 +56,6 @@ Leitura:
 
 | GPIO | LED | Cor sugerida |
 |---|---|---|
-| `GPIO19` | atividade CAN | verde |
-| `GPIO18` | atividade K-Line | amarelo |
 | `GPIO23` | TX / trafego | vermelho |
 | `GPIO2` | heartbeat interno | LED onboard |
 
@@ -93,7 +91,7 @@ Leitura:
 |---|---|
 | `GPIO4` | `SN65HVD230 TXD` |
 | `GPIO5` | `SN65HVD230 RXD` |
-| `3V3` | `SN65HVD230 VCC` |
+| `+3V3_AUX` | `SN65HVD230 VCC` |
 | `GND` | `SN65HVD230 GND` |
 | `GND` | `SN65HVD230 RS` |
 | `OBD pin 6` | `SN65HVD230 CANH` |
@@ -105,7 +103,7 @@ Leitura:
 |---|---|
 | `GPIO17` | `L9637D pin 4 (TX)` |
 | `GPIO16` | `L9637D pin 1 (RX)` |
-| `3V3` | `L9637D pin 3 (VCC)` |
+| `+3V3_AUX` | `L9637D pin 3 (VCC)` |
 | `GND` | `L9637D pin 5 (GND)` |
 | `OBD pin 7` | `L9637D pin 6 (K)` |
 | `OBD pin 16` | `L9637D pin 7 (VS)` |
@@ -122,7 +120,8 @@ Leitura:
 | `GPIO1` / `GPIO3` | serial USB debug |
 | `GPIO6-11` | flash interna, nunca usar |
 | `GPIO34-39` | somente entrada, sem pull-up interno |
-| `GPIO12` | pino sensivel em boot, evitar pull-up externo incorreto |
+| `GPIO12` | pino sensivel em boot, nao usar na UI |
+| `GPIO15` | pino sensivel em boot, nao usar na UI |
 
 ## Referencia rapida de diagnostico
 

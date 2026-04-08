@@ -9,10 +9,10 @@
 		(date "2026-04-05")
 		(rev "A")
 		(company "You Telecom")
-		(comment 1 "SH1107 + KY-040 + 6 buttons + DIP + LEDs")
+		(comment 1 "SH1107 + KY-040 + 6 buttons + DIP + LED_TX opcional")
 	)
 	(lib_symbols)
-	(text "Captura a concluir neste bloco:\n- DISP1 OLED SH1107 128x128 I2C\n- ENC1 KY-040\n- SW2-SW7 = PREV / NEXT / UP / DOWN / OK / PROTO\n- SW1 DIP 3 bits\n- D1-D3 LEDs de status" 
+	(text "Captura a concluir neste bloco:\n- DISP1 OLED SH1107 128x128 I2C\n- ENC1 KY-040\n- SW2-SW7 = PREV / NEXT / UP / DOWN / OK / PROTO\n- SW1 DIP 3 bits\n- D3 LED_TX opcional"
 		(exclude_from_sim no)
 		(at 18 20 0)
 		(effects

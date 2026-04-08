@@ -267,8 +267,6 @@ Scroll: 2 páginas de 8 parâmetros (total: 16)
 
 | LED | Cor | Comportamento |
 |-----|-----|---------------|
-| LED_CAN | Verde | Aceso = protocolo CAN ativo; apagado = K-Line ativo |
-| LED_KLINE | Amarelo | Aceso = protocolo K-Line ativo |
 | LED_TX | Vermelho | Pisca 50ms a cada frame OBD enviado |
 | LED interno (GPIO2) | Azul | Pisca 1Hz = sistema OK; rápido = erro |
 

@@ -12,7 +12,7 @@
 		(comment 1 "Keep validated GPIO map from firmware/docs")
 	)
 	(lib_symbols)
-	(text "Captura a concluir neste bloco:\n- MCU1 ESP32 DevKit 38p em carrier RevA\n- JMCU1/JMCU2 1x19 femea 2.54 mm\n- keepout da antena e acesso USB\n- GPIO4/5 CAN\n- GPIO17/16 K-Line\n- GPIO21/22 OLED\n- GPIO12/13/15 encoder\n- GPIO32/33/25/26/27/14 botoes\n- GPIO34/35/36 DIP\n- GPIO19/18/23 LEDs" 
+	(text "Captura a concluir neste bloco:\n- MCU1 ESP32 DevKit 38p em carrier RevA\n- JMCU1/JMCU2 1x19 femea 2.54 mm\n- keepout da antena e acesso USB\n- GPIO4/5 CAN\n- GPIO17/16 K-Line\n- GPIO21/22 OLED\n- GPIO14/13/19 encoder\n- GPIO32/33/25/26/27/18 botoes\n- GPIO34/35/36 DIP\n- GPIO23 LED_TX opcional"
 		(exclude_from_sim no)
 		(at 18 20 0)
 		(effects

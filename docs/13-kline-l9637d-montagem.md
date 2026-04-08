@@ -39,7 +39,7 @@ TX    4 -|               |- 5 GND
 |---|---|---|---|
 | `1` | `RX` | `ESP32 GPIO16` | usado |
 | `2` | `LO` | `NC` | nao usado |
-| `3` | `VCC` | `ESP32 3V3` | usado |
+| `3` | `VCC` | `+3V3_AUX` | usado |
 | `4` | `TX` | `ESP32 GPIO17` | usado |
 | `5` | `GND` | `GND comum` | usado |
 | `6` | `K` | `OBD pin 7` | usado |
@@ -57,7 +57,7 @@ Passivos:
 ```text
 ESP32 GPIO17  -> U3 pin 4 (TX)
 ESP32 GPIO16  <- U3 pin 1 (RX)
-ESP32 3V3     -> U3 pin 3 (VCC)
++3V3_AUX      -> U3 pin 3 (VCC)
 ESP32 GND     -> U3 pin 5 (GND)
 
 OBD pin 7     -> U3 pin 6 (K)
@@ -100,7 +100,7 @@ Esse teste ajuda a descartar curto grosseiro.
 Teste de bancada que aprovou o `L9637D`:
 
 1. alimentar:
-   - `pin 3 = 3V3`
+   - `pin 3 = +3V3_AUX`
    - `pin 5 = GND`
    - `pin 7 = +12V`
    - `pin 8 -> 10k -> pin 7`

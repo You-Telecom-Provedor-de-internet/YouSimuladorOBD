@@ -1,8 +1,8 @@
 # BOM - Status Consolidado dos Componentes
 
-Atualizado: `2026-04-04`
+Atualizado: `2026-04-08`
 
-Este arquivo deixou de ser apenas uma lista de compras e passou a registrar o conjunto realmente usado na bancada validada.
+Este arquivo deixou de ser apenas uma lista de compras e passou a registrar o conjunto de referencia da `RevA`, separando o que ja foi validado do que foi fechado para o esquematico final.
 
 ## Conjunto validado
 
@@ -10,6 +10,7 @@ Este arquivo deixou de ser apenas uma lista de compras e passou a registrar o co
 |---|---|---|
 | `MCU1` | `ESP32 DevKit` 38 pinos | Validado |
 | `U1` | `LM2596` buck 12V -> 5V | Validado |
+| `U4` | regulador `3.3V` dedicado para `+3V3_AUX` | Fechar na RevA |
 | `U2` | `SN65HVD230` | Validado |
 | `U3` | `L9637D` | Validado |
 | `J1` | conector OBD-II femea 16 pinos | Validado |
@@ -17,7 +18,7 @@ Este arquivo deixou de ser apenas uma lista de compras e passou a registrar o co
 | `ENC1` | `KY-040` | Validado |
 | `SW1` | DIP 3 bits | Validado |
 | `SW2-SW7` | 6 botoes | Validado |
-| `D1-D3` | LEDs de status | Validado |
+| `D3` | `LED_TX` opcional | Opcional na RevA |
 
 ## Passivos criticos
 
@@ -29,7 +30,7 @@ Este arquivo deixou de ser apenas uma lista de compras e passou a registrar o co
 | `CK2` | `100nF` | Obrigatorio | `VS -> GND` no `L9637D` |
 | `RCAN1` | `120R` | Recomendado | terminacao CAN por jumper ou `DNP` |
 | `RDIP1-RDIP3` | `10k` | Obrigatorio | pull-up externo do DIP |
-| `RLED1-RLED3` | `330R` | Obrigatorio | LEDs |
+| `RLED3` | `330R` | Opcional | `LED_TX` |
 | `F1` | `1A` | Obrigatorio | entrada +12V |
 
 ## Componentes que ficaram obsoletos

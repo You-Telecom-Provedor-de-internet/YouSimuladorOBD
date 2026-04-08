@@ -253,7 +253,6 @@ static void task_can(void*) {
                 twai_end_protocol();
                 started = false;
                 running_proto = 0xFF;
-                digitalWrite(PIN_LED_CAN, LOW);
                 Serial.println("[CAN] TWAI parado");
             }
             vTaskDelay(pdMS_TO_TICKS(100));
@@ -267,13 +266,11 @@ static void task_can(void*) {
             }
             if (!twai_begin_protocol(active_proto)) {
                 Serial.printf("[CAN] Falha ao iniciar TWAI para %s\n", protoName(active_proto));
-                digitalWrite(PIN_LED_CAN, LOW);
                 vTaskDelay(pdMS_TO_TICKS(500));
                 continue;
             }
             started = true;
             running_proto = active_proto;
-            digitalWrite(PIN_LED_CAN, HIGH);
             Serial.printf("[CAN] TWAI iniciado - %s\n", protoName(running_proto));
         }
 

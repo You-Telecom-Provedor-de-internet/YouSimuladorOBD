@@ -474,7 +474,6 @@ static void task_kline(void*) {
                 s_started = false;
                 s_running_proto = 0xFF;
                 rx_len = 0;
-                digitalWrite(PIN_LED_KLINE, LOW);
                 Serial.println("[K-Line] UART parada");
             }
             vTaskDelay(pdMS_TO_TICKS(100));
@@ -488,7 +487,6 @@ static void task_kline(void*) {
                 rx_len = 0;
             }
             if (!start_kline_protocol(active_proto)) {
-                digitalWrite(PIN_LED_KLINE, LOW);
                 Serial.printf("[K-Line] Falha ao iniciar UART para %s\n", protoName(active_proto));
                 vTaskDelay(pdMS_TO_TICKS(500));
                 continue;
@@ -496,7 +494,6 @@ static void task_kline(void*) {
             s_started = true;
             s_running_proto = active_proto;
             s_last_activity_ms = millis();
-            digitalWrite(PIN_LED_KLINE, HIGH);
         }
 
         uint8_t byte = 0;

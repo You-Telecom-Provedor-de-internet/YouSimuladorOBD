@@ -2,6 +2,7 @@ RefDes,Qty,Part,Value_or_Model,Package_or_Form,Notes
 J1,1,OBD-II connector,Female 16-pin,Harness or PCB connector,Main OBD interface
 F1,1,Fuse,1A,Automotive or radial,Protect +12V input
 U1,1,Buck regulator module,LM2596,Module or equivalent,12V to 5V
+U4,1,3.3V regulator,AMS1117-3.3 or equivalent,SOT-223 or equivalent,Dedicated +3V3_AUX for peripherals
 MCU1,1,MCU board or module,ESP32 DevKit 38p,Pluggable module,RevA frozen as carrier board
 JMCU1,1,Female header,1x19 2.54mm,Through-hole,ESP32 DevKit left row
 JMCU2,1,Female header,1x19 2.54mm,Through-hole,ESP32 DevKit right row
@@ -20,6 +21,6 @@ JENC1,1,Pin header,1x5 2.54mm,Through-hole,KY-040 module header for RevA carrier
 SW1,1,DIP switch,3-position,Through-hole or SMD,Protocol bits
 RDIP1-RDIP3,3,Resistor,10k,1/4W or SMD,Pull-up for GPIO34/35/36
 SW2-SW7,6,Push button,Momentary,Through-hole or SMD,Connected to GND
-D1-D3,3,LED,Status LED,3mm or SMD,CAN / K-Line / TX
-RLED1-RLED3,3,Resistor,330R,1/4W or SMD,LED series resistor
+D3,1,LED,Status LED optional,3mm or SMD,TX / trafego
+RLED3,1,Resistor,330R,1/4W or SMD,LED_TX series resistor
 MH1-MH4,4,Mounting hole,M3,NPTH or plated mechanical,Board fixation

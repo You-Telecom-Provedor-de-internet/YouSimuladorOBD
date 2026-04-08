@@ -13,7 +13,7 @@
 		(comment 2 "J1 pin4/pin5 -> GND comum")
 	)
 	(lib_symbols)
-	(text "Captura a concluir neste bloco:\n- J1 OBD-II\n- F1 fusivel 1A\n- U1 buck 12V -> 5V\n- distribuicao +12V_PROT / +5V_SYS / +3V3_SYS" 
+	(text "Captura a concluir neste bloco:\n- J1 OBD-II\n- F1 fusivel 1A\n- U1 buck 12V -> 5V\n- U4 regulador 3.3V dedicado\n- distribuicao +12V_PROT / +5V_SYS / +3V3_AUX"
 		(exclude_from_sim no)
 		(at 18 22 0)
 		(effects

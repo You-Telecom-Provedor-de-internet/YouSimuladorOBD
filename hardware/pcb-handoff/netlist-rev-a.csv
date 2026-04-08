@@ -20,16 +20,18 @@ GND,DISP1,GND,power,GND do OLED
 GND,ENC1,GND,power,GND do encoder
 GND,SW2-SW7,2,return,Botoes para GND
 GND,SW1,common,return,DIP fecha para GND
-GND,D1-D3,K,return,Retorno dos LEDs
+GND,D3,K,return,Retorno do LED_TX opcional
 +5V_SYS,U1,OUT+,power,Saida 5V do buck
 +5V_SYS,MCU1,VIN,power,Entrada 5V do ESP32
-+3V3_SYS,MCU1,3V3,source,Saida 3.3V do ESP32
-+3V3_SYS,U2,3,power,VCC do SN65HVD230
-+3V3_SYS,U3,3,power,VCC logico do L9637D
-+3V3_SYS,DISP1,VCC,power,OLED
-+3V3_SYS,RDIP1,1,pullup,DIP bit0
-+3V3_SYS,RDIP2,1,pullup,DIP bit1
-+3V3_SYS,RDIP3,1,pullup,DIP bit2
++5V_SYS,U4,IN,power,Entrada do regulador 3.3V dedicado
++3V3_AUX,U4,OUT,source,Saida 3.3V auxiliar dedicada
++3V3_AUX,U2,3,power,VCC do SN65HVD230
++3V3_AUX,U3,3,power,VCC logico do L9637D
++3V3_AUX,DISP1,VCC,power,OLED
++3V3_AUX,ENC1,VCC,power,Encoder
++3V3_AUX,RDIP1,1,pullup,DIP bit0
++3V3_AUX,RDIP2,1,pullup,DIP bit1
++3V3_AUX,RDIP3,1,pullup,DIP bit2
 CAN_TX_LOGIC,MCU1,GPIO4,source,CAN TX do ESP32
 CAN_TX_LOGIC,U2,1,input,SN65HVD230 TXD
 CAN_RX_LOGIC,U2,4,output,SN65HVD230 RXD
@@ -57,30 +59,26 @@ I2C_SDA,MCU1,GPIO21,signal,OLED SDA
 I2C_SDA,DISP1,SDA,signal,OLED SDA
 I2C_SCL,MCU1,GPIO22,signal,OLED SCL
 I2C_SCL,DISP1,SCL,signal,OLED SCL
-ENC_A,MCU1,GPIO12,signal,Encoder CLK
+ENC_A,MCU1,GPIO14,signal,Encoder CLK
 ENC_A,ENC1,CLK,signal,Encoder CLK
 ENC_B,MCU1,GPIO13,signal,Encoder DT
 ENC_B,ENC1,DT,signal,Encoder DT
-ENC_SW,MCU1,GPIO15,signal,Encoder SW
+ENC_SW,MCU1,GPIO19,signal,Encoder SW
 ENC_SW,ENC1,SW,signal,Encoder SW
 BTN_PREV,MCU1,GPIO32,input,Input pull-up interno
 BTN_NEXT,MCU1,GPIO33,input,Input pull-up interno
 BTN_UP,MCU1,GPIO25,input,Input pull-up interno
 BTN_DOWN,MCU1,GPIO26,input,Input pull-up interno
 BTN_SELECT,MCU1,GPIO27,input,Input pull-up interno
-BTN_PROTOCOL,MCU1,GPIO14,input,Input pull-up interno
+BTN_PROTOCOL,MCU1,GPIO18,input,Input pull-up interno
 DIP_BIT0,MCU1,GPIO34,input,Somente entrada
-DIP_BIT0,RDIP1,2,pullup,10k para 3V3
+DIP_BIT0,RDIP1,2,pullup,10k para +3V3_AUX
 DIP_BIT0,SW1,1,switch,Fecha para GND
 DIP_BIT1,MCU1,GPIO35,input,Somente entrada
-DIP_BIT1,RDIP2,2,pullup,10k para 3V3
+DIP_BIT1,RDIP2,2,pullup,10k para +3V3_AUX
 DIP_BIT1,SW1,2,switch,Fecha para GND
 DIP_BIT2,MCU1,GPIO36,input,Somente entrada
-DIP_BIT2,RDIP3,2,pullup,10k para 3V3
+DIP_BIT2,RDIP3,2,pullup,10k para +3V3_AUX
 DIP_BIT2,SW1,3,switch,Fecha para GND
-LED_CAN,MCU1,GPIO19,source,LED de atividade CAN
-LED_CAN,RLED1,1,series,330R
-LED_KLINE,MCU1,GPIO18,source,LED de atividade K-Line
-LED_KLINE,RLED2,1,series,330R
 LED_TX,MCU1,GPIO23,source,LED de trafego
 LED_TX,RLED3,1,series,330R

@@ -5,6 +5,7 @@ TVS1,TVS automotiva,SMCJ24A unidirecional,Protecao contra surto na entrada +12V,
 UREV1,Controlador de reversao de polaridade,LM74502-Q1,Protecao contra inversao de polaridade e load disconnect,SOT-23-THIN-8 (DDF),Recomendacao de engenharia para RevA final; requer MOSFETs externos
 "QREV1,QREV2",MOSFET N de entrada,40V a 60V logic-level,Par back-to-back comandado por UREV1,SO-8 PowerPAK ou DFN de potencia,Part number final depende da corrente alvo e da dissipacao
 U1,Buck regulator,LM2596 ou equivalente,Conversao 12V para 5V,Modulo ou footprint equivalente,Baseline confirmado na documentacao/EDA existente
+U4,Regulador 3.3V dedicado,AMS1117-3.3 ou equivalente,Gera +3V3_AUX para perifericos,SOT-223 ou equivalente,Separar alimentacao dos perifericos do 3V3 do DevKit
 MCU1,Modulo MCU,ESP32 DevKit 38 pinos,MCU principal,Modulo comercial plugavel,RevA congelada como carrier para DevKit
 JMCU1,JMCU2,Headers femea,1x19 2.54 mm,Carrier do ESP32 DevKit,Through-hole,Confirmar geometria com o DevKit comercial final
 U2,Transceiver CAN,SN65HVD230,Interface fisica CAN,SOIC-8,Confirmado na documentacao/EDA existente
@@ -24,7 +25,7 @@ JENC1,Header do encoder,1x5 2.54 mm,Conexao do modulo encoder,Through-hole,RevA 
 SW1,DIP switch,3 posicoes,Selecao de protocolo no boot,Through-hole ou SMD,Confirmado na documentacao/EDA existente
 RDIP1-RDIP3,Resistores de pull-up,10k,Pull-up externo dos GPIO34-36,0805 ou 1206,Obrigatorio porque esses GPIOs nao tem pull-up interno
 SW2-SW7,Botoes momentaneos,Tact switch,Interface local,Through-hole ou SMD,Seis botoes: PREV NEXT UP DOWN OK PROTO
-D1-D3,LEDs de status,LED 3 mm ou SMD,Indicacao de CAN K-Line e TX,3 mm THT ou 0805/1206,Escolha conforme painel mecanico
-RLED1-RLED3,Resistores serie de LED,330R,Limitacao de corrente dos LEDs,0805 ou 1206,Confirmado na documentacao/EDA existente
+D3,LED de status opcional,LED 3 mm ou SMD,Indicacao de TX,3 mm THT ou 0805/1206,Escolha conforme painel mecanico
+RLED3,Resistor serie de LED,330R,Limitacao de corrente do LED_TX,0805 ou 1206,Confirmado na documentacao/EDA existente
 MH1-MH4,Furos de fixacao,M3,Fixacao da placa,NPTH M3,Confirmados na documentacao/EDA existente
-TP1-TP9,Pontos de teste,Test point,Depuracao de bancada,Test point SMD ou pino,Minimos recomendados: +12V +5V +3V3 GND CANH CANL K TX_K RX_K
+TP1-TP9,Pontos de teste,Test point,Depuracao de bancada,Test point SMD ou pino,Minimos recomendados: +12V +5V +3V3_AUX GND CANH CANL K TX_K RX_K

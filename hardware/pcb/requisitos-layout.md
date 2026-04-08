@@ -63,13 +63,15 @@ Separar claramente no esquematico e no layout os dominios:
 - `+12V_OBD`
 - `+12V_PROT`
 - `+5V_SYS`
-- `+3V3_SYS`
+- `+3V3_AUX`
 - `GND`
 
 Regras:
 
 - manter `+12V_PROT` longe da regiao de antena do ESP32
 - manter o buck e suas correntes pulsantes longe de `CAN`, `K-Line`, `I2C` e da antena
+- manter o regulador de `+3V3_AUX` e seu desacoplamento perto dos perifericos mais sensiveis
+- nao interligar `+3V3_AUX` com o `3V3` de saida do `ESP32 DevKit`
 - usar plano de `GND` continuo, com poucos estrangulamentos
 - evitar rotas longas de retorno para os desacoplamentos
 
@@ -145,7 +147,7 @@ Minimos recomendados:
 
 - `TP_+12V`
 - `TP_+5V`
-- `TP_+3V3`
+- `TP_+3V3_AUX`
 - `TP_GND`
 - `TP_CANH`
 - `TP_CANL`
@@ -168,7 +170,7 @@ Se houver espaco:
 
 - preservar a arquitetura de baixo risco validada em bancada
 - nao integrar `ESP32-WROOM` nesta revisao
-- nao introduzir segunda fonte de `3V3` se o objetivo da placa continuar sendo carrier do DevKit
+- manter a fonte dedicada de `+3V3_AUX` para os perifericos, sem interligacao com o `3V3` do DevKit
 - preferir populacao opcional para itens ainda em avaliacao, como `RCAN1`
 
 ## 15. Evolucao futura

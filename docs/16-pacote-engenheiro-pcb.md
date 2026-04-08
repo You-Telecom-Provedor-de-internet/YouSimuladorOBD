@@ -29,6 +29,7 @@
 ### Decisao de arquitetura da RevA
 
 - [docs/17-revA-carrier-esp32-devkit.md](17-revA-carrier-esp32-devkit.md)
+- [docs/20-mapa-final-gpio-reva.md](20-mapa-final-gpio-reva.md)
 
 ## O que esse pacote ja define
 
@@ -41,7 +42,7 @@
 - `KY-040`
 - 6 botoes da UI local
 - DIP de protocolo
-- LEDs de status
+- `LED_TX` opcional e LED onboard do DevKit
 
 ## Marco atual do projeto
 
@@ -61,6 +62,7 @@ Direcao desta rodada:
 ## O que ainda fica a cargo do engenheiro
 
 - fechar a captura completa do esquema dentro do `KiCad`
+- aplicar o mapa congelado em [20 - Mapa Final de GPIO da RevA](20-mapa-final-gpio-reva.md)
 - escolher o `DevKit 38 pinos` comercial exato e confirmar o footprint final dos headers
 - definir footprint final do modulo OLED e do encoder
 - fechar outline da PCB

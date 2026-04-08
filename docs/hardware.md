@@ -44,7 +44,7 @@ Tambem precisa oferecer:
 - `6 botoes`
 - `encoder KY-040`
 - `DIP switch` de 3 bits para selecao rapida de protocolo
-- `3 LEDs` de status externos e o LED onboard do DevKit
+- `LED_TX` externo opcional e o LED onboard do DevKit
 - `Wi-Fi`, `Web UI`, `WebSocket`, `API REST`, `mDNS` e `OTA` pela rede
 
 Arquitetura alvo desta rodada:
@@ -59,10 +59,10 @@ Arquitetura alvo desta rodada:
 | MCU | `ESP32 DevKit` 38 pinos com FreeRTOS/Arduino, TWAI, UART1, I2C, Wi-Fi e LittleFS | confirmado no codigo + confirmado na documentacao/EDA existente |
 | Entrada automotiva | `OBD-II J1962` com `+12V`, `GND`, `CANH`, `CANL`, `K-Line` | confirmado na documentacao/EDA existente |
 | Fonte primaria | `+12V OBD -> fusivel -> buck 12V para 5V` | confirmado na documentacao/EDA existente |
-| Fonte logica | `5V` para `VIN` do DevKit e `3V3` gerado pelo proprio DevKit para logica | confirmado na documentacao/EDA existente + dependente do hardware do modulo DevKit |
-| CAN | `SN65HVD230` em 3V3 ligado ao TWAI nativo do ESP32 | confirmado no codigo + confirmado na documentacao/EDA existente |
-| K-Line | `L9637D` com `VS` em `+12V`, logica em `3V3`, `K` no OBD e bias passivo dedicado | confirmado no codigo + confirmado na documentacao/EDA existente |
-| UI local | `OLED SH1107`, `KY-040`, `6 botoes`, `DIP`, `3 LEDs` | confirmado no codigo + confirmado na documentacao/EDA existente |
+| Fonte logica | `5V` para `VIN` do DevKit e `+3V3_AUX` dedicado para perifericos | confirmado na documentacao/EDA existente |
+| CAN | `SN65HVD230` em `+3V3_AUX` ligado ao TWAI nativo do ESP32 | confirmado no codigo + confirmado na documentacao/EDA existente |
+| K-Line | `L9637D` com `VS` em `+12V`, logica em `+3V3_AUX`, `K` no OBD e bias passivo dedicado | confirmado no codigo + confirmado na documentacao/EDA existente |
+| UI local | `OLED SH1107`, `KY-040`, `6 botoes`, `DIP`, `LED_TX` opcional | confirmado no codigo + confirmado na documentacao/EDA existente |
 | Rede e web | `Wi-Fi AP/STA`, `mDNS`, `ESPAsyncWebServer`, `LittleFS`, `OTA` | confirmado no codigo |
 | EDA baseline | handoff em CSV e bootstrap em `KiCad RevA` com `0` erros e `0` warnings de ERC | confirmado na documentacao/EDA existente |
 
@@ -74,9 +74,9 @@ Arquitetura alvo desta rodada:
 | `GND` | `J1 pin 4` e `J1 pin 5` | referencia comum do sistema | confirmado na documentacao/EDA existente |
 | `CANH/CANL` | `J1 pin 6` e `J1 pin 14` | trafego OBD sobre CAN | confirmado na documentacao/EDA existente |
 | `K-Line` | `J1 pin 7` | trafego OBD em `ISO 9141-2`, `KWP 5-baud` e `KWP Fast` | confirmado no codigo + confirmado na documentacao/EDA existente |
-| botoes locais | `GPIO32`, `33`, `25`, `26`, `27`, `14` | entradas com `INPUT_PULLUP`, botoes para `GND` | confirmado no codigo |
-| encoder | `GPIO12`, `13`, `15` | `A`, `B` e `SW` | confirmado no codigo |
-| DIP de protocolo | `GPIO34`, `35`, `36` | somente entrada; exigem pull-up externo | confirmado no codigo + confirmado na documentacao/EDA existente |
+| botoes locais | `GPIO32`, `33`, `25`, `26`, `27`, `18` | entradas com `INPUT_PULLUP`, botoes para `GND` | confirmado no codigo |
+| encoder | `GPIO14`, `13`, `19` | `A`, `B` e `SW` | confirmado no codigo |
+| DIP de protocolo | `GPIO34`, `35`, `36` | somente entrada; exigem pull-up externo para `+3V3_AUX` | confirmado no codigo + confirmado na documentacao/EDA existente |
 | USB do DevKit | conector do modulo comercial | usado para gravacao e serial debug | confirmado na documentacao/EDA existente |
 
 ## Saidas
@@ -86,7 +86,7 @@ Arquitetura alvo desta rodada:
 | resposta OBD em CAN | scanner no `J1 pin 6/14` | via `SN65HVD230` | confirmado no codigo + confirmado na documentacao/EDA existente |
 | resposta OBD em K-Line | scanner no `J1 pin 7` | via `L9637D` | confirmado no codigo + confirmado na documentacao/EDA existente |
 | display local | modulo `OLED SH1107` | I2C em `GPIO21/22` | confirmado no codigo + confirmado na documentacao/EDA existente |
-| LEDs de status | `GPIO19`, `18`, `23` | atividade CAN, K-Line e TX | confirmado no codigo + confirmado na documentacao/EDA existente |
+| LED de status externo | `GPIO23` | `LED_TX` opcional para trafego | confirmado no codigo + confirmado na documentacao/EDA existente |
 | LED heartbeat | `GPIO2` | LED onboard do DevKit, nao detalhado na carrier | confirmado no codigo |
 | Wi-Fi/web | AP/STA com web UI, API e OTA | interface sem fio do ESP32 | confirmado no codigo |
 
@@ -122,18 +122,21 @@ J1 pin 4 / pin 5 (GND)
 U1 OUT+
   -> +5V_SYS
   -> VIN / 5V do ESP32 DevKit
+  -> U4 regulador 3.3V dedicado
 
-ESP32 DevKit 3V3
-  -> +3V3_SYS
+U4 OUT
+  -> +3V3_AUX
   -> U2 SN65HVD230
   -> U3 L9637D VCC logico
   -> OLED SH1107
+  -> ENC1 KY-040
   -> pull-ups do DIP
 ```
 
 ### Observacoes
 
-- O firmware depende implicitamente de o `ESP32 DevKit` receber `5V` em `VIN` e disponibilizar `3V3` estavel para a logica externa.
+- O firmware depende implicitamente de o `ESP32 DevKit` receber `5V` em `VIN` e do rail `+3V3_AUX` alimentar os perifericos de forma estavel.
+- `+3V3_AUX` deve permanecer separado do pino `3V3` de saida do `ESP32 DevKit`.
 - O codigo nao define nenhuma medicao de tensao de entrada nem supervisao analogica da fonte. Logo, a robustez da entrada `+12V` fica a cargo da eletrica da placa.
 - A corrente total do sistema nao esta formalizada em documento eletrico fechado; isso ainda precisa ser confirmado antes do esquematico final se houver mudanca de buck ou integracao futura do MCU.
 
@@ -172,6 +175,7 @@ Observacoes:
 |---|---|---|---|
 | `MCU1` | `ESP32 DevKit 38p` | MCU principal | confirmado na documentacao/EDA existente |
 | `U1` | modulo `LM2596` ou buck equivalente | `12V -> 5V` | confirmado na documentacao/EDA existente |
+| `U4` | regulador `3.3V` dedicado | gera `+3V3_AUX` para perifericos | confirmado na documentacao/EDA existente |
 | `U2` | `SN65HVD230` | transceiver CAN 3V3 | confirmado na documentacao/EDA existente |
 | `U3` | `L9637D` | transceiver K-Line | confirmado na documentacao/EDA existente |
 | `TVS1` | `SMCJ24A` | protecao de surto na entrada `+12V` | inferido / hipotese fortemente recomendada |
@@ -183,7 +187,7 @@ Observacoes:
 | `ENC1` | `KY-040` | encoder da UI | confirmado na documentacao/EDA existente |
 | `SW1` | DIP switch 3 posicoes | boot fallback de protocolo | confirmado na documentacao/EDA existente |
 | `SW2-SW7` | botoes momentaneos | UI local | confirmado na documentacao/EDA existente |
-| `D1-D3` | LEDs externos | status | confirmado na documentacao/EDA existente |
+| `D3` | LED externo opcional | `LED_TX` | confirmado na documentacao/EDA existente |
 | `JMCU1/JMCU2` | headers femea `1x19` | carrier do DevKit | confirmado na documentacao/EDA existente |
 | `JDISP1` | header `1x4` | modulo OLED | confirmado na documentacao/EDA existente |
 | `JENC1` | header `1x5` | modulo encoder | confirmado na documentacao/EDA existente |
@@ -193,7 +197,7 @@ Observacoes:
 Estas dependencias nao dependem de preferencia de software; elas sao impostas pelo hardware ou pelo proprio firmware atual.
 
 1. `GPIO34`, `GPIO35` e `GPIO36` sao somente entrada e sem `pull-up` interno.
-   - efeito: o `DIP` precisa de `pull-up` externo para `3V3`
+   - efeito: o `DIP` precisa de `pull-up` externo para `+3V3_AUX`
    - base: `config.h`, `main.cpp`, `docs/02`, `docs/03`, `hardware/pcb-handoff/netlist-rev-a.csv`
 
 2. A linha `K-Line` precisa de nivel de idle alto estavel em `+12V`.
@@ -201,17 +205,17 @@ Estas dependencias nao dependem de preferencia de software; elas sao impostas pe
    - base: `docs/13`, `docs/15`, `hardware/pcb-handoff`
 
 3. O `L9637D` precisa de dois dominios de alimentacao.
-   - `VCC` logico em `3V3`
+   - `VCC` logico em `+3V3_AUX`
    - `VS` automotivo em `+12V`
    - base: `docs/13`, `docs/15`, `hardware/pcb-handoff/netlist-rev-a.csv`
 
-4. O `SN65HVD230` precisa operar em `3V3` e ficar com `RS` em `GND` para o modo rapido registrado no handoff.
+4. O `SN65HVD230` precisa operar em `+3V3_AUX` e ficar com `RS` em `GND` para o modo rapido registrado no handoff.
    - base: `docs/02`, `docs/03`, `hardware/pcb-handoff/netlist-rev-a.csv`
 
 5. A regiao de antena do `ESP32 DevKit` exige `keepout` de cobre e componentes.
    - base: `docs/17-revA-carrier-esp32-devkit.md`
 
-6. O `OLED` depende de barramento `I2C` em `400 kHz` configurado no firmware.
+6. O `OLED` depende de barramento `I2C` em `400 kHz` configurado no firmware e de `+3V3_AUX` bem desacoplado.
    - base: `ui_init.cpp`
    - implicacao: manter trilhas curtas e return path limpo para evitar instabilidade visual
 
@@ -226,10 +230,10 @@ Estas dependencias nao dependem de preferencia de software; elas sao impostas pe
 - `K-Line` usa `UART1` a `10400 baud`
 - `TWAI` do ESP32 e usado para os protocolos CAN
 - `OLED` usa `GPIO21 SDA`, `GPIO22 SCL`, endereco `0x3C`
-- `6 botoes` usam `GPIO32`, `33`, `25`, `26`, `27`, `14` com `INPUT_PULLUP`
-- `encoder` usa `GPIO12`, `13`, `15`
+- `6 botoes` usam `GPIO32`, `33`, `25`, `26`, `27`, `18` com `INPUT_PULLUP`
+- `encoder` usa `GPIO14`, `13`, `19`
 - `DIP` usa `GPIO34`, `35`, `36`
-- `LEDs` externos usam `GPIO19`, `18`, `23`
+- `LED_TX` externo usa `GPIO23`
 - o `LED` onboard usa `GPIO2`
 - `Wi-Fi`, `mDNS`, `LittleFS`, `ESPAsyncWebServer`, `OTA` e autenticacao web/API estao ativos
 - nao ha uso ativo de `BLE` ou `Bluetooth Classic` no firmware atual desta revisao
@@ -240,6 +244,7 @@ Estas dependencias nao dependem de preferencia de software; elas sao impostas pe
 - `SN65HVD230` como transceiver CAN
 - `L9637D` como transceiver K-Line
 - `LM2596` como baseline de buck `12V -> 5V`
+- regulador `3.3V` dedicado como fonte de `+3V3_AUX` para perifericos
 - conector `OBD-II` com uso dos pinos `4`, `5`, `6`, `7`, `14`, `16`
 - `RK1 510R`, `RLI1 10k`, `CK1 100nF`, `CK2 100nF` como conjunto obrigatorio do `L9637D`
 - `RCAN1 120R` como terminacao CAN opcional por jumper ou `DNP`
@@ -255,6 +260,7 @@ Estas dependencias nao dependem de preferencia de software; elas sao impostas pe
 - a familia escolhida para a TVS de entrada foi fechada como recomendacao em `SMCJ24A`, mas a validacao final contra o ambiente real do produto ainda precisa ser feita
 - a topologia recomendada para reversao foi fechada em `LM74502-Q1` com MOSFETs externos, mas os MOSFETs e os resistores de apoio ainda precisam ser definidos pela corrente alvo
 - o part number exato do `ESP32 DevKit 38 pinos` comercial ainda precisa ser confirmado antes de liberar footprint final
+- o part number exato do regulador dedicado de `+3V3_AUX` ainda precisa ser congelado
 - footprint final do `OLED SH1107` e do `KY-040` depende do modulo real escolhido para a RevA
 - o ponto exato de amarracao entre `signal GND` e `chassis GND` no layout final ainda nao esta descrito em detalhe
 - a terminacao CAN pode ter existido no breakout de bancada; na PCB final ela deve ser explicitada por componente selecionavel

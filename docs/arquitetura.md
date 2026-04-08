@@ -153,7 +153,7 @@ Arquivos:
 - trata `11-bit` e `29-bit`
 - recebe requests OBD
 - monta resposta `ISO-TP` quando necessario
-- acende `LED_CAN` e pulsa `LED_TX`
+- pulsa `LED_TX` quando o diagnostico visual externo estiver populado
 
 ### `kline_protocol.cpp`
 
@@ -216,9 +216,10 @@ Responsabilidades:
 Dependencias diretas de hardware:
 
 - `GPIO21/22` para `I2C`
-- `GPIO32/33/25/26/27/14` para botoes
-- `GPIO12/13/15` para encoder
-- `GPIO19/18/23` para LEDs externos
+- `GPIO32/33/25/26/27/18` para botoes
+- `GPIO14/13/19` para encoder
+- `GPIO23` para `LED_TX` opcional
+- `GPIO2` para o LED onboard do DevKit
 
 ## Web, Wi-Fi e OTA
 
@@ -250,13 +251,13 @@ Dependencias diretas de software:
 
 - `GPIO4` e `GPIO5`
 - `TWAI` ativo apenas em protocolos CAN
-- exige `SN65HVD230` ou frontend equivalente em `3V3`
+- exige `SN65HVD230` ou frontend equivalente em `+3V3_AUX`
 
 ### K-Line
 
 - `GPIO17` e `GPIO16`
 - `UART1`
-- exige `L9637D` e a rede passiva `RK1`, `RLI1`, `CK1`, `CK2`
+- exige `L9637D` em `+3V3_AUX` e a rede passiva `RK1`, `RLI1`, `CK1`, `CK2`
 
 ### UI local
 

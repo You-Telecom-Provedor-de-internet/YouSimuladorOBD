@@ -56,7 +56,7 @@ J1 pin 5  -> GND
 ### Componentes envolvidos
 
 - `U1` buck `12V -> 5V`, baseline `LM2596`
-- regulador `3V3` do proprio `ESP32 DevKit`
+- `U4` regulador `3.3V` dedicado para perifericos
 
 ### Ligacoes principais
 
@@ -65,13 +65,15 @@ J1 pin 5  -> GND
 GND       -> U1 IN-
 U1 OUT+   -> +5V_SYS -> MCU1 VIN
 U1 OUT-   -> GND
-MCU1 3V3  -> +3V3_SYS
++5V_SYS   -> U4 IN
+U4 OUT    -> +3V3_AUX
 ```
 
 ### Observacoes de projeto
 
 - a `RevA` foi congelada para aceitar `LM2596` modulo ou equivalente de baixo risco
-- a carrier depende do `3V3` gerado pelo DevKit para alimentar `SN65HVD230`, `L9637D VCC`, `OLED` e `pull-ups` do DIP
+- a carrier usa `+3V3_AUX` dedicado para alimentar `SN65HVD230`, `L9637D VCC`, `OLED`, `encoder` e `pull-ups` do DIP
+- `+3V3_AUX` nao deve ser interligado ao pino `3V3` de saida do DevKit
 
 ### Cuidados de layout
 
@@ -96,14 +98,13 @@ MCU1 3V3  -> +3V3_SYS
 ```text
 +5V_SYS -> MCU1 VIN
 GND     -> MCU1 GND
-MCU1 3V3 -> +3V3_SYS
 GPIO4/5  -> CAN
 GPIO17/16 -> K-Line
 GPIO21/22 -> OLED
-GPIO32/33/25/26/27/14 -> botoes
-GPIO12/13/15 -> encoder
+GPIO32/33/25/26/27/18 -> botoes
+GPIO14/13/19 -> encoder
 GPIO34/35/36 -> DIP
-GPIO19/18/23 -> LEDs externos
+GPIO23 -> LED_TX opcional
 GPIO2 -> LED onboard do DevKit
 ```
 
@@ -169,7 +170,7 @@ J1 pin 16 -> +12V_OBD
 ```text
 GPIO4         -> U2 TXD
 GPIO5         <- U2 RXD
-+3V3_SYS      -> U2 VCC
++3V3_AUX      -> U2 VCC
 GND           -> U2 GND
 GND           -> U2 RS
 U2 CANH       -> J1 pin 6
@@ -209,7 +210,7 @@ CCAN1 100nF   -> entre U2 VCC e GND
 ```text
 GPIO17      -> U3 pin 4 (TX)
 GPIO16      <- U3 pin 1 (RX)
-+3V3_SYS    -> U3 pin 3 (VCC)
++3V3_AUX    -> U3 pin 3 (VCC)
 GND         -> U3 pin 5 (GND)
 KLINE       -> U3 pin 6 (K) -> J1 pin 7
 +12V_PROT   -> U3 pin 7 (VS)
@@ -271,21 +272,19 @@ USB do DevKit -> monitor serial em 115200
 
 ### Componentes envolvidos
 
-- `D1-D3`
-- `RLED1-RLED3`
+- `D3`
+- `RLED3`
 
 ### Ligacoes principais
 
 ```text
-GPIO19 -> RLED1 -> D1 -> GND
-GPIO18 -> RLED2 -> D2 -> GND
 GPIO23 -> RLED3 -> D3 -> GND
 GPIO2  -> LED onboard do DevKit
 ```
 
 ### Observacoes de projeto
 
-- os tres LEDs externos fazem parte da carrier
+- apenas o `LED_TX` externo permanece como opcional na carrier
 - o LED onboard depende do modulo comercial do DevKit
 
 ### Cuidados de layout
@@ -312,7 +311,7 @@ GPIO33 -> SW3 -> GND
 GPIO25 -> SW4 -> GND
 GPIO26 -> SW5 -> GND
 GPIO27 -> SW6 -> GND
-GPIO14 -> SW7 -> GND
+GPIO18 -> SW7 -> GND
 ```
 
 ### Observacoes de projeto
@@ -338,10 +337,10 @@ GPIO14 -> SW7 -> GND
 ### Ligacoes principais
 
 ```text
-GPIO12 -> ENC1 CLK
+GPIO14 -> ENC1 CLK
 GPIO13 -> ENC1 DT
-GPIO15 -> ENC1 SW
-+3V3_SYS -> ENC1 +
+GPIO19 -> ENC1 SW
++3V3_AUX -> ENC1 +
 GND -> ENC1 GND
 ```
 
@@ -349,11 +348,12 @@ GND -> ENC1 GND
 
 - o firmware usa `ESP32Encoder`
 - o `KY-040` e tratado como modulo/placa filha nesta RevA
+- `GPIO12` e `GPIO15` ficam fora da UI final para evitar risco de boot
 
 ### Cuidados de layout
 
 - respeitar a mecanica do painel frontal
-- lembrar que `GPIO12` e sensivel em boot
+- manter o modulo do encoder alimentado por `+3V3_AUX`
 
 ### Nivel de confianca
 
@@ -370,9 +370,9 @@ GND -> ENC1 GND
 ### Ligacoes principais
 
 ```text
-+3V3_SYS -> RDIP1 -> GPIO34 -> SW1 bit 0 -> GND
-+3V3_SYS -> RDIP2 -> GPIO35 -> SW1 bit 1 -> GND
-+3V3_SYS -> RDIP3 -> GPIO36 -> SW1 bit 2 -> GND
++3V3_AUX -> RDIP1 -> GPIO34 -> SW1 bit 0 -> GND
++3V3_AUX -> RDIP2 -> GPIO35 -> SW1 bit 1 -> GND
++3V3_AUX -> RDIP3 -> GPIO36 -> SW1 bit 2 -> GND
 ```
 
 ### Observacoes de projeto
@@ -413,7 +413,7 @@ GND -> ENC1 GND
 
 - `TP_+12V`
 - `TP_+5V`
-- `TP_+3V3`
+- `TP_+3V3_AUX`
 - `TP_GND`
 - `TP_CANH`
 - `TP_CANL`

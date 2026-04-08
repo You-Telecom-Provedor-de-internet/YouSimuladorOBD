@@ -63,7 +63,7 @@
   <text class="text" x="395" y="575">QREV1/QREV2 = MOSFET N</text>
   <text class="text" x="395" y="605">U1 = Buck 12V -> 5V</text>
   <text class="small" x="395" y="645">Saidas: +12V_PROT / +5V_SYS</text>
-  <text class="small" x="395" y="672">+3V3 vem do proprio DevKit</text>
+  <text class="small" x="395" y="672">U4 gera +3V3_AUX separado</text>
 
   <rect class="card-blue" x="730" y="400" width="300" height="300"/>
   <text class="title" x="755" y="445">OBD Frontend</text>
@@ -79,7 +79,7 @@
   <rect class="card-green" x="140" y="770" width="800" height="470"/>
   <text class="title" x="170" y="815">MCU1 - ESP32 DevKit 38 pinos</text>
   <text class="text" x="170" y="860">VIN <- +5V_SYS</text>
-  <text class="text" x="170" y="892">3V3 -> +3V3_SYS</text>
+  <text class="text" x="170" y="892">+3V3_AUX -> perifericos</text>
   <text class="text" x="170" y="924">GND -> GND comum</text>
   <text class="text" x="170" y="972">GPIO4  -> CAN TX</text>
   <text class="text" x="170" y="1004">GPIO5  <- CAN RX</text>
@@ -87,41 +87,41 @@
   <text class="text" x="170" y="1068">GPIO16 <- K-Line RX</text>
   <text class="text" x="470" y="972">GPIO21 -> OLED SDA</text>
   <text class="text" x="470" y="1004">GPIO22 -> OLED SCL</text>
-  <text class="text" x="470" y="1036">GPIO12 -> ENC CLK</text>
+  <text class="text" x="470" y="1036">GPIO14 -> ENC CLK</text>
   <text class="text" x="470" y="1068">GPIO13 -> ENC DT</text>
-  <text class="text" x="470" y="1100">GPIO15 -> ENC SW</text>
-  <text class="small" x="170" y="1148">GPIO32/33/25/26/27/14 -> Botoes</text>
+  <text class="text" x="470" y="1100">GPIO19 -> ENC SW</text>
+  <text class="small" x="170" y="1148">GPIO32/33/25/26/27/18 -> Botoes</text>
   <text class="small" x="170" y="1178">GPIO34/35/36 -> DIP 3 bits</text>
-  <text class="small" x="470" y="1148">GPIO19/18/23 -> LEDs de status</text>
+  <text class="small" x="470" y="1148">GPIO23 -> LED_TX opcional</text>
   <text class="small" x="470" y="1178">GPIO2 -> LED onboard</text>
 
   <rect class="card" x="50" y="1290" width="300" height="220"/>
   <text class="title" x="75" y="1335">OLED SH1107</text>
-  <text class="text" x="75" y="1375">VCC -> 3V3</text>
+  <text class="text" x="75" y="1375">VCC -> +3V3_AUX</text>
   <text class="text" x="75" y="1407">GND -> GND</text>
   <text class="text" x="75" y="1439">SDA -> GPIO21</text>
   <text class="text" x="75" y="1471">SCL -> GPIO22</text>
 
   <rect class="card" x="390" y="1290" width="300" height="220"/>
   <text class="title" x="415" y="1335">Encoder KY-040</text>
-  <text class="text" x="415" y="1375">CLK -> GPIO12</text>
+  <text class="text" x="415" y="1375">CLK -> GPIO14</text>
   <text class="text" x="415" y="1407">DT -> GPIO13</text>
-  <text class="text" x="415" y="1439">SW -> GPIO15</text>
-  <text class="small" x="415" y="1471">VCC 3V3 / GND comum</text>
+  <text class="text" x="415" y="1439">SW -> GPIO19</text>
+  <text class="small" x="415" y="1471">VCC +3V3_AUX / GND comum</text>
 
   <rect class="card" x="730" y="1290" width="300" height="220"/>
   <text class="title" x="755" y="1335">UI Local</text>
-  <text class="small" x="755" y="1375">Botoes -> GPIO32/33/25/26/27/14</text>
+  <text class="small" x="755" y="1375">Botoes -> GPIO32/33/25/26/27/18</text>
   <text class="small" x="755" y="1405">DIP -> GPIO34/35/36</text>
-  <text class="small" x="755" y="1435">LEDs -> GPIO19/18/23</text>
-  <text class="small" x="755" y="1465">DIP precisa de 3x 10k pull-up</text>
+  <text class="small" x="755" y="1435">LED_TX -> GPIO23 opcional</text>
+  <text class="small" x="755" y="1465">DIP precisa de 3x 10k para +3V3_AUX</text>
 
   <rect class="card-orange" x="50" y="1570" width="980" height="250"/>
   <text class="title" x="80" y="1615">Observacoes obrigatorias para a empresa da placa</text>
   <text class="text" x="80" y="1655">1. K-Line validada com L9637D + RK1 510R + RLI1 10k + CK1 100nF + CK2 100nF.</text>
   <text class="text" x="80" y="1690">2. GPIO34 / GPIO35 / GPIO36 sao somente entrada e precisam de pull-up externo.</text>
-  <text class="text" x="80" y="1725">3. OLED em 3V3. Manter keepout da antena do ESP32 DevKit e acesso ao USB.</text>
-  <text class="text" x="80" y="1760">4. Deixar pontos de teste em +12V, +5V, +3V3, GND, CANH, CANL, K, TX_K e RX_K.</text>
+  <text class="text" x="80" y="1725">3. OLED e perifericos em +3V3_AUX. Manter keepout da antena do ESP32 DevKit e acesso ao USB.</text>
+  <text class="text" x="80" y="1760">4. Deixar pontos de teste em +12V, +5V, +3V3_AUX, GND, CANH, CANL, K, TX_K e RX_K.</text>
   <text class="small" x="80" y="1798">Documento visual de apoio. A fonte tecnica oficial continua sendo docs/hardware.md + docs/pinout.md + docs/engenharia-pcb.md</text>
 
   <path class="line-power" d="M310 635 L370 635" marker-end="url(#ar-red)"/>
@@ -131,7 +131,7 @@
   <text class="net" x="535" y="744">+5V_SYS</text>
 
   <path class="line-power" d="M620 860 L620 700 L880 700 L880 770" marker-end="url(#ar-red)"/>
-  <text class="net" x="895" y="740">+3V3_SYS</text>
+  <text class="net" x="895" y="740">+3V3_AUX</text>
 
   <path class="line-can" d="M310 545 L730 545" marker-end="url(#ar-green)"/>
   <text class="net" x="500" y="535">CANH</text>
@@ -155,7 +155,7 @@
   <text class="net" x="660" y="1230">ENC GPIOs</text>
 
   <path class="line-ui" d="M760 1160 L820 1160 L820 1290" marker-end="url(#ar-blue)"/>
-  <text class="net" x="830" y="1230">Botoes / DIP / LEDs</text>
+  <text class="net" x="830" y="1230">Botoes / DIP / LED_TX</text>
 
   <text class="foot" x="60" y="1880">Arquivo: docs/img/reva-handoff-vertical.svg</text>
   <text class="foot" x="760" y="1880">Uso sugerido: preview tecnico-comercial / WhatsApp / handoff inicial</text>

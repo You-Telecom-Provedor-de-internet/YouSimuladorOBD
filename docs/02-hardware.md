@@ -8,7 +8,7 @@ O hardware validado do `YouSimuladorOBD` usa uma topologia simples e reproduzive
 - `SN65HVD230` para a camada fisica CAN
 - `L9637D` para a camada fisica K-Line
 - `LM2596` para converter `+12V` do OBD em `+5V`
-- `ESP32 3V3` alimentando a logica de `SN65HVD230`, `L9637D` e `OLED`
+- regulador `3.3V` dedicado alimentando `SN65HVD230`, `L9637D`, `OLED`, `encoder` e `pull-ups` do DIP
 
 O objetivo desta revisao e documentar o hardware realmente validado em bancada, e nao a topologia antiga com transistor discreto de K-Line.
 
@@ -29,7 +29,8 @@ Ou seja, a `RevA` nao vai integrar `ESP32-WROOM` diretamente na PCB. Essa decisa
 
 | RefDes | Qtd | Componente | Funcao |
 |---|---|---|---|
-| `U1` | 1 | `LM2596` modulo buck 12V -> 5V | alimentacao do sistema |
+| `U1` | 1 | `LM2596` modulo buck 12V -> 5V | alimentacao primaria do sistema |
+| `U4` | 1 | regulador `3.3V` dedicado | gera o rail `+3V3_AUX` para perifericos |
 | `U2` | 1 | `SN65HVD230` | transceiver CAN 3.3V |
 | `U3` | 1 | `L9637D` | transceiver K-Line |
 | `MCU1` | 1 | `ESP32 DevKit` 38 pinos | MCU principal |
@@ -42,7 +43,7 @@ Ou seja, a `RevA` nao vai integrar `ESP32-WROOM` diretamente na PCB. Essa decisa
 | `JENC1` | 1 | header `1x5 2.54 mm` | conexao do modulo encoder |
 | `SW2-SW7` | 6 | botoes tacteis | interface local |
 | `SW1` | 1 | DIP switch 3 bits | selecao rapida de protocolo |
-| `D1-D3` | 3 | LEDs de status | CAN / K-Line / TX |
+| `D3` | 1 | LED de status opcional | TX / trafego |
 
 ### Passivos e apoio
 
@@ -51,8 +52,8 @@ Ou seja, a `RevA` nao vai integrar `ESP32-WROOM` diretamente na PCB. Essa decisa
 | `RCAN1` | 1 | `120R` | terminacao CAN, preferencialmente por jumper ou DNP |
 | `RK1` | 1 | `510R` | pull-up da linha K para `VS`, usar `>= 0.5W` |
 | `RLI1` | 1 | `10k` | bias de `LI -> VS` no `L9637D` |
-| `RDIP1-RDIP3` | 3 | `10k` | pull-up externo do DIP para `3V3` |
-| `RLED1-RLED3` | 3 | `330R` | limitador dos LEDs |
+| `RDIP1-RDIP3` | 3 | `10k` | pull-up externo do DIP para `+3V3_AUX` |
+| `RLED3` | 1 | `330R` | limitador do `LED_TX` opcional |
 | `CK1` | 1 | `100nF` | `L9637D VCC -> GND` |
 | `CK2` | 1 | `100nF` | `L9637D VS -> GND` |
 | `CCAN1` | 1 | `100nF` | desacoplamento local do `SN65HVD230` |
@@ -66,16 +67,19 @@ Ou seja, a `RevA` nao vai integrar `ESP32-WROOM` diretamente na PCB. Essa decisa
 OBD pin 16 (+12V) -> F1 -> LM2596 IN+
 OBD pin 4/5 (GND) -> LM2596 IN-
 LM2596 OUT+ -> ESP32 VIN / 5V
+LM2596 OUT+ -> regulador 3.3V dedicado IN
 LM2596 OUT- -> GND
-ESP32 3V3 -> logica de U2, U3 e OLED
+regulador 3.3V dedicado OUT -> +3V3_AUX
++3V3_AUX -> logica de U2, U3, OLED, encoder e pull-ups do DIP
 ```
 
 ### Notas para PCB
 
-- manter `+12V`, `+5V` e `3V3` separados por nets claras
+- manter `+12V`, `+5V` e `+3V3_AUX` separados por nets claras
 - usar plano de GND unico e curto entre `OBD`, `LM2596`, `ESP32`, `SN65HVD230` e `L9637D`
 - o `RK1 = 510R` pode dissipar perto de `0.28W` quando a linha K fica baixa; na PCB use componente com folga termica
 - manter a regiao da antena do `DevKit` sem cobre e sem componentes logo abaixo
+- nao interligar `+3V3_AUX` com o pino `3V3` de saida do `DevKit`
 
 ## CAN - interface fisica
 
@@ -86,7 +90,7 @@ ESP32 GPIO4  -> SN65HVD230 TXD
 ESP32 GPIO5  <- SN65HVD230 RXD
 SN65HVD230 CANH -> OBD pin 6
 SN65HVD230 CANL -> OBD pin 14
-SN65HVD230 VCC  -> 3V3
+SN65HVD230 VCC  -> +3V3_AUX
 SN65HVD230 GND  -> GND
 SN65HVD230 RS   -> GND (modo rapido)
 ```
@@ -103,7 +107,7 @@ SN65HVD230 RS   -> GND (modo rapido)
 ```text
 ESP32 GPIO17 -> L9637D pin 4 (TX)
 ESP32 GPIO16 <- L9637D pin 1 (RX)
-L9637D pin 3 (VCC) -> 3V3
+L9637D pin 3 (VCC) -> +3V3_AUX
 L9637D pin 5 (GND) -> GND
 L9637D pin 6 (K)   -> OBD pin 7
 L9637D pin 7 (VS)  -> OBD pin 16 (+12V)
@@ -129,34 +133,33 @@ Essas tres medicoes sao a referencia rapida para depuracao.
 
 - `GPIO21` -> `SDA`
 - `GPIO22` -> `SCL`
-- alimentacao em `3V3`
+- alimentacao em `+3V3_AUX`
 
 ### Botoes
 
-- `GPIO32`, `GPIO33`, `GPIO25`, `GPIO26`, `GPIO27`, `GPIO14`
+- `GPIO32`, `GPIO33`, `GPIO25`, `GPIO26`, `GPIO27`, `GPIO18`
 - modo `INPUT_PULLUP`
 - ligar cada botao entre o GPIO e o `GND`
 - nao precisa pull-up externo nos botoes
 
 ### Encoder
 
-- `GPIO12` -> `CLK`
+- `GPIO14` -> `CLK`
 - `GPIO13` -> `DT`
-- `GPIO15` -> `SW`
+- `GPIO19` -> `SW`
 
 ### DIP
 
 - `GPIO34`, `GPIO35`, `GPIO36`
 - esses pinos sao somente entrada e nao possuem pull-up interno
-- usar `10k` de cada GPIO para `3V3`
+- usar `10k` de cada GPIO para `+3V3_AUX`
 - chave fechada para `GND` = bit `LOW`
 
 ### LEDs
 
-- `GPIO19` -> LED CAN
-- `GPIO18` -> LED K-Line
-- `GPIO23` -> LED TX
-- `330R` em serie por LED
+- `GPIO23` -> `LED_TX` opcional
+- `GPIO2` -> LED onboard do DevKit
+- `330R` em serie para o `LED_TX` se ele for mantido
 
 ## Conector OBD-II usado
 
@@ -176,10 +179,12 @@ Essas tres medicoes sao a referencia rapida para depuracao.
 
 - `SN65HVD230`
 - `L9637D`
+- regulador `3.3V` dedicado para `+3V3_AUX`
 - `510R` entre `K` e `VS`
 - `10k` entre `LI` e `VS`
 - dois `100nF` no `L9637D`
 - `LM2596` ou buck equivalente para `12V -> 5V`
+- regulador `3.3V` dedicado a partir do `+5V`
 - `2 x headers 1x19` para o `ESP32 DevKit`
 - header do `OLED`
 - header do `KY-040`
@@ -189,7 +194,7 @@ Essas tres medicoes sao a referencia rapida para depuracao.
 - `RCAN1 120R` por jumper ou `DNP`
 - TVS na entrada `+12V`
 - protecao contra inversao de polaridade na entrada
-- ponto de teste em `CANH`, `CANL`, `K`, `TX_K`, `RX_K`, `+12V`, `+5V`, `+3V3` e `GND`
+- ponto de teste em `CANH`, `CANL`, `K`, `TX_K`, `RX_K`, `+12V`, `+5V`, `+3V3_AUX` e `GND`
 
 ## Referencia principal para o engenheiro
 
