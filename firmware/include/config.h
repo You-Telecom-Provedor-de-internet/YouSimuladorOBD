@@ -113,7 +113,7 @@ constexpr char STA_DNS2[] = "";
 // interface protegida e ficam salvos na NVS.
 // As credenciais Web/API desta revisao sao fixas no firmware.
 constexpr char MDNS_NAME[] = "youobd";
-constexpr char APP_VERSION[] = "2026.04.02.1";
+constexpr char APP_VERSION[] = "2026.04.09.1";
 constexpr char OTA_MANIFEST_URL[] =
     "https://app2.youtelecom.com.br/updates/yousimuladorobd/manifest.json";
 constexpr char WEB_AUTH_USER[] = "youobd-core";

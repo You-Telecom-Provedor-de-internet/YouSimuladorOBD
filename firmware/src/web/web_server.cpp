@@ -1319,7 +1319,8 @@ static String stateToJson() {
         doc["profile_turbo"] = vehicleProfileIsTurbo(*profile);
     }
     doc["sim_mode"]         = static_cast<uint8_t>(snap.sim_mode);
-    doc["scenario_id"]      = snap.scenario_id;
+    doc["scenario_id"]      = diagnostic_scenario_slug(static_cast<DiagnosticScenarioId>(snap.scenario_id));
+    doc["scenario_numeric_id"] = snap.scenario_id;
     doc["health_score"]     = snap.health_score;
     doc["limp_mode"]        = snap.limp_mode != 0;
     doc["active_faults_count"] = snap.active_fault_count;
@@ -1341,7 +1342,8 @@ static String scenariosToJson() {
     const ScenarioDefinition* definitions = diagnostic_scenario_all(count);
     for (size_t i = 1; i < count; i++) {
         JsonObject obj = arr.add<JsonObject>();
-        obj["scenario_id"] = static_cast<uint8_t>(definitions[i].id);
+        obj["scenario_id"] = definitions[i].slug;
+        obj["scenario_numeric_id"] = static_cast<uint8_t>(definitions[i].id);
         obj["id"] = definitions[i].slug;
         obj["label"] = definitions[i].label;
         obj["summary"] = definitions[i].summary;
@@ -1464,6 +1466,7 @@ static String diagnosticsToJson() {
     const FaultCatalogEntry* probable_root = fault_catalog_get(probable_root_id);
 
     doc["scenario_id"] = diagnostic_scenario_slug(scenario_id);
+    doc["scenario_numeric_id"] = static_cast<uint8_t>(scenario_id);
     doc["drive_context"] = driveContextSlug(static_cast<uint8_t>(snap.sim_mode));
     doc["health_score"] = snap.health_score;
     doc["limp_mode"] = snap.limp_mode != 0;
@@ -1656,7 +1659,8 @@ static void handle_post_scenario(AsyncWebServerRequest* req, uint8_t* data, size
 
     JsonDocument resp;
     resp["ok"] = true;
-    resp["scenario_id"] = static_cast<uint8_t>(scenario_id);
+    resp["scenario_id"] = diagnostic_scenario_slug(scenario_id);
+    resp["scenario_numeric_id"] = static_cast<uint8_t>(scenario_id);
     resp["id"] = diagnostic_scenario_slug(scenario_id);
     String out;
     serializeJson(resp, out);
