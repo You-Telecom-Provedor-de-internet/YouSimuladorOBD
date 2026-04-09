@@ -130,6 +130,22 @@ const cfgAutoHours = document.getElementById('cfg-auto-hours');
 let otaPollTimer = null;
 let cachedInfo = null;
 
+function mergeCheckedInfo(requestedManifestUrl, checkResult) {
+  return {
+    ...(cachedInfo || {}),
+    check_ok: true,
+    check_error: '',
+    checked_manifest_url: checkResult.checked_manifest_url || checkResult.manifest_url || requestedManifestUrl,
+    checked_version: checkResult.checked_version || checkResult.available_version || '',
+    checked_notes: checkResult.checked_notes || checkResult.notes || '',
+    checked_has_firmware: !!checkResult.has_firmware,
+    checked_has_filesystem: !!checkResult.has_filesystem,
+    update_available: !!checkResult.update_available,
+    last_check_ms: checkResult.last_check_ms || (cachedInfo && cachedInfo.last_check_ms) || 0,
+    current_version: checkResult.current_version || (cachedInfo && cachedInfo.current_version) || ''
+  };
+}
+
 function setStatus(kind, message, cls = '') {
   const el = document.getElementById(`${kind}-status`);
   el.className = `status${cls ? ' ' + cls : ''}`;
@@ -255,7 +271,7 @@ function updateOnlineProgress(data) {
 
 async function loadDeviceSettings(silent = false) {
   try {
-    const res = await fetch('/api/device/settings');
+    const res = await fetch('/api/device/settings', { cache: 'no-store' });
     const data = await res.json();
     cfgHostname.value = data.hostname || '';
     cfgManifestUrl.value = data.manifest_url || '';
@@ -334,6 +350,7 @@ async function saveDeviceSettings() {
 
 async function apiJson(url, options = {}) {
   const res = await fetch(url, {
+    cache: 'no-store',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -370,7 +387,7 @@ function startPolling() {
 
 async function loadInfo(silent = false) {
   try {
-    const res = await fetch('/api/ota/info');
+    const res = await fetch('/api/ota/info', { cache: 'no-store' });
     const data = await res.json();
     renderInfo(data);
     setActionButtonsBusy(!!data.job_running);
@@ -397,6 +414,7 @@ async function checkOnline() {
       method: 'POST',
       body: JSON.stringify({ manifest_url: manifestUrl })
     });
+    renderInfo(mergeCheckedInfo(manifestUrl, data));
     await loadInfo(true);
     if (data.update_available) {
       setStatus('online', `Update disponivel: ${data.available_version}\nEscolha firmware ou filesystem para iniciar o download.`, 'ok');

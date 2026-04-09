@@ -58,6 +58,18 @@ struct OtaManifest {
     OtaAsset filesystem;
 };
 
+struct OtaManifestStateSnapshot {
+    uint32_t last_check_ms = 0;
+    char checked_manifest_url[256] = "";
+    char checked_version[32] = "";
+    char checked_notes[256] = "";
+    char last_check_error[128] = "";
+    bool last_check_ok = false;
+    bool checked_has_firmware = false;
+    bool checked_has_filesystem = false;
+    bool update_available = false;
+};
+
 struct OtaRemoteJob {
     char target[16];
     char version[32];
@@ -88,6 +100,35 @@ static const char* current_auth_user();
 static const char* current_auth_password();
 static const char* current_api_auth_user();
 static const char* current_api_auth_password();
+static void copy_text(char* dst, size_t dst_size, const char* src);
+
+static void ota_lock_state() {
+    if (s_mutex) {
+        xSemaphoreTake(s_mutex, portMAX_DELAY);
+    }
+}
+
+static void ota_unlock_state() {
+    if (s_mutex) {
+        xSemaphoreGive(s_mutex);
+    }
+}
+
+static OtaManifestStateSnapshot ota_snapshot_manifest_state() {
+    OtaManifestStateSnapshot snapshot;
+    ota_lock_state();
+    snapshot.last_check_ms = s_ota_last_check_ms;
+    copy_text(snapshot.checked_manifest_url, sizeof(snapshot.checked_manifest_url), s_ota_checked_manifest_url);
+    copy_text(snapshot.checked_version, sizeof(snapshot.checked_version), s_ota_checked_version);
+    copy_text(snapshot.checked_notes, sizeof(snapshot.checked_notes), s_ota_checked_notes);
+    copy_text(snapshot.last_check_error, sizeof(snapshot.last_check_error), s_ota_last_check_error);
+    snapshot.last_check_ok = s_ota_last_check_ok;
+    snapshot.checked_has_firmware = s_ota_checked_has_firmware;
+    snapshot.checked_has_filesystem = s_ota_checked_has_filesystem;
+    snapshot.update_available = s_ota_update_available;
+    ota_unlock_state();
+    return snapshot;
+}
 
 static void persist_active_protocol(uint8_t protocol) {
     if (protocol >= PROTO_COUNT) {
@@ -392,6 +433,8 @@ static int ota_compare_versions(const char* current, const char* remote) {
 }
 
 static void ota_clear_manifest_state(const char* manifest_url = nullptr) {
+    ota_lock_state();
+    s_ota_last_check_ms = 0;
     s_ota_last_check_ok = false;
     copy_text(s_ota_checked_manifest_url, sizeof(s_ota_checked_manifest_url), manifest_url);
     s_ota_checked_version[0] = '\0';
@@ -400,10 +443,12 @@ static void ota_clear_manifest_state(const char* manifest_url = nullptr) {
     s_ota_checked_has_firmware = false;
     s_ota_checked_has_filesystem = false;
     s_ota_update_available = false;
+    ota_unlock_state();
 }
 
 static void ota_store_manifest_state(const char* manifest_url, const OtaManifest& manifest, bool ok,
                                      const char* error_message = nullptr) {
+    ota_lock_state();
     s_ota_last_check_ms = millis();
     s_ota_last_check_ok = ok;
     copy_text(s_ota_checked_manifest_url, sizeof(s_ota_checked_manifest_url), manifest_url);
@@ -422,6 +467,7 @@ static void ota_store_manifest_state(const char* manifest_url, const OtaManifest
         s_ota_update_available = false;
         copy_text(s_ota_last_check_error, sizeof(s_ota_last_check_error), error_message);
     }
+    ota_unlock_state();
 }
 
 static bool ota_http_begin(HTTPClient& http, WiFiClient& plain, WiFiClientSecure& secure,
@@ -626,6 +672,7 @@ static void task_ota_online(void* param) {
 }
 
 static void handle_get_ota_info(AsyncWebServerRequest* req) {
+    const OtaManifestStateSnapshot ota_state = ota_snapshot_manifest_state();
     JsonDocument doc;
     const esp_partition_t* running = esp_ota_get_running_partition();
     doc["enabled"] = true;
@@ -647,7 +694,7 @@ static void handle_get_ota_info(AsyncWebServerRequest* req) {
     doc["fs_used"] = LittleFS.usedBytes();
     doc["auto_check_enabled"] = s_device_settings.ota_auto_check;
     doc["auto_check_hours"] = s_device_settings.ota_auto_check_hours;
-    doc["last_check_ms"] = s_ota_last_check_ms;
+    doc["last_check_ms"] = ota_state.last_check_ms;
     if (running) {
         doc["running_partition"] = running->label;
     }
@@ -658,14 +705,14 @@ static void handle_get_ota_info(AsyncWebServerRequest* req) {
     doc["last_total"] = s_ota_total;
     doc["job_running"] = s_ota_job_running;
     doc["job_stage"] = s_ota_job_stage;
-    doc["check_ok"] = s_ota_last_check_ok;
-    doc["check_error"] = s_ota_last_check_error;
-    doc["checked_manifest_url"] = s_ota_checked_manifest_url;
-    doc["checked_version"] = s_ota_checked_version;
-    doc["checked_notes"] = s_ota_checked_notes;
-    doc["checked_has_firmware"] = s_ota_checked_has_firmware;
-    doc["checked_has_filesystem"] = s_ota_checked_has_filesystem;
-    doc["update_available"] = s_ota_update_available;
+    doc["check_ok"] = ota_state.last_check_ok;
+    doc["check_error"] = ota_state.last_check_error;
+    doc["checked_manifest_url"] = ota_state.checked_manifest_url;
+    doc["checked_version"] = ota_state.checked_version;
+    doc["checked_notes"] = ota_state.checked_notes;
+    doc["checked_has_firmware"] = ota_state.checked_has_firmware;
+    doc["checked_has_filesystem"] = ota_state.checked_has_filesystem;
+    doc["update_available"] = ota_state.update_available;
     String out;
     serializeJson(doc, out);
     req->send(200, "application/json", out);
@@ -696,20 +743,25 @@ static void handle_post_ota_check(AsyncWebServerRequest* req, uint8_t* data, siz
     }
 
     ota_store_manifest_state(manifest_url.c_str(), manifest, true);
+    const OtaManifestStateSnapshot ota_state = ota_snapshot_manifest_state();
 
     JsonDocument resp;
     resp["ok"] = true;
     resp["manifest_url"] = manifest_url;
+    resp["checked_manifest_url"] = manifest_url;
     resp["current_version"] = APP_VERSION;
     resp["available_version"] = manifest.version;
-    resp["update_available"] = s_ota_update_available;
+    resp["update_available"] = ota_state.update_available;
     resp["notes"] = manifest.notes;
+    resp["checked_version"] = manifest.version;
+    resp["checked_notes"] = manifest.notes;
     resp["has_firmware"] = !manifest.firmware.url.isEmpty();
     resp["has_filesystem"] = !manifest.filesystem.url.isEmpty();
     resp["firmware_url"] = manifest.firmware.url;
     resp["filesystem_url"] = manifest.filesystem.url;
     resp["firmware_size"] = manifest.firmware.size;
     resp["filesystem_size"] = manifest.filesystem.size;
+    resp["last_check_ms"] = ota_state.last_check_ms;
     String out;
     serializeJson(resp, out);
     req->send(200, "application/json", out);
@@ -785,6 +837,7 @@ static void handle_post_ota_online(AsyncWebServerRequest* req, uint8_t* data, si
     resp["target"] = target;
     resp["version"] = manifest.version;
     resp["manifest_url"] = manifest_url;
+    resp["checked_manifest_url"] = manifest_url;
     String out;
     serializeJson(resp, out);
     req->send(202, "application/json", out);
